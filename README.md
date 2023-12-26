@@ -23,7 +23,7 @@ Downloads and client installation are available at => <https://aioz.network/aioz
 
 ## docker creation
 
-### dockerFile
+### Dockerfile
 
 #### Base container
 
