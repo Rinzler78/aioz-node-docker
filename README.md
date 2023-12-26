@@ -1,6 +1,13 @@
+## Purpose
+
+This sources allow to create docker image contains all necessary components to run aioz node.
+
+For more informations on the aioz project lets go to => <https://aioz.network/>
+
+Downloads and client installation are available at => <https://aioz.network/aioz-node>
+
 ## Table of contents
 
-* [Purpose](#purpose)
 * [docker creation](#docker-creation)
   * [dockerFile](#dockerfile)
   * [Build instructions](#build-instructions)
@@ -11,18 +18,8 @@
   * [Install docker](#install-docker)
   * [Search aioznode image](#search-aioznode-image)
   * [Create datadir directory](#create-datadir-directory)
-  * [Api key](#api-key)
-  * [Existing node datas](#existing-node-datas)
   * [Configure image and start container](#configure-image-and-start-container)
 * [Support](#support)
-
-## Purpose
-
-This sources allow to create docker image contains all necessary components to run aioz node.
-
-For more informations on the aioz project lets go to => <https://aioz.network/>
-
-Downloads and client installation are available at => <https://aioz.network/aioz-node>
 
 ## docker creation
 
