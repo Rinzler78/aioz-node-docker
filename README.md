@@ -1,4 +1,4 @@
-## Purpose
+# Purpose
 
 This sources allow to create docker image contains all necessary components to run aioz node.
 
