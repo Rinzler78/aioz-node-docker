@@ -1,0 +1,41 @@
+name: Docker Image CI
+
+on:
+  push:
+    tags:
+      - 'v*' # Pushed tags starting with 'v' (e.g., v1.0.0)
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Extract tag name
+      id: extract_tag
+      run: echo ::set-output name=tag_name::${GITHUB_REF#refs/tags/}
+      
+    - name: docker login
+      env:
+        DOCKER_USER: ${{secrets.DOCKER_USER}}
+        DOCKER_PASSWORD: ${{secrets.DOCKER_PASSWORD}}
+      run: |
+        docker login -u $DOCKER_USER -p $DOCKER_PASSWORD
+    
+    - name: docker build
+      run: |
+        docker build -t aioznode . \
+        --tag rinzlerfr/aioznode:quicktest \
+        --tag rinzlerfr/aioznode:latest \
+        --tag rinzlerfr/aioznode:${{ steps.extract_tag.outputs.tag_name }}
+    
+    - name: Quick Test
+      run: |
+        ./quick_test.sh rinzlerfr/aioznode:quicktest
+    
+    - name: docker push
+      run: |
+        docker push rinzlerfr/aioznode:${{ steps.extract_tag.outputs.tag_name }}
+        docker push rinzlerfr/aioznode:latest
