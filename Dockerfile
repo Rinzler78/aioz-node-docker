@@ -22,6 +22,9 @@ VOLUME ["$NODEDATA_FOLDER"]
 RUN dist.update.sh
 RUN apt-get install -y $(cat $TOOLS_DIRECTORY/deps.txt)
 
+# Install node
+RUN node.install.sh
+
 # Running timeout : Default 24H
 ENV RUN_TIMEOUT 86400
 
