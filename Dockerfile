@@ -18,6 +18,9 @@ RUN chmod +x $TOOLS_DIRECTORY/*.sh
 RUN mkdir $NODEDATA_FOLDER
 VOLUME ["$NODEDATA_FOLDER"]
 
+# ports
+EXPOSE 1317
+
 ## Install deps
 RUN dist.update.sh
 RUN apt-get install -y $(cat $TOOLS_DIRECTORY/deps.txt)
