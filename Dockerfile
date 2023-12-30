@@ -1,4 +1,4 @@
-FROM ubuntu:latest
+FROM alpine:latest
 
 ENV HOME /root
 ENV TOOLS_DIRECTORY /tools
@@ -23,8 +23,8 @@ VOLUME ["$NODEDATA_FOLDER"]
 EXPOSE 1317
 
 ## Install deps
-RUN dist.update.sh
-RUN apt-get install -y $(cat $TOOLS_DIRECTORY/deps.txt)
+RUN apk update
+RUN apk add --no-cache $(cat $TOOLS_DIRECTORY/deps.txt)
 
 # Install node
 RUN node.install.sh
@@ -34,4 +34,4 @@ ENV RUN_TIMEOUT 86400
 
 # Entry point
 CMD start.sh
-# CMD bash    
+# CMD bash

@@ -17,7 +17,7 @@ then
         tar -xvzf $tmpFilename
         filename=aioznode-linux-amd64*
 
-        echo "Moving $filename to $aiozNodeBinaryPath ..."
+        echo "Moving $filename to /bin/$BINARY_NAME ..."
         mv $filename /bin/$BINARY_NAME
         rm $tmpFilename
     else
@@ -25,7 +25,7 @@ then
     fi
     
     currentVersion="$(node.version.sh)"
-    echo "aioznode installed @ : $currentVersion"
+    echo "aioznode $currentVersion installed"
 fi
 
 exit 0

@@ -1,1 +1,1 @@
-jq wget nano curl
+jq wget nano curl bash gcompat

@@ -1,2 +1,3 @@
-#!/bin/bash
-apt-get dist-upgrade
+#!/bin/sh
+apk update
+apk upgrade
