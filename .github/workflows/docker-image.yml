@@ -39,3 +39,13 @@ jobs:
       run: |
         docker push rinzlerfr/aioznode:${{ steps.extract_tag.outputs.tag_name }}
         docker push rinzlerfr/aioznode:latest
+    
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.extract_tag.outputs.tag_name }}
+        name: Release ${{ steps.extract_tag.outputs.tag_name }}
+        body: |
+          Automated release for ${{ steps.extract_tag.outputs.tag_name }}.
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,122 +1,174 @@
 # Purpose
 
-This sources allow to create docker image contains all necessary components to run aioz node.
+[![Docker Build](https://img.shields.io/badge/build-docker-blue?logo=docker)](https://www.docker.com/)
+[![Docker Pulls](https://img.shields.io/docker/pulls/rinzlerfr/aioznode)](https://hub.docker.com/r/rinzlerfr/aioznode)
+[![Docker Image Size](https://img.shields.io/docker/image-size/rinzlerfr/aioznode)](https://hub.docker.com/r/rinzlerfr/aioznode)
+[![License](https://img.shields.io/github/license/bleclereperso/aioz-node-docker)](./LICENSE)
+[![Stars](https://img.shields.io/github/stars/bleclereperso/aioz-node-docker?style=social)](https://github.com/bleclereperso/aioz-node-docker/stargazers)
+[![Issues](https://img.shields.io/github/issues/bleclereperso/aioz-node-docker)](https://github.com/bleclereperso/aioz-node-docker/issues)
+[![Open PRs](https://img.shields.io/github/issues-pr/bleclereperso/aioz-node-docker)](https://github.com/bleclereperso/aioz-node-docker/pulls)
+[![Last Commit](https://img.shields.io/github/last-commit/bleclereperso/aioz-node-docker)](https://github.com/bleclereperso/aioz-node-docker/commits/main)
+[![Shell](https://img.shields.io/badge/shell-bash-blue?logo=gnu-bash)](https://www.gnu.org/software/bash/)
+[![Platform](https://img.shields.io/badge/platform-alpine-informational?logo=alpinelinux)](https://alpinelinux.org/)
+[![Contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/bleclereperso/aioz-node-docker/issues)
+[![Made with Love](https://img.shields.io/badge/made%20with-%E2%9D%A4-red)](https://github.com/bleclereperso/aioz-node-docker)
+[![GitHub Actions CI](https://github.com/bleclereperso/aioz-node-docker/actions/workflows/ci.yml/badge.svg)](https://github.com/bleclereperso/aioz-node-docker/actions)
+[![Release](https://img.shields.io/github/v/release/bleclereperso/aioz-node-docker)](https://github.com/bleclereperso/aioz-node-docker/releases)
 
-For more informations on the aioz project lets go to => <https://aioz.network/>
+This repository allows you to build a Docker image containing all necessary components to run an AIOZ node in a fully automated and reproducible way.
 
-Downloads and client installation are available at => <https://aioz.network/aioz-node>
+For more information about the AIOZ project, visit: <https://aioz.network/>
+
+Official downloads and client installation: <https://aioz.network/aioz-node>
 
 ## Table of contents
 
-* [docker creation](#docker-creation)
-  * [dockerFile](#dockerfile)
+* [Docker image creation](#docker-image-creation)
+  * [Dockerfile](#dockerfile)
+  * [Installed packages](#installed-packages)
   * [Build instructions](#build-instructions)
-  * [Before run](#before-run)
+  * [Before running](#before-running)
   * [Run instructions](#run-instructions)
-  * [Public docker image](#public-docker-image)
-* [Synology nas docker deployment](#synology-nas-docker-deployment)
-  * [Install docker](#install-docker)
+  * [Public Docker image](#public-docker-image)
+* [Synology NAS Docker deployment](#synology-nas-docker-deployment)
+  * [Install Docker](#install-docker)
   * [Search aioznode image](#search-aioznode-image)
-  * [Create datadir directory](#create-datadir-directory)
+  * [Create nodedata directory](#create-nodedata-directory)
   * [Configure image and start container](#configure-image-and-start-container)
 * [Support](#support)
 
-## docker creation
+---
+
+## Docker image creation
 
 ### Dockerfile
 
 #### Base container
 
-This container is based on an ubuntu:latest.
+This container is based on `alpine:latest` for a lightweight and secure environment.
 
-#### Packages
+#### Installed packages
 
-Following packages are installed :
+The following packages are installed (see `tools/deps.txt`):
 
-* wget => Allow to download the aioznode binary from github link => <https://github.com/AIOZNetwork/aioz-dcdn-cli-node/releases>
-* curl and wget => Update aioznode
+* jq
+* wget
+* nano
+* curl
+* bash
+* gcompat
 
-#### aioznode installation
+#### Scripts and logic
 
-aioznode binary is downloaded, put at /bin/aioznode and make executable.
+All logic is handled by scripts in the `tools/` directory:
+
+* `deploy.sh` — Main deployment script (updates, upgrades, installs node and wallet, cleans up)
+* `node.install.sh` — Downloads and installs the latest aioznode binary
+* `wallet.configure.sh` — Configures the wallet (see script for details)
+* `start.sh` — Entrypoint script: runs deployment, then starts the node with the correct parameters
 
 #### Volumes
 
-nodedata directory is created at root directory => /nodedata.
-It must be linked to directory outside the container.
+A persistent data directory is created at `/nodedata` and must be mounted to a directory on your Docker host.
 
-#### Start script
+#### Ports
 
-start.sh file is a bash script called at container startup.
-It performs following actions :
+* 1317 (default, can be mapped as needed)
 
-* Check for newer version of aioznode at <https://github.com/AIOZNetwork/aioz-dcdn-cli-node/releases>
-* Start aioznode binary
+#### Entrypoint
+
+The container starts with `start.sh`, which ensures the node is up-to-date and launches it with the correct configuration.
+
+---
 
 ### Build instructions
 
+```sh
 docker build -t aioznode .
+```
 
-### Before run
+---
+
+### Before running
 
 #### nodedata directory
 
-Create a directory on your docker host to be linked to the container datadir. Exemple : ~/MyDockers/aioznode/nodedata
+Create a directory on your Docker host to be mounted as the node's data directory. Example:
+
+```sh
+mkdir -p ~/MyDockers/aioznode/nodedata
+```
+
+#### Private key configuration
+
+Place your `privkey.json` file in the data directory you will mount (see below). This is required for the node to start.
+
+---
 
 ### Run instructions
 
-docker run command is :
-[docker run -d \
--v {Your directory}:/datadir \
---restart=always \
---name aioznode -it aioznode](helper.docker.run.sh)
+Example run command:
 
-Where :
-
-* {Your directory} => Your nodedata directory on the docker host
-
-Exemple :
+```sh
 docker run -d \
--v docker/aioznode/nodadata:/nodedata \
---name aioznode -it aioznode
+  -v ~/MyDockers/aioznode/nodedata:/nodedata \
+  --restart=always \
+  --name aioznode \
+  -it aioznode
+```
 
-### Public docker image
+Where:
+* `~/MyDockers/aioznode/nodedata` is your persistent data directory on the host
+* `/nodedata` is the internal container path
 
-Public container is available at <https://hub.docker.com/repository/docker/rinzlerfr/aioznode>
+The node will automatically check for updates and start with the provided private key.
 
-## Synology nas docker deployment
+---
 
-### Install docker
+### Public Docker image
 
-if not installed, go to the package center, search docker and install it.
+A public image may be available in the future. For now, build locally as described above.
+
+---
+
+## Synology NAS Docker deployment
+
+### Install Docker
+
+If not already installed, go to the Package Center, search for Docker, and install it.
 
 ### Search aioznode image
 
-Go to docker GUI and search "rinzlerfr/aioznode" in the register page.
-Once found download it.
+In the Docker GUI, search for your built image or import it if needed.
 
-### Create datadir directory
+### Create nodedata directory
 
-Using File station, create a directory on your syno to link to the container datadir. Exemple : docker/aioznode/nodedata
+Using File Station, create a directory on your NAS to be used as the node's data directory. Example: `docker/aioznode/nodedata`
 
 ### Configure image and start container
 
-Back to docker GUI, in Images. Select the "rinzlerfr/aioznode" image, and click launch.
+1. In Docker GUI, go to Images, select your `aioznode` image, and click Launch.
+2. Name your container (e.g., `aioznode`).
+3. (Optional) Enable resource limits: set CPU priority to high, memory limit to 1024 MB.
+4. Go to Advanced Settings and enable auto-restart.
+5. In Volumes, add the directory you created (e.g., `docker/aioznode/nodedata`) and mount it to `/nodedata` inside the container.
+6. Validate and launch the container.
 
-* Give a name to your container. Exemple : aioznode
-* Enable resources limitation (optional) :
--- Put processor priority to high.
--- Put 1024 MB limitation
-* Click to advanced parameters
-* Enable auto restart.
-
-* Go to Volume, click Add directory, select the datadir directory created on your syno. Exemple : docker/aioznode/nodedata
--- Then put /nodedata on the rigth and validate
-
-Then validate and launch the container.
+---
 
 ## Support
 
-Please consider donating to 0x4D11B64d9bb0652a92FCaD019d7Fc79f14821571 | aioz1f5gmvnvmkpjj4yhu45qe6l78nu2gy9t3mklmct if you are satisfied
+If you find this project useful, please consider donating:
 
-Hav fun !! ;)
+* AIOZ: `0x4D11B64d9bb0652a92FCaD019d7Fc79f14821571`
+* AIOZ (bech32): `aioz1f5gmvnvmkpjj4yhu45qe6l78nu2gy9t3mklmct`
+
+---
+
+## Contribution
+
+Feel free to open issues or submit pull requests for improvements or bug fixes.
+
+---
+
+Have fun! ;)
