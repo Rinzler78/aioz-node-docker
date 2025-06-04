@@ -32,6 +32,9 @@ RUN node.install.sh
 # Running timeout : Default 24H
 ENV RUN_TIMEOUT 86400
 
+HEALTHCHECK --interval=1s --timeout=1s --start-period=1s --retries=60 \
+  CMD aioznode reward balance
+
 # Entry point
 CMD start.sh
 # CMD bash
