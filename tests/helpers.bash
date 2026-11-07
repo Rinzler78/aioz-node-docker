@@ -14,12 +14,13 @@ setup_env() {
     mkdir -p "$BIN_DIR"
 }
 
-# Write a fake CLI at $1 whose `version` prints $2.
+# Write a fake CLI at $1 whose `version` prints $2 (may span several lines).
 make_fake_cli() {
-    cat > "$1" <<EOF
+    cat > "$1" <<'EOF'
 #!/bin/sh
-[ "\$1" = "version" ] && echo "$2"
+[ "$1" = "version" ] && cat <<'VERSION'
 EOF
+    printf '%s\nVERSION\n' "$2" >> "$1"
     chmod +x "$1"
 }
 
@@ -38,6 +39,27 @@ serve_release() {
 
     make_fake_cli "$pkg/aioz-depin-cli-linux-amd64" "$version"
     tar -czf "$dl_dir/aioz-depin-linux-amd64-1.2.6.tar.gz" -C "$pkg" aioz-depin-cli-linux-amd64
+    (cd "$dl_dir" && sha256sum aioz-depin-linux-amd64-1.2.6.tar.gz > SHA256SUMS)
+}
+
+# Same release, but SHA256SUMS does not match the archive.
+serve_release_with_bad_checksum() {
+    serve_release "$@"
+    local sums="$FAKE_GITHUB/AIOZNetwork/aioz-depin-cli/releases/download/v1.2.6/SHA256SUMS"
+    echo "0000000000000000000000000000000000000000000000000000000000000000  aioz-depin-linux-amd64-1.2.6.tar.gz" > "$sums"
+}
+
+# Put a curl first on PATH that logs its arguments to $CURL_LOG, then runs curl.
+spy_curl() {
+    export CURL_LOG="$BATS_TEST_TMPDIR/curl.log"
+    mkdir -p "$BATS_TEST_TMPDIR/spy"
+    cat > "$BATS_TEST_TMPDIR/spy/curl" <<'EOF'
+#!/bin/sh
+echo "$*" >> "$CURL_LOG"
+exec /usr/bin/curl "$@"
+EOF
+    chmod +x "$BATS_TEST_TMPDIR/spy/curl"
+    export PATH="$BATS_TEST_TMPDIR/spy:$PATH"
 }
 
 # Same capture, but without the linux-amd64 archive.
@@ -61,17 +83,28 @@ setup_node_env() {
     export HEALTH_RETRIES=3
     mkdir -p "$NODEDATA_FOLDER" "$FAKE_STATE"
     echo '{}' > "$PRIV_KEY_FILE"
+    # No apk update/upgrade/clean in tests: offline, and the runner is not touched.
+    mkdir -p "$BATS_TEST_TMPDIR/stubs"
+    for stub in dist.update.sh dist.upgrade.sh dist.clean.sh; do
+        printf '#!/bin/sh\n' > "$BATS_TEST_TMPDIR/stubs/$stub"
+        chmod +x "$BATS_TEST_TMPDIR/stubs/$stub"
+    done
+    export PATH="$BATS_TEST_TMPDIR/stubs:$PATH"
 }
 
 # Write a fake node at $1 (version $2): `start` records that it started and
-# runs until killed; `reward balance` fails while $FAKE_STATE/unhealthy exists.
+# runs until killed; `reward` records its arguments, hangs while
+# $FAKE_STATE/hang exists and fails while $FAKE_STATE/unhealthy exists.
 make_fake_node() {
     cat > "$1" <<EOF
 #!/bin/sh
 case "\$1" in
     version) echo "$2" ;;
     start) touch "\$FAKE_STATE/started"; exec sleep 1000 ;;
-    reward) [ ! -e "\$FAKE_STATE/unhealthy" ] && echo '{"balance":[]}' ;;
+    reward)
+        echo "\$*" > "\$FAKE_STATE/reward.args"
+        [ -e "\$FAKE_STATE/hang" ] && exec sleep 1000
+        [ ! -e "\$FAKE_STATE/unhealthy" ] && echo '{"balance":[]}' ;;
 esac
 EOF
     chmod +x "$1"

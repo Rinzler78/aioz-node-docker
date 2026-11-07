@@ -63,10 +63,12 @@ The following packages are installed (see `tools/deps.txt`):
 All logic is handled by scripts in the `tools/` directory:
 
 * `deploy.sh` — Main deployment script (updates, upgrades, installs node and wallet, cleans up)
-* `node.install.sh` — Installs or updates the CLI from the `linux-amd64` asset of the latest [AIOZNetwork/aioz-depin-cli](https://github.com/AIOZNetwork/aioz-depin-cli) release (one GitHub API call). If the update fails, the installed binary is kept and a `WARN` is logged; with no binary at all, the container exits with an error
+* `node.install.sh` — Installs or updates the CLI from the `linux-amd64` asset of the latest [AIOZNetwork/aioz-depin-cli](https://github.com/AIOZNetwork/aioz-depin-cli) release (one GitHub API call), after checking the archive against the release `SHA256SUMS`. The update is skipped when the installed version is already the latest. If the update fails, the installed binary is kept and a `WARN` is logged; with no binary at all, the container exits with an error
 * `wallet.configure.sh` — Configures the wallet (see script for details)
-* `node.health.sh` — Health check: the node answers `reward balance` for the configured wallet
-* `start.sh` — Entrypoint script: runs deployment, starts the node, and stops it after 3 consecutive failed health checks so that the restart policy restarts the container (and re-runs the update). Docker itself never restarts an unhealthy container
+* `node.health.sh` — Health check of the watchdog: the node answers `reward balance` for the configured wallet
+* `node.version.sh` / `node.remoteVersion.sh` — Installed and latest release versions (used by `quick_test.sh`)
+* `version.lib.sh` — Version parsing, sourced by the scripts above (the CLI prints its version as JSON)
+* `start.sh` — Entrypoint script: runs deployment, starts the node, and stops it after 3 consecutive failed health checks (a check running past 30s fails) so that the restart policy restarts the container (and re-runs the update). Docker itself never restarts an unhealthy container
 
 #### Environment variables
 
@@ -74,7 +76,7 @@ All logic is handled by scripts in the `tools/` directory:
 |---|---|---|
 | `GITHUB_TOKEN` | unset | Optional. Authenticates the release lookup (5000 instead of 60 calls per hour per IP) |
 | `RUN_TIMEOUT` | `86400` | Seconds before the node is stopped, so the container restarts and updates |
-| `HEALTH_START_PERIOD` / `HEALTH_INTERVAL` / `HEALTH_RETRIES` | `300` / `60` / `3` | Watchdog timings, aligned with the image `HEALTHCHECK` |
+| `HEALTH_START_PERIOD` / `HEALTH_INTERVAL` / `HEALTH_TIMEOUT` / `HEALTH_RETRIES` | `300` / `60` / `30` / `3` | Watchdog timings. The image `HEALTHCHECK` still runs the former check (`reward balance`, 1s interval); it will be aligned once the v1.2.6 CLI interface is confirmed, since its `start` is broken upstream ([aioz-depin-cli#10](https://github.com/AIOZNetwork/aioz-depin-cli/issues/10)) |
 | `ENDPOINT` | `http://127.0.0.1:1317` | Node checked by `node.health.sh` (set by images built on this one) |
 
 #### Volumes

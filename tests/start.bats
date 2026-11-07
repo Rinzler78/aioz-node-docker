@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
 # Seams S2 (start with or without a binary) and S3 (watchdog) on start.sh.
-# GitHub is unreachable in every test: no release is served.
+# GitHub is unreachable in every test (no release is served) and apk is stubbed.
 
 load helpers
 
@@ -14,6 +14,7 @@ setup() {
 
     run start.sh
 
+    [ "$status" -eq 143 ] # stopped by RUN_TIMEOUT (busybox timeout: SIGTERM)
     [ -e "$FAKE_STATE/started" ]
     [[ "$output" == *WARN* ]]
 }
@@ -49,7 +50,30 @@ setup() {
 
     run start.sh
 
+    [ "$status" -eq 143 ]
     [ -e "$FAKE_STATE/started" ]
     [[ "$output" != *"health check failed"* ]]
     [ "$SECONDS" -ge 5 ]
+}
+
+@test "counts a health check that hangs past HEALTH_TIMEOUT as failed" {
+    make_fake_node "$BIN_DIR/$BINARY_NAME" "1.1.0"
+    touch "$FAKE_STATE/hang"
+    export RUN_TIMEOUT=120 HEALTH_TIMEOUT=1
+    SECONDS=0
+
+    run start.sh
+
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"health check failed (3/3)"* ]]
+    [ "$SECONDS" -lt 60 ]
+}
+
+@test "checks the rewards of the configured wallet on the local node" {
+    make_fake_node "$BIN_DIR/$BINARY_NAME" "1.1.0"
+    export RUN_TIMEOUT=3
+
+    run start.sh
+
+    [ "$(cat "$FAKE_STATE/reward.args")" = "reward balance --priv-key-file $PRIV_KEY_FILE --endpoint http://127.0.0.1:1317" ]
 }

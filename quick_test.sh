@@ -6,7 +6,7 @@
 DEFAULT_IMAGE_NAME="aioznode:latest"
 DEFAULT_USER="aiozClient"
 DEFAULT_PASS="aiozClientPassword"
-DEFAULT_TIMEOUT=600 # covers the 300s health start period
+DEFAULT_TIMEOUT=600 # room for the 300s start period once the HEALTHCHECK is aligned on the watchdog
 DEFAULT_PORTS="1317:1317"
 
 # Parameters (can be overridden by CLI)

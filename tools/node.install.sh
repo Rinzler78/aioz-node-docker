@@ -1,13 +1,16 @@
 #!/bin/bash
 # Install or update the AIOZ DePIN CLI from the latest GitHub release of $REPO_NAME.
+# The archive is checked against the release SHA256SUMS before install.
 # Exit 0 when a binary is available afterwards (a failed update keeps the
 # installed one, with a WARN), 1 when there is none.
+# shellcheck source=tools/version.lib.sh
+source "${BASH_SOURCE[0]%/*}/version.lib.sh"
 
 BIN_DIR="${BIN_DIR:-/bin}"
 TARGET="$BIN_DIR/$BINARY_NAME"
 
 binary_version() {
-    "$TARGET" version 2>&1 | sed 's/[^0-9.]//g'
+    "$TARGET" version 2>&1 | version_of
 }
 
 update_failed() {
@@ -22,13 +25,15 @@ update_failed() {
 release=$(git.releases.latest.sh "$REPO_NAME") ||
     update_failed "Cannot fetch the latest release of $REPO_NAME"
 
-remote_version=$(jq -r '.tag_name // empty' <<< "$release" | sed 's/[^0-9.]//g')
+remote_version=$(jq -r '.tag_name // empty' <<< "$release" | version_of)
 asset_url=$(jq -r '.assets[]?.browser_download_url
     | select(test("linux-amd64[^/]*\\.tar\\.gz$"))' <<< "$release" | head -1)
+sums_url=$(jq -r '.assets[]? | select(.name == "SHA256SUMS") | .browser_download_url' <<< "$release")
 
 if [ -z "$remote_version" ] || [ -z "$asset_url" ]; then
     update_failed "Latest release of $REPO_NAME has no linux-amd64 archive"
 fi
+[ -n "$sums_url" ] || update_failed "Latest release of $REPO_NAME has no SHA256SUMS"
 
 if [ -x "$TARGET" ] && [ "$(binary_version)" = "$remote_version" ]; then
     echo "$BINARY_NAME $remote_version is up to date"
@@ -37,11 +42,21 @@ fi
 
 workdir=$(mktemp -d)
 trap 'rm -rf "$workdir"' EXIT
+archive="${asset_url##*/}"
 
 echo "Downloading $BINARY_NAME $remote_version from $asset_url ..."
-curl -fsSL -o "$workdir/archive.tar.gz" "$asset_url" ||
+curl -fsSL -o "$workdir/$archive" "$asset_url" ||
     update_failed "Download of $asset_url failed"
-tar -xzf "$workdir/archive.tar.gz" -C "$workdir" ||
+curl -fsSL -o "$workdir/SHA256SUMS" "$sums_url" ||
+    update_failed "Download of $sums_url failed"
+
+# Only the archive's line: SHA256SUMS lists every platform.
+if ! grep "  $archive\$" "$workdir/SHA256SUMS" > "$workdir/archive.sum" ||
+    ! (cd "$workdir" && sha256sum -c archive.sum > /dev/null 2>&1); then
+    update_failed "$archive does not match its SHA256SUMS checksum"
+fi
+
+tar -xzf "$workdir/$archive" -C "$workdir" ||
     update_failed "Cannot extract $asset_url"
 
 binary=$(find "$workdir" -type f -name '*linux-amd64' | head -1)
