@@ -63,9 +63,19 @@ The following packages are installed (see `tools/deps.txt`):
 All logic is handled by scripts in the `tools/` directory:
 
 * `deploy.sh` — Main deployment script (updates, upgrades, installs node and wallet, cleans up)
-* `node.install.sh` — Downloads and installs the latest aioznode binary
+* `node.install.sh` — Installs or updates the CLI from the `linux-amd64` asset of the latest [AIOZNetwork/aioz-depin-cli](https://github.com/AIOZNetwork/aioz-depin-cli) release (one GitHub API call). If the update fails, the installed binary is kept and a `WARN` is logged; with no binary at all, the container exits with an error
 * `wallet.configure.sh` — Configures the wallet (see script for details)
-* `start.sh` — Entrypoint script: runs deployment, then starts the node with the correct parameters
+* `node.health.sh` — Health check: the node answers `reward balance` for the configured wallet
+* `start.sh` — Entrypoint script: runs deployment, starts the node, and stops it after 3 consecutive failed health checks so that the restart policy restarts the container (and re-runs the update). Docker itself never restarts an unhealthy container
+
+#### Environment variables
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `GITHUB_TOKEN` | unset | Optional. Authenticates the release lookup (5000 instead of 60 calls per hour per IP) |
+| `RUN_TIMEOUT` | `86400` | Seconds before the node is stopped, so the container restarts and updates |
+| `HEALTH_START_PERIOD` / `HEALTH_INTERVAL` / `HEALTH_RETRIES` | `300` / `60` / `3` | Watchdog timings, aligned with the image `HEALTHCHECK` |
+| `ENDPOINT` | `http://127.0.0.1:1317` | Node checked by `node.health.sh` (set by images built on this one) |
 
 #### Volumes
 
@@ -85,6 +95,13 @@ The container starts with `start.sh`, which ensures the node is up-to-date and l
 
 ```sh
 docker build -t aioznode .
+```
+
+### Tests
+
+```sh
+tests/run.sh      # bats unit tests, in an Alpine container, against a fake GitHub
+./quick_test.sh   # builds the image, waits for healthy, checks the installed version is the latest release
 ```
 
 ---

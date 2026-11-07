@@ -6,7 +6,7 @@
 DEFAULT_IMAGE_NAME="aioznode:latest"
 DEFAULT_USER="aiozClient"
 DEFAULT_PASS="aiozClientPassword"
-DEFAULT_TIMEOUT=120
+DEFAULT_TIMEOUT=600 # covers the 300s health start period
 DEFAULT_PORTS="1317:1317"
 
 # Parameters (can be overridden by CLI)
@@ -125,11 +125,12 @@ docker_run() {
     echo "docker run \\
       --env RUN_TIMEOUT=$run_timeout \\
       $ports_mapping \\
-      --rm -d $image_name"
+      -d $image_name"
     container_id=$(docker run \
       --env RUN_TIMEOUT=$run_timeout \
+      ${GITHUB_TOKEN:+--env GITHUB_TOKEN} \
       $ports_mapping \
-      --rm -d $image_name)
+      -d $image_name)
     if [ -z "$container_id" ]; then
         echo "[ERROR] Docker run failed: container not started."
         return 11
@@ -155,7 +156,15 @@ fi
 # Wait for container healthcheck to report 'healthy'
 echo "[INFO] Waiting for container to become healthy..."
 for i in $(seq 1 $run_timeout); do
-    health_status=$(docker inspect --format='{{.State.Health.Status}}' "$container_id")
+    if ! health_status=$(docker inspect --format='{{.State.Health.Status}}' "$container_id" 2>/dev/null); then
+        echo "[FAIL] Container is gone."
+        exit 13
+    fi
+    if [ "$(docker inspect --format='{{.State.Running}}' "$container_id")" != "true" ]; then
+        echo "[FAIL] Container exited before becoming healthy."
+        docker logs "$container_id" 2>&1 | tail -30
+        exit 12
+    fi
     echo "[INFO] Health status: $health_status"
     if [ "$health_status" = "healthy" ]; then
         echo "[SUCCESS] Container is healthy."
@@ -166,6 +175,11 @@ for i in $(seq 1 $run_timeout); do
     fi
     sleep 1
 done
+if [ "$health_status" != "healthy" ]; then
+    echo "[FAIL] Container not healthy after ${run_timeout}s (last status: ${health_status:-none})."
+    docker logs "$container_id" 2>&1 | tail -30
+    exit 15
+fi
 
 # Test version (locale)
 version=$(docker exec "$container_id" /tools/node.version.sh)
@@ -185,7 +199,8 @@ echo "[INFO] Remote version: $remote_version"
 if [ "$version" = "$remote_version" ]; then
     echo "[SUCCESS] Local and remote versions match."
 else
-    echo "[INFO] Local and remote versions differ. Update needed."
+    echo "[FAIL] Installed version $version is not the latest release $remote_version."
+    exit 17
 fi
 
 echo "[INFO] Stopping container..."
