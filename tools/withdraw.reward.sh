@@ -4,6 +4,9 @@
 # Sourced by start-watching-reward.sh (withdraw_reward); runs once standalone.
 # Amounts are compared with bc: they exceed 64-bit integers above ~9.22 AIOZ.
 
+# Node to watch: the aioznode service of the compose file by default.
+ENDPOINT="${ENDPOINT:-http://aioznode:1317}"
+
 # The whole balance goes to this address at every withdraw: refuse a typo.
 check_withdraw_address() {
     if [[ ! "$WITHDRAW_ADDRESS_HEX" =~ ^0x[0-9a-fA-F]{40}$ ]]; then
@@ -49,7 +52,7 @@ withdraw_reward() {
     echo "=> Remaining balance to withdraw : $remaining $TOKEN_DENOM => => $(to_token "$remaining") $TOKEN_NAME"
     echo " "
 
-    if [ "$(echo "$balance > $minimum" | bc)" -eq 1 ]; then
+    if [ "$(echo "$balance > $minimum" | bc)" = "1" ]; then
         echo "Try to withdraw... $BINARY_NAME reward withdraw --endpoint $ENDPOINT --address $WITHDRAW_ADDRESS_HEX --amount $balance$denom --priv-key-file $PRIV_KEY_FILE"
         "$BINARY_NAME" reward withdraw --endpoint "$ENDPOINT" --address "$WITHDRAW_ADDRESS_HEX" \
             --amount "$balance$denom" --priv-key-file "$PRIV_KEY_FILE"

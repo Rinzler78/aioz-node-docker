@@ -6,9 +6,6 @@ source "${BASH_SOURCE[0]%/*}/withdraw.reward.sh"
 
 check_withdraw_address || exit 1
 
-# Node to watch: the aioznode service of the compose file by default.
-export ENDPOINT="${ENDPOINT:-http://aioznode:1317}"
-
 if ! deploy.sh; then
     echo "Deployment failed"
     exit 1

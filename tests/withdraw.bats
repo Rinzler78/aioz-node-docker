@@ -126,3 +126,13 @@ setup() {
     [[ "$output" == *"=> Stored segment count : 0. Size : "* ]]
     [[ "$output" == *"Try to withdraw... aioznode reward withdraw --endpoint http://aioznode:1317 --address $WITHDRAW_ADDRESS_HEX --amount 7761729917265715262attoaioz --priv-key-file $PRIV_KEY_FILE"* ]]
 }
+
+@test "standalone withdraw queries the aioznode service when ENDPOINT is unset" {
+    unset ENDPOINT
+    serve_balance 7761729917265715262
+
+    run withdraw.reward.sh
+
+    [ "$(cat "$FAKE_STATE/balance.args")" = "--endpoint http://aioznode:1317" ]
+    [[ "$(cat "$FAKE_STATE/withdraw.args")" == "--endpoint http://aioznode:1317 "* ]]
+}
