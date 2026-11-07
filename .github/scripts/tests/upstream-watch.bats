@@ -53,12 +53,21 @@ posted() {
     [ -z "$(posted)" ]
 }
 
+@test "reports a hub whose origin is back but failing" {
+    printf 503 > "$FAKE_HTTP_DIR/delivery-main-hub.aioz.network"
+
+    run "$SCRIPT"
+
+    [[ "$output" == *"change detected: hub"* ]]
+}
+
 @test "ignores the hub check when the control URL is down" {
     printf 200 > "$FAKE_HTTP_DIR/main-hub.aioz.network"
     printf 503 > "$FAKE_HTTP_DIR/wallet.aioz.network"
 
     run "$SCRIPT"
 
+    [ "$status" -eq 0 ]
     [[ "$output" == "No change."* ]]
     [ -z "$(posted)" ]
 }
@@ -110,4 +119,21 @@ posted() {
     [ "$status" -ne 0 ]
     [[ "$output" == *"window"* ]]
     [ -z "$(posted)" ]
+}
+
+@test "reports the upstream issue being closed" {
+    jq '.state = "closed"' "$FIXTURES/issue-10.json" > "$FAKE_GH_DIR/${API}_issues_10.json"
+
+    run "$SCRIPT"
+
+    [[ "$output" == *"change detected: issue-state"* ]]
+}
+
+@test "reports new upstream commits" {
+    cp "$FIXTURES/commits-2.json" "$FAKE_GH_DIR/${API}_commits.json"
+
+    run "$SCRIPT"
+
+    [[ "$output" == *"change detected: commits"* ]]
+    [ "$(posted)" = "create" ]
 }

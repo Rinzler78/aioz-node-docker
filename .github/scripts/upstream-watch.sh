@@ -29,18 +29,24 @@ http_code() {
     curl -s -o /dev/null -m 20 -w '%{http_code}' "$1"
 }
 
-# An origin answers when the code is 2xx-4xx. 000 is no answer at all;
-# 5xx (Cloudflare 52x included) is an origin down or failing.
+# The control URL proves our network works when it answers 2xx-4xx.
 answers() {
     [[ "$1" =~ ^[234][0-9][0-9]$ ]]
 }
 
-# gh api, or stop the whole run: an API error is not an upstream change.
+# A hub changed when its origin is back: any answer but 000 (none at all) and
+# Cloudflare 52x (origin down).
+hub_back() {
+    [ "$1" != "000" ] && [[ ! "$1" =~ ^52[0-9]$ ]]
+}
+
+# gh api; on error, logs it and returns 1. Callers must `|| exit 1`: an API
+# error is not an upstream change. gh prints the error JSON on stdout.
 api() {
     local out
-    if ! out=$(gh api "$@" 2>&1); then
+    if ! out=$(gh api "$@"); then
         echo "ERROR: gh api $1 failed: $out" >&2
-        exit 1
+        return 1
     fi
     printf '%s\n' "$out"
 }
@@ -51,7 +57,7 @@ hub_lines=""
 for url in $HUB_URLS; do
     code=$(http_code "$url")
     hub_lines+="- \`$url\`: $code"$'\n'
-    if answers "$control" && answers "$code"; then
+    if answers "$control" && hub_back "$code"; then
         changes+=("hub")
     fi
 done
@@ -73,7 +79,7 @@ fi
 state=$(api "repos/$UPSTREAM_REPO/issues/$WATCH_ISSUE" --jq '.state') || exit 1
 comments=$(api "repos/$UPSTREAM_REPO/issues/$WATCH_ISSUE/comments" --paginate \
     --jq ".[] | select(.created_at > \"$since\") | \"- \(.user.login), \(.created_at): \(.body | split(\"\n\")[0] | .[0:200] | gsub(\"@\"; \"@​\")) (\(.html_url))\"") || exit 1
-commits=$(api "repos/$UPSTREAM_REPO/commits?since=$since" \
+commits=$(api "repos/$UPSTREAM_REPO/commits?since=$since" --paginate \
     --jq '.[] | "- \(.commit.author.date) \(.commit.message | split("\n")[0] | gsub("@"; "@​")) (\(.html_url))"') || exit 1
 
 report+=$'\n'"### Issue $UPSTREAM_REPO#$WATCH_ISSUE: $state"$'\n'

@@ -163,7 +163,7 @@ The AIOZ DePIN hub is down (Cloudflare 521) and the CLI v1.2.6 `start` is broken
 
 What counts as a change:
 
-* a hub URL answers again (HTTP 2xx-4xx), while the control URL `https://wallet.aioz.network/` also answers; when the control URL does not answer, the hub result is ignored;
+* a hub URL no longer returns Cloudflare 52x (origin down) nor 000 (no answer), while the control URL `https://wallet.aioz.network/` answers 2xx-4xx; when the control URL does not answer, the hub result is ignored;
 * the latest upstream release is not `KNOWN_TAG` (`v1.2.6`);
 * the upstream issue #10 is no longer open, or got comments in the last 25 hours;
 * upstream commits in the last 25 hours.
