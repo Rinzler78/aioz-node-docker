@@ -123,7 +123,7 @@ setup_withdraw_env() {
     cat > "$BIN_DIR/$BINARY_NAME" <<'EOF'
 #!/bin/sh
 case "$1 $2" in
-    "reward balance") cat "$FAKE_STATE/balance.json" ;;
+    "reward balance") shift 2; echo "$*" > "$FAKE_STATE/balance.args"; cat "$FAKE_STATE/balance.json" ;;
     "reward withdraw") shift 2; echo "$*" > "$FAKE_STATE/withdraw.args" ;;
 esac
 EOF

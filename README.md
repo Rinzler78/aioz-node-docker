@@ -81,9 +81,10 @@ All logic is handled by scripts in the `tools/` directory:
 | `RUN_TIMEOUT` | `86400` | Seconds before the node is stopped, so the container restarts and updates |
 | `HEALTH_START_PERIOD` / `HEALTH_INTERVAL` / `HEALTH_TIMEOUT` / `HEALTH_RETRIES` | `300` / `60` / `30` / `3` | Watchdog timings. The image `HEALTHCHECK` still runs the former check (`reward balance`, 1s interval); it will be aligned once the v1.2.6 CLI interface is confirmed, since its `start` is broken upstream ([aioz-depin-cli#10](https://github.com/AIOZNetwork/aioz-depin-cli/issues/10)) |
 | `ENDPOINT` | `http://127.0.0.1:1317` (node mode), `http://aioznode:1317` (withdraw mode) | Node queried by `node.health.sh` and the withdraw mode |
-| `WITHDRAW_ADDRESS_HEX` | **required** in withdraw mode | Address that receives the rewards. The withdraw mode refuses to start without it |
+| `WITHDRAW_ADDRESS_HEX` | **required** in withdraw mode | `0x` address (40 hex digits) that receives the whole balance at each withdraw. The withdraw mode refuses to start without a valid one |
 | `WITHDRAW_MIN_VALUE` | `10^18` (1 AIOZ) | Balance, in attoaioz, above which the rewards are withdrawn |
 | `CHECK_FREQ` | `60` | Seconds between two withdraw checks |
+| `TOKEN_NAME` / `TOKEN_DENOM` / `TOKEN_DECIMALS` | `aioz` / `attoaioz` / `10^18` | Units shown in the withdraw mode logs |
 
 #### Volumes
 
@@ -97,7 +98,9 @@ A persistent data directory is created at `/nodedata` and must be mounted to a d
 
 The container starts with `start.sh`, which ensures the node is up-to-date and launches it with the correct configuration.
 
-The same image runs the withdraw mode when started with the command `start-watching-reward.sh` (see `docker-compose.yml`, which runs both).
+The same image runs the withdraw mode when started with the command `start-watching-reward.sh` (see `docker-compose.yml`, which runs both, with the node health check aligned on the watchdog and the node data mounted read-only in the withdraw container). With a plain `docker run`, disable the image health check for this mode (`--no-healthcheck`): it targets a local node.
+
+**Known limitation:** the withdraw mode queries the node with `reward balance --endpoint` / `reward withdraw --endpoint`. The v1.2.6 CLI wrapper has no `--endpoint` (only `--priv-key-file`) and its `start` is broken upstream ([aioz-depin-cli#10](https://github.com/AIOZNetwork/aioz-depin-cli/issues/10)), so this mode cannot work until the upstream CLI is fixed; the scripts are kept as they ran with the previous CLI.
 
 ---
 

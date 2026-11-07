@@ -6,11 +6,13 @@ services:
     image: rinzlerfr/aioznode
     ports:
       - "1317:1317"
+    # Same check and timings as the start.sh watchdog.
     healthcheck:
-      test: ["CMD", "aioznode", "reward", "balance"]
-      interval: 10s
-      timeout: 10s
-      retries: 5
+      test: ["CMD", "node.health.sh"]
+      start_period: 300s
+      interval: 60s
+      timeout: 30s
+      retries: 3
     restart: always
     networks:
       - aioznetwork
@@ -33,8 +35,9 @@ services:
       - WITHDRAW_ADDRESS_HEX=${WITHDRAW_ADDRESS_HEX:?set the address that receives the rewards}
     networks:
       - aioznetwork
+    # Read-only: this container must never create a wallet in the node data.
     volumes:
-      - ${NODEDATA_PATH:-./nodedata}:/nodedata
+      - ${NODEDATA_PATH:-./nodedata}:/nodedata:ro
 
 networks:
   aioznetwork:
