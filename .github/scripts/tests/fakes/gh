@@ -1,0 +1,29 @@
+#!/bin/bash
+# Fake gh: `api <endpoint>` answers from $FAKE_GH_DIR/<endpoint with / as _>.json
+# (query string ignored), like gh: error JSON on stdout and exit 1 when missing.
+# `issue list|create|comment` use $FAKE_GH_DIR/tracking-issue and log to calls.
+case "$1" in
+    api)
+        endpoint="${2%%\?*}"
+        file="$FAKE_GH_DIR/${endpoint//\//_}.json"
+        jq_expr=""
+        shift 2
+        while [ $# -gt 0 ]; do
+            [ "$1" = "--jq" ] && jq_expr="$2" && shift
+            shift
+        done
+        if [ ! -f "$file" ]; then
+            cat "$FIXTURES/error-404.json"
+            echo "gh: Not Found (HTTP 404)" >&2
+            exit 1
+        fi
+        if [ -n "$jq_expr" ]; then jq -r "$jq_expr" "$file"; else cat "$file"; fi
+        ;;
+    issue)
+        case "$2" in
+            list) cat "$FAKE_GH_DIR/tracking-issue" 2> /dev/null || true ;;
+            create) echo "create" >> "$FAKE_GH_DIR/calls" ;;
+            comment) echo "comment $3" >> "$FAKE_GH_DIR/calls" ;;
+        esac
+        ;;
+esac

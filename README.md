@@ -35,6 +35,7 @@ Official downloads and client installation: <https://aioz.network/aioz-node>
   * [Search aioznode image](#search-aioznode-image)
   * [Create nodedata directory](#create-nodedata-directory)
   * [Configure image and start container](#configure-image-and-start-container)
+* [Upstream watch](#upstream-watch)
 * [Support](#support)
 
 ---
@@ -153,6 +154,29 @@ Using File Station, create a directory on your NAS to be used as the node's data
 4. Go to Advanced Settings and enable auto-restart.
 5. In Volumes, add the directory you created (e.g., `docker/aioznode/nodedata`) and mount it to `/nodedata` inside the container.
 6. Validate and launch the container.
+
+---
+
+## Upstream watch
+
+The AIOZ DePIN hub is down (Cloudflare 521) and the CLI v1.2.6 `start` is broken upstream ([AIOZNetwork/aioz-depin-cli#10](https://github.com/AIOZNetwork/aioz-depin-cli/issues/10)). The workflow `.github/workflows/upstream-watch.yml` runs `.github/scripts/upstream-watch.sh` every day at 08:00 UTC (and on demand from the Actions tab) to tell when the node can be tried again.
+
+What counts as a change:
+
+* a hub URL answers again (HTTP 2xx-4xx), while the control URL `https://wallet.aioz.network/` also answers; when the control URL does not answer, the hub result is ignored;
+* the latest upstream release is not `KNOWN_TAG` (`v1.2.6`);
+* the upstream issue #10 is no longer open, or got comments in the last 25 hours;
+* upstream commits in the last 25 hours.
+
+On change, the script comments on the open issue titled **AIOZ upstream watch** of this repository (and creates it if missing). Mentions in quoted comments are neutralised so their authors are not notified. Nothing is posted when nothing changed.
+
+A GitHub API error (rate limit, bad token, outage) fails the run (red in Actions) and posts nothing, so a broken watch never looks like an upstream change.
+
+Maintenance:
+
+* after moving to a new upstream release, update `KNOWN_TAG` in the script;
+* GitHub disables scheduled workflows of a public repository after 60 days without activity: re-enable it from the Actions tab (**AIOZ upstream watch** > **Enable workflow**);
+* run locally with `DRY_RUN=1 .github/scripts/upstream-watch.sh` (needs `gh` logged in); tests: `.github/scripts/tests/run.sh` (Docker).
 
 ---
 

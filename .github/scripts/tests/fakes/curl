@@ -1,0 +1,6 @@
+#!/bin/bash
+# Fake curl: prints the HTTP code stored in $FAKE_HTTP_DIR/<host>, 000 if none.
+url="${*: -1}"
+host="${url#*://}"
+host="${host%%/*}"
+cat "$FAKE_HTTP_DIR/$host" 2> /dev/null || printf '000'

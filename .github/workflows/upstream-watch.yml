@@ -2,22 +2,46 @@ name: AIOZ upstream watch
 
 # Daily check of the AIOZ DePIN hub and CLI repository while the hub is down
 # and v1.2.6 is broken. Comments on the "AIOZ upstream watch" issue on change.
+# The script tests run on every pull request that touches it.
 on:
   schedule:
     - cron: '0 8 * * *'
   workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/scripts/**'
+      - '.github/workflows/upstream-watch.yml'
 
 permissions:
   contents: read
-  issues: write
 
 jobs:
-  watch:
+  test:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
     - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+
+    - name: Unit tests
+      run: .github/scripts/tests/run.sh
+
+  watch:
+    if: github.event_name != 'pull_request'
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
 
     - name: Check upstream
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GH_REPO: ${{ github.repository }}
       run: .github/scripts/upstream-watch.sh
