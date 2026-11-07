@@ -100,7 +100,7 @@ The container starts with `start.sh`, which ensures the node is up-to-date and l
 
 The same image runs the withdraw mode when started with the command `start-watching-reward.sh` (see `docker-compose.yml`, which runs both, with the node health check aligned on the watchdog and the node data mounted read-only in the withdraw container). With a plain `docker run`, disable the image health check for this mode (`--no-healthcheck`): it targets a local node.
 
-**Known limitation:** the withdraw mode queries the node with `reward balance --endpoint` / `reward withdraw --endpoint`. The v1.2.6 CLI wrapper has no `--endpoint` (only `--priv-key-file`) and its `start` is broken upstream ([aioz-depin-cli#10](https://github.com/AIOZNetwork/aioz-depin-cli/issues/10)), so this mode cannot work until the upstream CLI is fixed; the scripts are kept as they ran with the previous CLI.
+**Known limitation:** the withdraw mode queries the node with `reward balance --endpoint` / `reward withdraw --endpoint`. The v1.2.6 CLI wrapper has no `--endpoint` (only `--priv-key-file`) and its `start` is broken upstream ([aioz-depin-cli#10](https://github.com/AIOZNetwork/aioz-depin-cli/issues/10)), so this mode cannot work until the upstream CLI is fixed; the scripts are kept as they ran with the previous CLI. For the same reason, in `docker-compose.yml` the node never becomes healthy (its health check passes `--endpoint`), so the withdraw service does not start; a failed balance query is logged as an `ERROR` and nothing is withdrawn.
 
 ---
 

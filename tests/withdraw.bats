@@ -91,3 +91,38 @@ setup() {
     [[ "$output" == *WITHDRAW_ADDRESS_HEX* ]]
     [ ! -e "$FAKE_STATE/withdraw.args" ]
 }
+
+@test "reports a failed balance query once, without withdrawing" {
+    # No balance served: the fake CLI fails, like the v1.2.6 CLI today.
+    run withdraw.reward.sh
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"ERROR: cannot read the rewards"* ]]
+    [[ "$output" != *"syntax error"* ]]
+    [[ "$output" != *"integer expected"* ]]
+    [ ! -e "$FAKE_STATE/withdraw.args" ]
+}
+
+@test "refuses an invalid withdraw address when run standalone" {
+    export WITHDRAW_ADDRESS_HEX=""
+    serve_balance 7761729917265715262
+
+    run withdraw.reward.sh
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *WITHDRAW_ADDRESS_HEX* ]]
+    [ ! -e "$FAKE_STATE/withdraw.args" ]
+}
+
+@test "logs the rewards like the former auto-withdraw image" {
+    serve_balance 7761729917265715262
+
+    run withdraw.reward.sh
+
+    [[ "$output" == *"=> Balance : 7761729917265715262 attoaioz => 7.76172 aioz"* ]]
+    [[ "$output" == *"=> Storage : 810423534750216148 attoaioz => .81042 aioz"* ]]
+    [[ "$output" == *"=> Delivery : 7525653191257749557 attoaioz => 7.52565 aioz"* ]]
+    [[ "$output" == *"=> Withdraw : 1100000000000000000 attoaioz => 1.10000 aioz"* ]]
+    [[ "$output" == *"=> Stored segment count : 0. Size : "* ]]
+    [[ "$output" == *"Try to withdraw... aioznode reward withdraw --endpoint http://aioznode:1317 --address $WITHDRAW_ADDRESS_HEX --amount 7761729917265715262attoaioz --priv-key-file $PRIV_KEY_FILE"* ]]
+}
