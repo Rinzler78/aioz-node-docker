@@ -5,6 +5,8 @@
 # installed one, with a WARN), 1 when there is none.
 # shellcheck source=tools/version.lib.sh
 source "${BASH_SOURCE[0]%/*}/version.lib.sh"
+# shellcheck source=tools/git.releases.latest.sh
+source "${BASH_SOURCE[0]%/*}/git.releases.latest.sh"
 
 BIN_DIR="${BIN_DIR:-/bin}"
 TARGET="$BIN_DIR/$BINARY_NAME"
@@ -22,7 +24,7 @@ update_failed() {
     exit 1
 }
 
-release=$(git.releases.latest.sh "$REPO_NAME") ||
+release=$(github_latest_release "$REPO_NAME") ||
     update_failed "Cannot fetch the latest release of $REPO_NAME"
 
 remote_version=$(jq -r '.tag_name // empty' <<< "$release" | version_of)
@@ -51,7 +53,8 @@ curl -fsSL -o "$workdir/SHA256SUMS" "$sums_url" ||
     update_failed "Download of $sums_url failed"
 
 # Only the archive's line: SHA256SUMS lists every platform.
-if ! grep "  $archive\$" "$workdir/SHA256SUMS" > "$workdir/archive.sum" ||
+awk -v name="$archive" '$2 == name' "$workdir/SHA256SUMS" > "$workdir/archive.sum"
+if [ ! -s "$workdir/archive.sum" ] ||
     ! (cd "$workdir" && sha256sum -c archive.sum > /dev/null 2>&1); then
     update_failed "$archive does not match its SHA256SUMS checksum"
 fi
@@ -62,7 +65,7 @@ tar -xzf "$workdir/$archive" -C "$workdir" ||
 binary=$(find "$workdir" -type f -name '*linux-amd64' | head -1)
 [ -n "$binary" ] || update_failed "No linux-amd64 binary in $asset_url"
 
-mkdir -p "$BIN_DIR"
-chmod +x "$binary"
-mv "$binary" "$TARGET"
+if ! { mkdir -p "$BIN_DIR" && chmod +x "$binary" && mv "$binary" "$TARGET"; }; then
+    update_failed "Cannot install $binary as $TARGET"
+fi
 echo "$BINARY_NAME $(binary_version) installed"

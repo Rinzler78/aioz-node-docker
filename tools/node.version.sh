@@ -3,5 +3,5 @@
 # shellcheck source=tools/version.lib.sh
 source "${BASH_SOURCE[0]%/*}/version.lib.sh"
 
-node.isInstalled.sh || exit 1
+command -v "$BINARY_NAME" > /dev/null || exit 1
 "$BINARY_NAME" version 2>&1 | version_of

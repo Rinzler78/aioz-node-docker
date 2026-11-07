@@ -68,6 +68,7 @@ All logic is handled by scripts in the `tools/` directory:
 * `node.health.sh` — Health check of the watchdog: the node answers `reward balance` for the configured wallet
 * `node.version.sh` / `node.remoteVersion.sh` — Installed and latest release versions (used by `quick_test.sh`)
 * `version.lib.sh` — Version parsing, sourced by the scripts above (the CLI prints its version as JSON)
+* `git.releases.latest.sh` — Latest release JSON from the GitHub API (`GITHUB_TOKEN` when set), sourced by the scripts above; standalone: `git.releases.latest.sh <owner/repo>`
 * `start.sh` — Entrypoint script: runs deployment, starts the node, and stops it after 3 consecutive failed health checks (a check running past 30s fails) so that the restart policy restarts the container (and re-runs the update). Docker itself never restarts an unhealthy container
 
 #### Environment variables

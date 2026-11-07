@@ -2,8 +2,8 @@
 # Update the CLI, configure the wallet, then run the node for RUN_TIMEOUT seconds.
 # Docker does not restart unhealthy containers, so a watchdog stops the node after
 # HEALTH_RETRIES consecutive failed checks (a check running past HEALTH_TIMEOUT
-# fails): the container exits, the restart
-# policy starts it again, and the update runs again.
+# fails): the container exits, the restart policy starts it again, and the
+# update runs again.
 
 HEALTH_START_PERIOD="${HEALTH_START_PERIOD:-300}"
 HEALTH_INTERVAL="${HEALTH_INTERVAL:-60}"
