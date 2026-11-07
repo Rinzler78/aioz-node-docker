@@ -1,0 +1,40 @@
+# Node and reward withdrawal, both from the rinzlerfr/aioznode image.
+# Required: WITHDRAW_ADDRESS_HEX (address that receives the rewards).
+# Optional: NODEDATA_PATH (host folder holding privkey.json and the node data).
+services:
+  aioznode:
+    image: rinzlerfr/aioznode
+    ports:
+      - "1317:1317"
+    healthcheck:
+      test: ["CMD", "aioznode", "reward", "balance"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    restart: always
+    networks:
+      - aioznetwork
+    volumes:
+      - ${NODEDATA_PATH:-./nodedata}:/nodedata
+
+  aioznode-auto-withdraw-reward:
+    image: rinzlerfr/aioznode
+    command: start-watching-reward.sh
+    depends_on:
+      aioznode:
+        condition: service_healthy
+    restart: always
+    # The image health check targets a local node; this container has none.
+    healthcheck:
+      disable: true
+    environment:
+      - CHECK_FREQ=60
+      - ENDPOINT=http://aioznode:1317
+      - WITHDRAW_ADDRESS_HEX=${WITHDRAW_ADDRESS_HEX:?set the address that receives the rewards}
+    networks:
+      - aioznetwork
+    volumes:
+      - ${NODEDATA_PATH:-./nodedata}:/nodedata
+
+networks:
+  aioznetwork:

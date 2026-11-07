@@ -32,6 +32,14 @@ RUN node.install.sh
 # Running timeout : Default 24H
 ENV RUN_TIMEOUT 86400
 
+# Withdraw mode (command: start-watching-reward.sh).
+# WITHDRAW_ADDRESS_HEX has no default: the withdraw mode refuses to start without it.
+ENV CHECK_FREQ 60
+ENV WITHDRAW_MIN_VALUE 10^18
+ENV TOKEN_NAME aioz
+ENV TOKEN_DENOM attoaioz
+ENV TOKEN_DECIMALS 10^18
+
 HEALTHCHECK --interval=1s --timeout=1s --start-period=1s --retries=60 \
   CMD aioznode reward balance
 

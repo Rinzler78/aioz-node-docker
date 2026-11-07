@@ -110,6 +110,34 @@ EOF
     chmod +x "$1"
 }
 
+# Environment for the withdraw mode: a fake node answering `reward balance`
+# with $FAKE_STATE/balance.json and recording `reward withdraw` arguments.
+setup_withdraw_env() {
+    setup_node_env
+    export ENDPOINT="http://aioznode:1317"
+    export NODEDATA_SEGMENT_FOLDER="$NODEDATA_FOLDER/data"
+    export WITHDRAW_ADDRESS_HEX="0x1111111111111111111111111111111111111111"
+    export WITHDRAW_MIN_VALUE="10^18"
+    export TOKEN_NAME="aioz" TOKEN_DENOM="attoaioz" TOKEN_DECIMALS="10^18"
+    mkdir -p "$NODEDATA_SEGMENT_FOLDER"
+    cat > "$BIN_DIR/$BINARY_NAME" <<'EOF'
+#!/bin/sh
+case "$1 $2" in
+    "reward balance") cat "$FAKE_STATE/balance.json" ;;
+    "reward withdraw") shift 2; echo "$*" > "$FAKE_STATE/withdraw.args" ;;
+esac
+EOF
+    chmod +x "$BIN_DIR/$BINARY_NAME"
+}
+
+# Serve the reward balance example of the upstream README (v1.2.6), with the
+# withdrawable balance replaced by $1 attoaioz.
+serve_balance() {
+    jq --arg amount "$1" '.balance[0].amount = $amount' \
+        "$BATS_TEST_DIRNAME/fixtures/reward-balance-readme-v1.2.6.json" \
+        > "$FAKE_STATE/balance.json"
+}
+
 installed_version() {
     "$BIN_DIR/$BINARY_NAME" version
 }
