@@ -48,6 +48,35 @@ serve_release_without_linux_asset() {
     mv "$latest.tmp" "$latest"
 }
 
+# Environment for start.sh: node data folder with an existing wallet, fast
+# health checks, and a fake node whose state lives in $FAKE_STATE.
+setup_node_env() {
+    setup_env
+    export PATH="$BIN_DIR:$PATH"
+    export NODEDATA_FOLDER="$BATS_TEST_TMPDIR/nodedata"
+    export PRIV_KEY_FILE="$NODEDATA_FOLDER/privkey.json"
+    export FAKE_STATE="$BATS_TEST_TMPDIR/state"
+    export HEALTH_START_PERIOD=0
+    export HEALTH_INTERVAL=1
+    export HEALTH_RETRIES=3
+    mkdir -p "$NODEDATA_FOLDER" "$FAKE_STATE"
+    echo '{}' > "$PRIV_KEY_FILE"
+}
+
+# Write a fake node at $1 (version $2): `start` records that it started and
+# runs until killed; `reward balance` fails while $FAKE_STATE/unhealthy exists.
+make_fake_node() {
+    cat > "$1" <<EOF
+#!/bin/sh
+case "\$1" in
+    version) echo "$2" ;;
+    start) touch "\$FAKE_STATE/started"; exec sleep 1000 ;;
+    reward) [ ! -e "\$FAKE_STATE/unhealthy" ] && echo '{"balance":[]}' ;;
+esac
+EOF
+    chmod +x "$1"
+}
+
 installed_version() {
     "$BIN_DIR/$BINARY_NAME" version
 }
