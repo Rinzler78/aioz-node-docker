@@ -12,17 +12,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Extract tag name
       id: extract_tag
-      run: echo ::set-output name=tag_name::${GITHUB_REF#refs/tags/}
+      run: echo "tag_name=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
       
     - name: docker login
       env:
         DOCKER_USER: ${{secrets.DOCKER_USER}}
         DOCKER_PASSWORD: ${{secrets.DOCKER_PASSWORD}}
       run: |
-        docker login -u $DOCKER_USER -p $DOCKER_PASSWORD
+        echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USER" --password-stdin
     
     - name: docker build
       run: |
@@ -31,7 +31,12 @@ jobs:
         --tag rinzlerfr/aioznode:latest \
         --tag rinzlerfr/aioznode:${{ steps.extract_tag.outputs.tag_name }}
     
+    - name: Unit tests
+      run: tests/run.sh
+
     - name: Quick Test
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         ./quick_test.sh rinzlerfr/aioznode:quicktest
     
@@ -41,7 +46,7 @@ jobs:
         docker push rinzlerfr/aioznode:latest
     
     - name: Create GitHub Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
         tag_name: ${{ steps.extract_tag.outputs.tag_name }}
         name: Release ${{ steps.extract_tag.outputs.tag_name }}

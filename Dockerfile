@@ -7,7 +7,7 @@ ENV NODEDATA_SEGMENT_FOLDER /nodedata/data
 ENV PATH $NODEDATA_FOLDER:$TOOLS_DIRECTORY:$HOME:$PATH
 
 ENV PRIV_KEY_FILE $NODEDATA_FOLDER/privkey.json
-ENV REPO_NAME AIOZNetwork/aioz-dcdn-cli-node
+ENV REPO_NAME AIOZNetwork/aioz-depin-cli
 ENV BINARY_NAME aioznode
 
 ## Tools

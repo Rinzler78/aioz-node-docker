@@ -1,31 +1,71 @@
 #!/bin/bash
-seconds=5
+# Install or update the AIOZ DePIN CLI from the latest GitHub release of $REPO_NAME.
+# The archive is checked against the release SHA256SUMS before install.
+# Exit 0 when a binary is available afterwards (a failed update keeps the
+# installed one, with a WARN), 1 when there is none.
+# shellcheck source=tools/version.lib.sh
+source "${BASH_SOURCE[0]%/*}/version.lib.sh"
+# shellcheck source=tools/git.releases.latest.sh
+source "${BASH_SOURCE[0]%/*}/git.releases.latest.sh"
 
-if ! node.isUpToDate.sh
-then
-    echo "Installation will start in $seconds s ..."
-    sleep $seconds
-    remoteVersion="$(node.remoteVersion.sh)"
-    latestReleaseUrl=$(git.releases.latest.url.sh $REPO_NAME)
-    
-    tmpFilename=tmp.aioznode.tar.gz
+BIN_DIR="${BIN_DIR:-/bin}"
+TARGET="$BIN_DIR/$BINARY_NAME"
 
-    echo "Downloading $remoteVersion at $latestReleaseUrl ..."
-    wget --output-document=$tmpFilename $latestReleaseUrl 2>/dev/null
+binary_version() {
+    "$TARGET" version 2>&1 | version_of
+}
 
-    if [ -f $tmpFilename ]; then
-        tar -xvzf $tmpFilename
-        filename=aioznode-linux-amd64*
-
-        echo "Moving $filename to /bin/$BINARY_NAME ..."
-        mv $filename /bin/$BINARY_NAME
-        rm $tmpFilename
-    else
-        echo "download failed"
+update_failed() {
+    if [ -x "$TARGET" ]; then
+        echo "WARN: $1. Keeping installed $BINARY_NAME $(binary_version)" >&2
+        exit 0
     fi
-    
-    currentVersion="$(node.version.sh)"
-    echo "aioznode $currentVersion installed"
+    echo "ERROR: $1. No $BINARY_NAME binary available" >&2
+    exit 1
+}
+
+release=$(github_latest_release "$REPO_NAME") ||
+    update_failed "Cannot fetch the latest release of $REPO_NAME"
+
+remote_version=$(jq -r '.tag_name // empty' <<< "$release" | version_of)
+asset_url=$(jq -r '.assets[]?.browser_download_url
+    | select(test("linux-amd64[^/]*\\.tar\\.gz$"))' <<< "$release" | head -1)
+sums_url=$(jq -r '.assets[]? | select(.name == "SHA256SUMS") | .browser_download_url' <<< "$release")
+
+if [ -z "$remote_version" ] || [ -z "$asset_url" ]; then
+    update_failed "Latest release of $REPO_NAME has no linux-amd64 archive"
+fi
+[ -n "$sums_url" ] || update_failed "Latest release of $REPO_NAME has no SHA256SUMS"
+
+if [ -x "$TARGET" ] && [ "$(binary_version)" = "$remote_version" ]; then
+    echo "$BINARY_NAME $remote_version is up to date"
+    exit 0
 fi
 
-exit 0
+workdir=$(mktemp -d)
+trap 'rm -rf "$workdir"' EXIT
+archive="${asset_url##*/}"
+
+echo "Downloading $BINARY_NAME $remote_version from $asset_url ..."
+curl -fsSL -o "$workdir/$archive" "$asset_url" ||
+    update_failed "Download of $asset_url failed"
+curl -fsSL -o "$workdir/SHA256SUMS" "$sums_url" ||
+    update_failed "Download of $sums_url failed"
+
+# Only the archive's line: SHA256SUMS lists every platform.
+awk -v name="$archive" '$2 == name' "$workdir/SHA256SUMS" > "$workdir/archive.sum"
+if [ ! -s "$workdir/archive.sum" ] ||
+    ! (cd "$workdir" && sha256sum -c archive.sum > /dev/null 2>&1); then
+    update_failed "$archive does not match its SHA256SUMS checksum"
+fi
+
+tar -xzf "$workdir/$archive" -C "$workdir" ||
+    update_failed "Cannot extract $asset_url"
+
+binary=$(find "$workdir" -type f -name '*linux-amd64' | head -1)
+[ -n "$binary" ] || update_failed "No linux-amd64 binary in $asset_url"
+
+if ! { mkdir -p "$BIN_DIR" && chmod +x "$binary" && mv "$binary" "$TARGET"; }; then
+    update_failed "Cannot install $binary as $TARGET"
+fi
+echo "$BINARY_NAME $(binary_version) installed"
