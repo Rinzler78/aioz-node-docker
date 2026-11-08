@@ -3,10 +3,12 @@
 # WITHDRAW_ADDRESS_HEX once they exceed WITHDRAW_MIN_VALUE.
 # shellcheck source=tools/withdraw.reward.sh
 source "${BASH_SOURCE[0]%/*}/withdraw.reward.sh"
+# shellcheck source=tools/deploy.sh
+source "${BASH_SOURCE[0]%/*}/deploy.sh"
 
 check_withdraw_address || exit 1
 
-if ! deploy.sh; then
+if ! deploy; then
     echo "Deployment failed"
     exit 1
 fi

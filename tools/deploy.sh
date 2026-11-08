@@ -1,20 +1,21 @@
 #!/bin/bash
-## Update packages
-dist.update.sh
-## Upgrade packages
-dist.upgrade.sh
+# Update the system packages, install or update the CLI, configure the wallet,
+# then clean the packages. Sourced by start.sh and start-watching-reward.sh
+# (deploy); runs standalone too.
+# shellcheck source=tools/dist.sh
+source "${BASH_SOURCE[0]%/*}/dist.sh"
+# shellcheck source=tools/node.install.sh
+source "${BASH_SOURCE[0]%/*}/node.install.sh"
+# shellcheck source=tools/wallet.configure.sh
+source "${BASH_SOURCE[0]%/*}/wallet.configure.sh"
 
-## Install aioznode
-if ! node.install.sh
-then
-    exit 1
+deploy() {
+    dist_update
+    node_install || return 1
+    wallet_configure || return 1
+    dist_clean
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    deploy
 fi
-
-## Install aioznode
-if ! wallet.configure.sh
-then
-    exit 1
-fi
-
-## Clean packages
-dist.clean.sh

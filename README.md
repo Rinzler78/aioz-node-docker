@@ -62,17 +62,18 @@ The following packages are installed (see `tools/deps.txt`):
 
 #### Scripts and logic
 
-All logic is handled by scripts in the `tools/` directory:
+All logic is handled by scripts in the `tools/` directory. A script that needs another one **sources** it and calls its function, so a container start runs as one shell process (plus the CLI and system tools); every script still runs standalone. `tests/scripts.bats` enforces it: the only script run as its own process is `node.health.sh`, because the watchdog bounds it with `timeout`.
 
-* `deploy.sh` — Main deployment script (updates, upgrades, installs node and wallet, cleans up)
-* `node.install.sh` — Installs or updates the CLI from the `linux-amd64` asset of the latest [AIOZNetwork/aioz-depin-cli](https://github.com/AIOZNetwork/aioz-depin-cli) release (one GitHub API call), after checking the archive against the release `SHA256SUMS`. The update is skipped when the installed version is already the latest. If the update fails, the installed binary is kept and a `WARN` is logged; with no binary at all, the container exits with an error
-* `wallet.configure.sh` — Configures the wallet (see script for details)
+* `deploy.sh` — `deploy`: updates the system packages, installs or updates the CLI, configures the wallet, cleans the packages
+* `dist.sh` — `dist_update` / `dist_clean` (Alpine packages); standalone: `dist.sh update|clean`
+* `node.install.sh` — `node_install`: installs or updates the CLI from the `linux-amd64` asset of the latest [AIOZNetwork/aioz-depin-cli](https://github.com/AIOZNetwork/aioz-depin-cli) release (one GitHub API call), after checking the archive against the release `SHA256SUMS`. The update is skipped when the installed version is already the latest. If the update fails, the installed binary is kept and a `WARN` is logged; with no binary at all, the container exits with an error
+* `wallet.configure.sh` — `wallet_configure`: creates the wallet (`PRIV_KEY_FILE`) when it does not exist
 * `node.health.sh` — Health check of the watchdog: the node answers `reward balance` for the configured wallet
 * `node.version.sh` / `node.remoteVersion.sh` — Installed and latest release versions (used by `quick_test.sh`)
 * `version.lib.sh` — Version parsing, sourced by the scripts above (the CLI prints its version as JSON)
 * `git.releases.latest.sh` — Latest release JSON from the GitHub API (`GITHUB_TOKEN` when set), sourced by the scripts above; standalone: `git.releases.latest.sh <owner/repo>`
 * `start.sh` — Entrypoint script: runs deployment, starts the node, and stops it after 3 consecutive failed health checks (a check running past 30s fails) so that the restart policy restarts the container (and re-runs the update). Docker itself never restarts an unhealthy container
-* `start-watching-reward.sh` — Withdraw mode entrypoint: every `CHECK_FREQ` seconds, runs `withdraw.reward.sh`, which withdraws the whole balance to `WITHDRAW_ADDRESS_HEX` once it exceeds `WITHDRAW_MIN_VALUE`
+* `start-watching-reward.sh` — Withdraw mode entrypoint: runs `deploy`, then every `CHECK_FREQ` seconds calls `withdraw_reward` (`withdraw.reward.sh`), which withdraws the whole balance to `WITHDRAW_ADDRESS_HEX` once it exceeds `WITHDRAW_MIN_VALUE`
 
 #### Environment variables
 
