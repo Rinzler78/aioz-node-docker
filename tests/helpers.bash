@@ -83,12 +83,15 @@ setup_node_env() {
     export HEALTH_RETRIES=3
     mkdir -p "$NODEDATA_FOLDER" "$FAKE_STATE"
     echo '{}' > "$PRIV_KEY_FILE"
-    # No apk update/upgrade/clean in tests: offline, and the runner is not touched.
+    # Fake apk: offline, the runner is not touched; calls logged to apk.log.
     mkdir -p "$BATS_TEST_TMPDIR/stubs"
-    for stub in dist.update.sh dist.upgrade.sh dist.clean.sh; do
-        printf '#!/bin/sh\n' > "$BATS_TEST_TMPDIR/stubs/$stub"
-        chmod +x "$BATS_TEST_TMPDIR/stubs/$stub"
-    done
+    cat > "$BATS_TEST_TMPDIR/stubs/apk" <<'EOF'
+#!/bin/sh
+echo "$*" >> "$FAKE_STATE/apk.log"
+[ "$1" = "list" ] && echo "linux-lts-6.6.1-r0 x86_64 {linux-lts} (GPL-2.0-only) [installed]"
+exit 0
+EOF
+    chmod +x "$BATS_TEST_TMPDIR/stubs/apk"
     export PATH="$BATS_TEST_TMPDIR/stubs:$PATH"
 }
 
