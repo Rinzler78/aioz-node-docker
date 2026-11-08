@@ -3,7 +3,8 @@
 # Standalone: dist.sh update | clean
 
 dist_update() {
-    apk update && apk upgrade
+    apk update
+    apk upgrade
 }
 
 # Drop the kernel packages of other kernels, then the apk cache.

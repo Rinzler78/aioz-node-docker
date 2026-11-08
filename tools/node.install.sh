@@ -4,10 +4,13 @@
 # node_install returns 0 when a binary is available afterwards (a failed update
 # keeps the installed one, with a WARN), 1 when there is none.
 # Sourced by deploy.sh (node_install); runs standalone too (image build).
+# Folder of this script, also when run by bare name (bash deploy.sh).
+TOOLS_DIR="${BASH_SOURCE[0]%/*}"
+[ "$TOOLS_DIR" != "${BASH_SOURCE[0]}" ] || TOOLS_DIR=.
 # shellcheck source=tools/version.lib.sh
-source "${BASH_SOURCE[0]%/*}/version.lib.sh"
+source "$TOOLS_DIR/version.lib.sh"
 # shellcheck source=tools/git.releases.latest.sh
-source "${BASH_SOURCE[0]%/*}/git.releases.latest.sh"
+source "$TOOLS_DIR/git.releases.latest.sh"
 
 node_target() {
     echo "${BIN_DIR:-/bin}/$BINARY_NAME"

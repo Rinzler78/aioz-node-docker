@@ -9,9 +9,11 @@ HEALTH_START_PERIOD="${HEALTH_START_PERIOD:-300}"
 HEALTH_INTERVAL="${HEALTH_INTERVAL:-60}"
 HEALTH_RETRIES="${HEALTH_RETRIES:-3}"
 HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-30}"
-TOOLS="${BASH_SOURCE[0]%/*}"
+# Folder of this script, also when run by bare name (bash deploy.sh).
+TOOLS_DIR="${BASH_SOURCE[0]%/*}"
+[ "$TOOLS_DIR" != "${BASH_SOURCE[0]}" ] || TOOLS_DIR=.
 # shellcheck source=tools/deploy.sh
-source "$TOOLS/deploy.sh"
+source "$TOOLS_DIR/deploy.sh"
 
 if ! deploy; then
     echo "Deployment failed"
@@ -22,7 +24,7 @@ watchdog() {
     local node_pid=$1 failures=0
     sleep "$HEALTH_START_PERIOD"
     while kill -0 "$node_pid" 2> /dev/null; do
-        if timeout "${HEALTH_TIMEOUT}s" "$TOOLS/node.health.sh"; then
+        if timeout "${HEALTH_TIMEOUT}s" "$TOOLS_DIR/node.health.sh"; then
             failures=0
         else
             failures=$((failures + 1))

@@ -88,6 +88,8 @@ setup_node_env() {
     cat > "$BATS_TEST_TMPDIR/stubs/apk" <<'EOF'
 #!/bin/sh
 echo "$*" >> "$FAKE_STATE/apk.log"
+[ "$1" = "list" ] && echo "linux-lts-6.6.1-r0 x86_64 {linux-lts} (GPL-2.0-only) [installed]"
+exit 0
 EOF
     chmod +x "$BATS_TEST_TMPDIR/stubs/apk"
     export PATH="$BATS_TEST_TMPDIR/stubs:$PATH"
