@@ -1,5 +1,4 @@
-#args="${@//--env/--build-arg}"
+#!/bin/bash
 name=$(cat helper.docker.name.txt)
-args=""
-echo "docker build $args -t $name ."
-docker build $args -t $name .
+echo "docker build -t $name ."
+docker build -t "$name" .

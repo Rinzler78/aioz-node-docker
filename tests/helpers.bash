@@ -16,7 +16,7 @@ setup_env() {
 
 # Write a fake CLI at $1 whose `version` prints $2 (may span several lines).
 make_fake_cli() {
-    cat > "$1" <<'EOF'
+    cat > "$1" << 'EOF'
 #!/bin/sh
 [ "$1" = "version" ] && cat <<'VERSION'
 EOF
@@ -53,7 +53,7 @@ serve_release_with_bad_checksum() {
 spy_curl() {
     export CURL_LOG="$BATS_TEST_TMPDIR/curl.log"
     mkdir -p "$BATS_TEST_TMPDIR/spy"
-    cat > "$BATS_TEST_TMPDIR/spy/curl" <<'EOF'
+    cat > "$BATS_TEST_TMPDIR/spy/curl" << 'EOF'
 #!/bin/sh
 echo "$*" >> "$CURL_LOG"
 exec /usr/bin/curl "$@"
@@ -85,7 +85,7 @@ setup_node_env() {
     echo '{}' > "$PRIV_KEY_FILE"
     # Fake apk: offline, the runner is not touched; calls logged to apk.log.
     mkdir -p "$BATS_TEST_TMPDIR/stubs"
-    cat > "$BATS_TEST_TMPDIR/stubs/apk" <<'EOF'
+    cat > "$BATS_TEST_TMPDIR/stubs/apk" << 'EOF'
 #!/bin/sh
 echo "$*" >> "$FAKE_STATE/apk.log"
 [ "$1" = "list" ] && echo "linux-lts-6.6.1-r0 x86_64 {linux-lts} (GPL-2.0-only) [installed]"
@@ -99,7 +99,7 @@ EOF
 # runs until killed; `reward` records its arguments, hangs while
 # $FAKE_STATE/hang exists and fails while $FAKE_STATE/unhealthy exists.
 make_fake_node() {
-    cat > "$1" <<EOF
+    cat > "$1" << EOF
 #!/bin/sh
 case "\$1" in
     version) echo "$2" ;;
@@ -123,7 +123,7 @@ setup_withdraw_env() {
     export WITHDRAW_MIN_VALUE="10^18"
     export TOKEN_NAME="aioz" TOKEN_DENOM="attoaioz" TOKEN_DECIMALS="10^18"
     mkdir -p "$NODEDATA_SEGMENT_FOLDER"
-    cat > "$BIN_DIR/$BINARY_NAME" <<'EOF'
+    cat > "$BIN_DIR/$BINARY_NAME" << 'EOF'
 #!/bin/sh
 case "$1 $2" in
     "reward balance") shift 2; echo "$*" > "$FAKE_STATE/balance.args"; cat "$FAKE_STATE/balance.json" ;;

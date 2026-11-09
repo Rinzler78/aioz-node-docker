@@ -1,0 +1,52 @@
+# Each hook runs on the changed files only. Trivy runs only when an image input
+# changes. Install: pre-commit install. Full pass: pre-commit run --all-files.
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-added-large-files
+      - id: check-executables-have-shebangs
+      - id: check-shebang-scripts-are-executable
+      - id: detect-private-key
+
+  # Linter and formatter: shell scripts, bats tests and test fakes.
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.11.0.1
+    hooks:
+      - id: shellcheck
+  - repo: https://github.com/scop/pre-commit-shfmt
+    rev: v3.14.1-1
+    hooks:
+      - id: shfmt
+        args: [-w, -i, "4", -sr, -ci]
+
+  # Linters: Dockerfiles and GitHub workflows.
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.15.1
+    hooks:
+      - id: hadolint
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.12
+    hooks:
+      - id: actionlint
+
+  # Spelling: English only, every text file.
+  - repo: https://github.com/streetsidesoftware/cspell-cli
+    rev: v10.4.0
+    hooks:
+      - id: cspell
+        args: [--no-progress, --no-summary, --show-context]
+
+  # Vulnerabilities and misconfigurations of the images, when one of their inputs changes.
+  - repo: local
+    hooks:
+      - id: trivy-config
+        name: trivy config (Dockerfiles)
+        entry: trivy config --quiet --exit-code 1 --ignorefile .trivyignore.yaml .
+        language: system
+        files: (^|/)Dockerfile$|^tools/deps\.txt$|^\.trivyignore\.yaml$
+        pass_filenames: false

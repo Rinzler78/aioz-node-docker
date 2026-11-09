@@ -1,0 +1,8 @@
+# Accepted trivy findings, each with its reason. Run: trivy config --ignorefile .trivyignore.yaml .
+misconfigurations:
+  - id: DS-0002
+    paths:
+      - "Dockerfile"
+    statement: >-
+      The node image runs as root on purpose: at every start tools/deploy.sh
+      runs apk upgrade and installs the AIOZ CLI as /bin/aioznode.

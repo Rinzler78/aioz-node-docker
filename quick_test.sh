@@ -4,8 +4,6 @@
 # Globals & Defaults
 # --------------------
 DEFAULT_IMAGE_NAME="aioznode:latest"
-DEFAULT_USER="aiozClient"
-DEFAULT_PASS="aiozClientPassword"
 DEFAULT_TIMEOUT=600 # room for the 300s start period once the HEALTHCHECK is aligned on the watchdog
 DEFAULT_PORTS="1317:1317"
 
@@ -29,7 +27,7 @@ fi
 # --------------------
 print_help() {
     echo "Usage: $0 [--image_name IMAGE_NAME] [POSITIONAL_IMAGE_NAME] [--timeout SECONDS] [--ports \"host:cont ...\"]"
-    echo "\nOptions:"
+    printf '\nOptions:\n'
     echo "  --image_name Docker image name (default: $DEFAULT_IMAGE_NAME)"
     echo "  [POSITIONAL_IMAGE_NAME] Positional argument for Docker image name (overridden by --image_name if both are present)"
     echo "  --timeout   Timeout in seconds (default: $DEFAULT_TIMEOUT)"
@@ -43,15 +41,26 @@ print_help() {
 while [[ $# -gt 0 ]]; do
     case $1 in
         --image_name)
-            image_name_from_flag="$2"; shift 2;;
+            image_name_from_flag="$2"
+            shift 2
+            ;;
         --timeout)
-            run_timeout="$2"; shift 2;;
+            run_timeout="$2"
+            shift 2
+            ;;
         --ports)
-            ports="$2"; shift 2;;
+            ports="$2"
+            shift 2
+            ;;
         --help)
-            print_help; exit 0;;
+            print_help
+            exit 0
+            ;;
         *)
-            echo "Unknown option: $1"; print_help; exit 1;;
+            echo "Unknown option: $1"
+            print_help
+            exit 1
+            ;;
     esac
 done
 
@@ -77,19 +86,17 @@ fi
 # --------------------
 # Dependency check
 # --------------------
-for dep in docker; do
-    if ! command -v $dep &>/dev/null; then
-        echo "$dep is required but not installed. Aborting."
-        exit 2
-    fi
-done
+if ! command -v docker &> /dev/null; then
+    echo "docker is required but not installed. Aborting."
+    exit 2
+fi
 
 # --------------------
 # Trap for cleanup
 # --------------------
 docker_delete() {
-    if [ ! -z "$container_id" ]; then
-        docker rm -f $container_id >/dev/null 2>&1
+    if [ -n "$container_id" ]; then
+        docker rm -f "$container_id" > /dev/null 2>&1
         echo "Container $container_id deleted."
     fi
 }
@@ -100,8 +107,7 @@ trap docker_delete EXIT
 # --------------------
 docker_build() {
     echo "[INFO] Building Docker image '$1'..."
-    docker build . --tag "$1"
-    if [ $? -ne 0 ]; then
+    if ! docker build . --tag "$1"; then
         echo "[ERROR] Docker build failed."
         return 10
     fi
@@ -115,22 +121,20 @@ docker_run() {
     local image_name="$1"
     local ports_list="$2"
     local run_timeout="$3"
-    local ports_mapping=""
+    local ports_mapping=() mapping
     for mapping in $ports_list; do
-        host_port=$(echo $mapping | cut -d: -f1)
-        container_port=$(echo $mapping | cut -d: -f2)
-        ports_mapping="$ports_mapping -p $host_port:$container_port"
+        ports_mapping+=(-p "$(echo "$mapping" | cut -d: -f1):$(echo "$mapping" | cut -d: -f2)")
     done
     echo "[INFO] Running Docker container..."
     echo "docker run \\
       --env RUN_TIMEOUT=$run_timeout \\
-      $ports_mapping \\
+      ${ports_mapping[*]} \\
       -d $image_name"
     container_id=$(docker run \
-      --env RUN_TIMEOUT=$run_timeout \
-      ${GITHUB_TOKEN:+--env GITHUB_TOKEN} \
-      $ports_mapping \
-      -d $image_name)
+        --env RUN_TIMEOUT="$run_timeout" \
+        ${GITHUB_TOKEN:+--env GITHUB_TOKEN} \
+        "${ports_mapping[@]}" \
+        -d "$image_name")
     if [ -z "$container_id" ]; then
         echo "[ERROR] Docker run failed: container not started."
         return 11
@@ -155,8 +159,8 @@ fi
 
 # Wait for container healthcheck to report 'healthy'
 echo "[INFO] Waiting for container to become healthy..."
-for i in $(seq 1 $run_timeout); do
-    if ! health_status=$(docker inspect --format='{{.State.Health.Status}}' "$container_id" 2>/dev/null); then
+for _ in $(seq 1 "$run_timeout"); do
+    if ! health_status=$(docker inspect --format='{{.State.Health.Status}}' "$container_id" 2> /dev/null); then
         echo "[FAIL] Container is gone."
         exit 13
     fi
@@ -206,4 +210,3 @@ fi
 echo "[INFO] Stopping container..."
 docker stop "$container_id"
 echo "[SUCCESS] All tests passed."
-exit 0

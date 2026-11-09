@@ -36,9 +36,15 @@ install_archive() {
     archive="${asset_url##*/}"
 
     curl -fsSL -o "$workdir/$archive" "$asset_url" ||
-        { update_failed "Download of $asset_url failed"; return; }
+        {
+            update_failed "Download of $asset_url failed"
+            return
+        }
     curl -fsSL -o "$workdir/SHA256SUMS" "$sums_url" ||
-        { update_failed "Download of $sums_url failed"; return; }
+        {
+            update_failed "Download of $sums_url failed"
+            return
+        }
 
     # Only the archive's line: SHA256SUMS lists every platform.
     awk -v name="$archive" '$2 == name' "$workdir/SHA256SUMS" > "$workdir/archive.sum"
@@ -49,10 +55,16 @@ install_archive() {
     fi
 
     tar -xzf "$workdir/$archive" -C "$workdir" ||
-        { update_failed "Cannot extract $asset_url"; return; }
+        {
+            update_failed "Cannot extract $asset_url"
+            return
+        }
 
     binary=$(find "$workdir" -type f -name '*linux-amd64' | head -1)
-    [ -n "$binary" ] || { update_failed "No linux-amd64 binary in $asset_url"; return; }
+    [ -n "$binary" ] || {
+        update_failed "No linux-amd64 binary in $asset_url"
+        return
+    }
 
     if ! { mkdir -p "${BIN_DIR:-/bin}" && chmod +x "$binary" && mv "$binary" "$(node_target)"; }; then
         update_failed "Cannot install $binary as $(node_target)"
@@ -64,7 +76,10 @@ install_archive() {
 node_install() {
     local release remote_version asset_url sums_url workdir status
     release=$(github_latest_release "$REPO_NAME") ||
-        { update_failed "Cannot fetch the latest release of $REPO_NAME"; return; }
+        {
+            update_failed "Cannot fetch the latest release of $REPO_NAME"
+            return
+        }
 
     remote_version=$(jq -r '.tag_name // empty' <<< "$release" | version_of)
     asset_url=$(jq -r '.assets[]?.browser_download_url
@@ -75,7 +90,10 @@ node_install() {
         update_failed "Latest release of $REPO_NAME has no linux-amd64 archive"
         return
     fi
-    [ -n "$sums_url" ] || { update_failed "Latest release of $REPO_NAME has no SHA256SUMS"; return; }
+    [ -n "$sums_url" ] || {
+        update_failed "Latest release of $REPO_NAME has no SHA256SUMS"
+        return
+    }
 
     if [ -x "$(node_target)" ] && [ "$(binary_version)" = "$remote_version" ]; then
         echo "$BINARY_NAME $remote_version is up to date"

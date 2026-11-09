@@ -21,13 +21,14 @@ setup() {
             grep -E '[A-Za-z_.-]+\.sh' | grep -v 'node\.health\.sh' |
             sed "s|^|${f##*/}: |"
     done)
-    [ -z "$offenders" ] || { echo "$offenders"; false; }
+    [ -z "$offenders" ] || {
+        echo "$offenders"
+        false
+    }
 }
 
 @test "start.sh runs with tools/ off the PATH" {
-    export RUN_TIMEOUT=3
-
-    run "$REPO_ROOT/tools/start.sh"
+    RUN_TIMEOUT=3 run "$REPO_ROOT/tools/start.sh"
 
     [ "$status" -eq 143 ] # stopped by RUN_TIMEOUT
     [ -e "$FAKE_STATE/started" ]
@@ -52,13 +53,12 @@ setup() {
 }
 
 @test "entry points run by bare name from the tools folder" {
-    export RUN_TIMEOUT=3
     cd "$REPO_ROOT/tools"
 
     run bash deploy.sh
     [ "$status" -eq 0 ]
 
-    run bash start.sh
+    RUN_TIMEOUT=3 run bash start.sh
     [ "$status" -eq 143 ]
     [ -e "$FAKE_STATE/started" ]
 }

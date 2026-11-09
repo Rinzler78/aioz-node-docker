@@ -52,10 +52,9 @@ setup() {
 }
 
 @test "does not withdraw below a minimum above 2^63 attoaioz" {
-    export WITHDRAW_MIN_VALUE="10*10^18"
     serve_balance 9300000000000000000
 
-    run withdraw.reward.sh
+    WITHDRAW_MIN_VALUE="10*10^18" run withdraw.reward.sh
 
     [ "$status" -eq 0 ]
     [[ "$output" != *"integer expected"* ]]
@@ -72,20 +71,18 @@ setup() {
 
 @test "withdraw mode watches the aioznode service by default, every CHECK_FREQ" {
     unset ENDPOINT
-    export CHECK_FREQ=1
     serve_balance 1
 
-    run timeout 5 start-watching-reward.sh
+    CHECK_FREQ=1 run timeout 5 start-watching-reward.sh
 
     [ "$(cat "$FAKE_STATE/balance.args")" = "--endpoint http://aioznode:1317" ]
     [ "$(grep -c 'Node rewards status' <<< "$output")" -ge 2 ]
 }
 
 @test "withdraw mode refuses an address that is not 0x and 40 hex digits" {
-    export WITHDRAW_ADDRESS_HEX="0x1234"
     serve_balance 7761729917265715262
 
-    run timeout 60 start-watching-reward.sh
+    WITHDRAW_ADDRESS_HEX="0x1234" run timeout 60 start-watching-reward.sh
 
     [ "$status" -eq 1 ]
     [[ "$output" == *WITHDRAW_ADDRESS_HEX* ]]
@@ -104,10 +101,9 @@ setup() {
 }
 
 @test "refuses an invalid withdraw address when run standalone" {
-    export WITHDRAW_ADDRESS_HEX=""
     serve_balance 7761729917265715262
 
-    run withdraw.reward.sh
+    WITHDRAW_ADDRESS_HEX="" run withdraw.reward.sh
 
     [ "$status" -eq 1 ]
     [[ "$output" == *WITHDRAW_ADDRESS_HEX* ]]

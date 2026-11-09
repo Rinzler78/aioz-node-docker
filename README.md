@@ -37,6 +37,7 @@ Official downloads and client installation: <https://aioz.network/aioz-node>
   * [Configure image and start container](#configure-image-and-start-container)
 * [Upstream watch](#upstream-watch)
 * [Support](#support)
+* [Contribution](#contribution)
 
 ---
 
@@ -46,7 +47,7 @@ Official downloads and client installation: <https://aioz.network/aioz-node>
 
 #### Base container
 
-This container is based on `alpine:latest` for a lightweight and secure environment.
+This container is based on `alpine:latest` for a lightweight and secure environment. The base and the packages are not pinned on purpose: at every start the container upgrades its packages and installs the latest AIOZ CLI (see `tools/deploy.sh`), so the container runs as root.
 
 #### Installed packages
 
@@ -205,7 +206,7 @@ What counts as a change:
 * the upstream issue #10 is no longer open, or got comments in the last 25 hours;
 * upstream commits in the last 25 hours.
 
-On change, the script comments on the open issue titled **AIOZ upstream watch** of this repository (and creates it if missing). Mentions in quoted comments are neutralised so their authors are not notified. Nothing is posted when nothing changed.
+On change, the script comments on the open issue titled **AIOZ upstream watch** of this repository (and creates it if missing). Mentions in quoted comments are neutralized so their authors are not notified. Nothing is posted when nothing changed.
 
 A GitHub API error (rate limit, bad token, outage) fails the run (red in Actions) and posts nothing, so a broken watch never looks like an upstream change.
 
@@ -229,6 +230,26 @@ If you find this project useful, please consider donating:
 ## Contribution
 
 Feel free to open issues or submit pull requests for improvements or bug fixes.
+
+### Pre-commit hooks
+
+```sh
+pre-commit install          # once per clone
+pre-commit run --all-files  # full pass
+```
+
+Each hook checks the changed files only (shellcheck still follows the scripts they source, see `.shellcheckrc`):
+
+| Check | Tools | Files |
+|---|---|---|
+| Linters and format | shellcheck, shfmt (`-i 4 -sr -ci`), hadolint, actionlint | shell scripts, bats tests, Dockerfiles, workflows |
+| Spelling (English) | cspell, words in `cspell.json` | every text file |
+| Vulnerabilities and misconfigurations | trivy config | Dockerfiles, run only when `Dockerfile`, `tests/Dockerfile`, `tools/deps.txt` or `.trivyignore.yaml` changes |
+| Hygiene | pre-commit-hooks (whitespace, end of file, YAML/JSON, file modes, private keys) | every file |
+
+Trivy and hadolint must be installed on the machine (`brew install trivy hadolint`); the other tools are installed by pre-commit.
+
+Accepted findings are kept next to the line they concern, with their reason: `# hadolint ignore=… #trivy:ignore:…` above the instruction in the Dockerfiles (hadolint and trivy both read only the comment right above an instruction), and `.trivyignore.yaml` for the findings about a whole file (root user).
 
 ---
 
