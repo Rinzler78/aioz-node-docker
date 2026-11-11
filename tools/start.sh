@@ -22,15 +22,11 @@ source "$TOOLS_DIR/number.lib.sh"
 # A bad timing would fail every check (timeout 30ss) or stop the node at once
 # (busybox timeout 0s kills at once): refuse it. Only the start period may be 0.
 check_timings() {
-    local setting name minimum
+    local setting name
     for setting in RUN_TIMEOUT:1 HEALTH_START_PERIOD:0 HEALTH_INTERVAL:1 \
         HEALTH_RETRIES:1 HEALTH_TIMEOUT:1; do
         name=${setting%:*}
-        minimum=${setting#*:}
-        if ! is_whole_number "${!name}" "$minimum"; then
-            whole_number_error "$name" "${!name}" "$minimum"
-            return 1
-        fi
+        require_whole_number "$name" "${!name}" "${setting#*:}" || return 1
     done
 }
 

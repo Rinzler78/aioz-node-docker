@@ -172,6 +172,18 @@ assert_repository_listed() {
     [ -e "$FAKE_STATE/started" ]
 }
 
+@test "number.lib.sh checks a whole number against a minimum, standalone" {
+    run "$REPO_ROOT/tools/number.lib.sh" 5 1
+    [ "$status" -eq 0 ]
+
+    run "$REPO_ROOT/tools/number.lib.sh" 0 1
+    [ "$status" -ne 0 ]
+
+    run "$REPO_ROOT/tools/number.lib.sh" 5 abc
+    [ "$status" -ne 0 ]
+    [[ "$output" != *"[: "* ]] # no bash error, the value is checked first
+}
+
 @test "dist.sh clean removes the packages of other kernels, then the cache" {
     run "$REPO_ROOT/tools/dist.sh" clean
 

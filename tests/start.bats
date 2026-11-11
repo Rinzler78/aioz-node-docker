@@ -81,12 +81,13 @@ teardown() {
     # check would fail, or the node would stop at once. Only the start
     # period may be 0.
     for name in RUN_TIMEOUT HEALTH_START_PERIOD HEALTH_INTERVAL HEALTH_RETRIES HEALTH_TIMEOUT; do
-        for value in 30s 08 0 -1; do
+        for value in 30s 08 0 -1 99999999999999999999; do
             [ "$name$value" != HEALTH_START_PERIOD0 ] || continue
             run env RUN_TIMEOUT=3 "$name=$value" start.sh
 
             [ "$status" -eq 1 ]
             [[ "$output" == *"ERROR: $name"*"$value"* ]]
+            [[ "$output" != *"[: "* ]] # no bash error: refused before arithmetic
             [ ! -e "$FAKE_STATE/started" ]
         done
     done

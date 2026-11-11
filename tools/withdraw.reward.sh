@@ -35,11 +35,11 @@ withdraw_reward() {
         return 1
     fi
 
-    # aioz-io may log on stdout before its JSON (exit code 0): keep the last
-    # JSON document that has a balance, from the first line starting with {.
+    # aioz-io prints its JSON on one line, but may log on stdout around it
+    # (exit code 0): keep the last line that is JSON with a balance.
     if ! reward=$("$NODE_IO" reward balance --priv-key-file "$PRIV_KEY_FILE") ||
-        ! reward=$(sed -n '/^{/,$p' <<< "$reward" |
-            jq -s -e '[.[] | select(type == "object" and has("balance"))] | last' 2> /dev/null); then
+        ! reward=$(jq -R -n -e '[inputs | fromjson? | select(type == "object" and has("balance"))] | last' \
+            <<< "$reward" 2> /dev/null); then
         echo "ERROR: cannot read the rewards of $PRIV_KEY_FILE" >&2
         return 1
     fi

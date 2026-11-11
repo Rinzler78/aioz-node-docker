@@ -155,10 +155,12 @@ setup() {
     [ ! -e "$FAKE_STATE/balance.args" ]
 }
 
-@test "reads the rewards when aioz-io logs before them on stdout" {
+@test "reads the rewards when aioz-io logs around them on stdout" {
+    local log="$REPO_ROOT/tests/fixtures/aioz-io-log-line-v1.2.6.txt"
     serve_balance 7761729917265715262
-    # aioz-io v1.2.6 sometimes prints this log line first (captured, rc 0).
-    cat "$REPO_ROOT/tests/fixtures/aioz-io-log-line-v1.2.6.txt" "$FAKE_STATE/balance.json" > "$FAKE_STATE/out"
+    # aioz-io v1.2.6 sometimes prints this log line first (captured, rc 0);
+    # the same line after the rewards must not hide them either.
+    cat "$log" "$FAKE_STATE/balance.json" "$log" > "$FAKE_STATE/out"
     mv "$FAKE_STATE/out" "$FAKE_STATE/balance.json"
 
     run withdraw.reward.sh

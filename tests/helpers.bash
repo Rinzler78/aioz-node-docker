@@ -180,9 +180,10 @@ setup_withdraw_env() {
 }
 
 # Serve the reward balance captured on a running node (aioz-io v1.2.6), with
-# the withdrawable balance replaced by $1 attoaioz.
+# the withdrawable balance replaced by $1 attoaioz, on one line as aioz-io
+# prints it.
 serve_balance() {
-    jq --arg amount "$1" '.balance[0].amount = $amount' \
+    jq -c --arg amount "$1" '.balance[0].amount = $amount' \
         "$BATS_TEST_DIRNAME/fixtures/reward-balance-nas-v1.2.6.json" \
         > "$FAKE_STATE/balance.json"
 }

@@ -21,10 +21,7 @@ source "$TOOLS_DIR/number.lib.sh"
 
 node_health() {
     local check_timeout="${1:-30}" budget
-    if ! is_whole_number "$check_timeout" 1; then
-        whole_number_error "check timeout" "$check_timeout" 1
-        return 1
-    fi
+    require_whole_number "check timeout" "$check_timeout" 1 || return 1
     budget=$((check_timeout / 2))
     [ "$budget" -ge 1 ] || budget=1
     timeout "${budget}s" "$NODE_IO" stats \

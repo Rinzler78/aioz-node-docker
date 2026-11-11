@@ -117,8 +117,9 @@ they are only run through the `PATH`, so the rule does not apply to them.
   versions (used by `quick_test.sh`)
 * `version.lib.sh` — Version parsing, sourced by the scripts above (the CLI
   prints its version as JSON)
-* `number.lib.sh` — `is_whole_number <value> [minimum]`: a whole number,
-  without a leading zero; sourced by `start.sh` and `node.health.sh`
+* `number.lib.sh` — `require_whole_number <name> <value> [minimum]`: a whole
+  number of at most 18 digits, without a leading zero, or an error naming the
+  setting; sourced by `start.sh` and `node.health.sh`
 * `git.releases.latest.sh` — Latest release JSON from the GitHub API
   (`GITHUB_TOKEN` when set), sourced by the scripts above; standalone:
   `git.releases.latest.sh <owner/repo>`
@@ -194,8 +195,9 @@ The scripts therefore run `aioz-io` directly, for the node, its health check
 and the rewards; the wrapper is still used to install, extract and create the
 wallet. **AI computing does not run** (`aioz-ai` is not started): the scripts
 go back to the wrapper `start` once the upstream bug is fixed. `aioz-io reward
-balance` may print a log line on stdout before its JSON (measured, exit code
-0): the withdraw mode reads the last JSON document that has a balance.
+balance` prints its JSON on one line, but may print a log line on stdout before
+it (measured, exit code 0): the withdraw mode reads the last line that is JSON
+with a balance.
 
 ---
 
