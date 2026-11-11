@@ -10,8 +10,9 @@ docker_run() {
     local name
     name=$(docker_name)
     docker_stop
-    echo "Launching : docker run $* --name $name -it $name"
-    docker run -p 1317:1317/tcp -P "$@" --restart=always --name "$name" -it "$name"
+    local args=(-p 1317:1317/tcp -P "$@" --restart=always --name "$name" -it "$name")
+    echo "Launching : docker run ${args[*]}"
+    docker run "${args[@]}"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then docker_run "$@"; fi

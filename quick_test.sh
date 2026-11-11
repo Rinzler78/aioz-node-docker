@@ -16,12 +16,6 @@ ports="$DEFAULT_PORTS"
 
 container_id=""
 
-# Check for positional image name argument first
-if [[ $# -gt 0 ]] && ! [[ "$1" =~ ^-- ]]; then
-    image_name_from_positional="$1"
-    shift # Consume the positional argument so it's not processed by the option loop
-fi
-
 # --------------------
 # Helper: Print usage
 # --------------------
@@ -36,60 +30,60 @@ print_help() {
 }
 
 # --------------------
-# Parse CLI arguments
+# Parse CLI arguments into image_name, run_timeout and ports
 # --------------------
-while [[ $# -gt 0 ]]; do
-    case $1 in
-        --image_name)
-            image_name_from_flag="$2"
-            shift 2
-            ;;
-        --timeout)
-            run_timeout="$2"
-            shift 2
-            ;;
-        --ports)
-            ports="$2"
-            shift 2
-            ;;
-        --help)
-            print_help
-            exit 0
-            ;;
-        *)
-            echo "Unknown option: $1"
-            print_help
-            exit 1
-            ;;
-    esac
-done
+parse_args() {
+    # Check for positional image name argument first
+    if [[ $# -gt 0 ]] && ! [[ "$1" =~ ^-- ]]; then
+        image_name_from_positional="$1"
+        shift # Consume the positional argument so it's not processed by the option loop
+    fi
 
-# Determine the final image_name based on priority:
-# 1. --image_name flag
-# 2. Positional argument
-# 3. Default image name
-if [ -n "$image_name_from_flag" ]; then
-    image_name="$image_name_from_flag"
-elif [ -n "$image_name_from_positional" ]; then
-    image_name="$image_name_from_positional"
-else
-    image_name="$DEFAULT_IMAGE_NAME"
-fi
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --image_name)
+                image_name_from_flag="$2"
+                shift 2
+                ;;
+            --timeout)
+                run_timeout="$2"
+                shift 2
+                ;;
+            --ports)
+                ports="$2"
+                shift 2
+                ;;
+            --help)
+                print_help
+                exit 0
+                ;;
+            *)
+                echo "Unknown option: $1"
+                print_help
+                exit 1
+                ;;
+        esac
+    done
 
-# Ensure image_name is set
-if [ -z "$image_name" ]; then
-    echo "[ERROR] Image name could not be determined. Please specify an image or ensure a default is set." >&2
-    print_help >&2 # Show help on error
-    exit 1
-fi
+    # Determine the final image_name based on priority:
+    # 1. --image_name flag
+    # 2. Positional argument
+    # 3. Default image name
+    if [ -n "$image_name_from_flag" ]; then
+        image_name="$image_name_from_flag"
+    elif [ -n "$image_name_from_positional" ]; then
+        image_name="$image_name_from_positional"
+    else
+        image_name="$DEFAULT_IMAGE_NAME"
+    fi
 
-# --------------------
-# Dependency check
-# --------------------
-if ! command -v docker &> /dev/null; then
-    echo "docker is required but not installed. Aborting."
-    exit 2
-fi
+    # Ensure image_name is set
+    if [ -z "$image_name" ]; then
+        echo "[ERROR] Image name could not be determined. Please specify an image or ensure a default is set." >&2
+        print_help >&2 # Show help on error
+        exit 1
+    fi
+}
 
 # --------------------
 # Trap for cleanup
@@ -100,7 +94,6 @@ docker_delete() {
         echo "Container $container_id deleted."
     fi
 }
-trap docker_delete EXIT
 
 # --------------------
 # Function: Build Docker image
@@ -146,67 +139,79 @@ docker_run() {
 # --------------------
 # Main logic
 # --------------------
+main() {
+    parse_args "$@"
 
-if ! docker_build "$image_name"; then
-    echo "[FAIL] Docker build failed."
-    exit 10
-fi
-
-if ! docker_run "$image_name" "$ports" "$run_timeout"; then
-    echo "[FAIL] Docker run failed."
-    exit 11
-fi
-
-# Wait for container healthcheck to report 'healthy'
-echo "[INFO] Waiting for container to become healthy..."
-for _ in $(seq 1 "$run_timeout"); do
-    if ! health_status=$(docker inspect --format='{{.State.Health.Status}}' "$container_id" 2> /dev/null); then
-        echo "[FAIL] Container is gone."
-        exit 13
+    if ! command -v docker &> /dev/null; then
+        echo "docker is required but not installed. Aborting."
+        exit 2
     fi
-    if [ "$(docker inspect --format='{{.State.Running}}' "$container_id")" != "true" ]; then
-        echo "[FAIL] Container exited before becoming healthy."
+
+    trap docker_delete EXIT
+
+    if ! docker_build "$image_name"; then
+        echo "[FAIL] Docker build failed."
+        exit 10
+    fi
+
+    if ! docker_run "$image_name" "$ports" "$run_timeout"; then
+        echo "[FAIL] Docker run failed."
+        exit 11
+    fi
+
+    # Wait for container healthcheck to report 'healthy'
+    echo "[INFO] Waiting for container to become healthy..."
+    for _ in $(seq 1 "$run_timeout"); do
+        if ! health_status=$(docker inspect --format='{{.State.Health.Status}}' "$container_id" 2> /dev/null); then
+            echo "[FAIL] Container is gone."
+            exit 13
+        fi
+        if [ "$(docker inspect --format='{{.State.Running}}' "$container_id")" != "true" ]; then
+            echo "[FAIL] Container exited before becoming healthy."
+            docker logs "$container_id" 2>&1 | tail -30
+            exit 12
+        fi
+        echo "[INFO] Health status: $health_status"
+        if [ "$health_status" = "healthy" ]; then
+            echo "[SUCCESS] Container is healthy."
+            break
+        elif [ "$health_status" = "unhealthy" ]; then
+            echo "[FAIL] Container is unhealthy."
+            exit 14
+        fi
+        sleep 1
+    done
+    if [ "$health_status" != "healthy" ]; then
+        echo "[FAIL] Container not healthy after ${run_timeout}s (last status: ${health_status:-none})."
         docker logs "$container_id" 2>&1 | tail -30
-        exit 12
+        exit 15
     fi
-    echo "[INFO] Health status: $health_status"
-    if [ "$health_status" = "healthy" ]; then
-        echo "[SUCCESS] Container is healthy."
-        break
-    elif [ "$health_status" = "unhealthy" ]; then
-        echo "[FAIL] Container is unhealthy."
-        exit 14
+
+    # Test version (locale)
+    version=$(docker exec "$container_id" /tools/node.version.sh)
+    if [[ $version =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        echo "[SUCCESS] node.version.sh returned a valid version: $version"
+    else
+        echo "[FAIL] node.version.sh did not return a valid version: $version"
+        docker rm -f "$container_id"
+        exit 16
     fi
-    sleep 1
-done
-if [ "$health_status" != "healthy" ]; then
-    echo "[FAIL] Container not healthy after ${run_timeout}s (last status: ${health_status:-none})."
-    docker logs "$container_id" 2>&1 | tail -30
-    exit 15
-fi
 
-# Test version (locale)
-version=$(docker exec "$container_id" /tools/node.version.sh)
-if [[ $version =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-    echo "[SUCCESS] node.version.sh returned a valid version: $version"
-else
-    echo "[FAIL] node.version.sh did not return a valid version: $version"
-    docker rm -f "$container_id"
-    exit 16
-fi
+    # Test update logic (compare local/remote)
+    echo "[INFO] Testing update logic..."
+    remote_version=$(docker exec "$container_id" /tools/node.remoteVersion.sh)
+    echo "[INFO] Local version: $version"
+    echo "[INFO] Remote version: $remote_version"
+    if [ "$version" = "$remote_version" ]; then
+        echo "[SUCCESS] Local and remote versions match."
+    else
+        echo "[FAIL] Installed version $version is not the latest release $remote_version."
+        exit 17
+    fi
 
-# Test update logic (compare local/remote)
-echo "[INFO] Testing update logic..."
-remote_version=$(docker exec "$container_id" /tools/node.remoteVersion.sh)
-echo "[INFO] Local version: $version"
-echo "[INFO] Remote version: $remote_version"
-if [ "$version" = "$remote_version" ]; then
-    echo "[SUCCESS] Local and remote versions match."
-else
-    echo "[FAIL] Installed version $version is not the latest release $remote_version."
-    exit 17
-fi
+    echo "[INFO] Stopping container..."
+    docker stop "$container_id"
+    echo "[SUCCESS] All tests passed."
+}
 
-echo "[INFO] Stopping container..."
-docker stop "$container_id"
-echo "[SUCCESS] All tests passed."
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then main "$@"; fi

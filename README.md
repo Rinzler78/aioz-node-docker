@@ -26,7 +26,7 @@ Official downloads and client installation: <https://aioz.network/aioz-node>
 
 * [Docker image creation](#docker-image-creation)
   * [Dockerfile](#dockerfile)
-  * [Installed packages](#installed-packages)
+    * [Installed packages](#installed-packages)
   * [Build instructions](#build-instructions)
   * [Tests](#tests)
   * [Before running](#before-running)
@@ -74,6 +74,12 @@ another one **sources** it and calls its function, so a container start runs as
 one shell process (plus the CLI and system tools); every script still runs
 standalone. `tests/scripts.bats` enforces it: the only script run as its own
 process is `node.health.sh`, because the watchdog bounds it with `timeout`.
+
+The same rule holds for the other scripts of the repository
+(`helper.docker.*.sh`, which share `helper.docker.lib.sh`, `quick_test.sh` and
+`.github/scripts/*.sh`): functions first, then an entry point guarded by
+`[[ "${BASH_SOURCE[0]}" == "$0" ]]`. `tests/scripts.bats` also checks that
+sourcing any of them prints and runs nothing.
 
 * `deploy.sh` — `deploy`: updates the system packages, installs or updates the
   CLI, configures the wallet, cleans the packages
@@ -171,7 +177,7 @@ docker build -t aioznode .
 ### Tests
 
 ```sh
-tests/run.sh      # bats unit tests in an Alpine container, fake GitHub
+tests/run.sh      # bats tests in an Alpine container against a fake GitHub
 ./quick_test.sh   # builds the image, waits for healthy,
                   # checks the installed version is the latest release
 ```
@@ -325,27 +331,35 @@ Each hook checks the changed files only (shellcheck still follows the scripts
 they source, see `.shellcheckrc`):
 
 * Linters and format — shellcheck, shfmt (style in `.editorconfig`), hadolint,
-  actionlint, markdownlint: shell scripts, bats tests, Dockerfiles, workflows,
-  Markdown
+  yamllint (`.yamllint.yaml`), actionlint, markdownlint: shell scripts, bats
+  tests, Dockerfiles, YAML, workflows, Markdown
 * Spelling (English) — cspell, words in `cspell.json`: every text file
 * Misconfigurations — trivy config: Dockerfiles, run only when `Dockerfile`,
-  `tests/Dockerfile`, `tools/deps.txt` or `.trivyignore.yaml` changes
+  `tests/Dockerfile` or `.trivyignore.yaml` changes
 * Vulnerabilities — `.github/scripts/image-vuln-scan.sh` builds the image and
   fails on HIGH or CRITICAL vulnerabilities (trivy image), run only when
-  `Dockerfile` or `tools/` changes. The AIOZ CLI binaries (`/bin/aioznode`,
+  `Dockerfile`, `tools/` or the scan script changes. The image is kept as
+  `aioznode:vuln-scan`, so the next build reuses its layers. The AIOZ CLI
+  binaries (`/bin/aioznode`,
   `/root/.cache/aioz-depin-cli/`) are skipped: they come from upstream, are
   replaced at every start, and cannot be fixed here
-* Hygiene — pre-commit-hooks (whitespace, end of file, YAML/JSON, file modes,
-  private keys): every file
+* Hygiene — pre-commit-hooks (whitespace, end of file, YAML/JSON syntax, large
+  files, file modes, private keys): every file. The JSON files are test fixtures
+  captured from the GitHub API, so a syntax check is their linter
 
-Trivy and hadolint must be installed on the machine (`brew install trivy
-hadolint`), with Docker for the image scan; the other tools are installed by
-pre-commit.
+Trivy and hadolint must be installed on the machine, with Docker for the image
+scan; the other tools are installed by pre-commit:
 
-Accepted findings are kept next to the line they concern, with their reason: `#
-hadolint ignore=… #trivy:ignore:…` above the instruction in the Dockerfiles
-(hadolint and trivy both read only the comment right above an instruction), and
-`.trivyignore.yaml` for the findings about a whole file (root user).
+```sh
+brew install trivy hadolint
+```
+
+Accepted findings are kept next to the line they concern, with their reason:
+
+* in the Dockerfiles, `# hadolint ignore=… #trivy:ignore:…` above the
+  instruction (hadolint and trivy both read only the comment right above an
+  instruction);
+* in `.trivyignore.yaml`, the findings about a whole file (root user).
 
 ---
 

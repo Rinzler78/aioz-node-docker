@@ -1,4 +1,6 @@
-# Accepted trivy findings, each with its reason. Run: trivy config --ignorefile .trivyignore.yaml .
+---
+# Accepted trivy findings, each with its reason.
+# Run: trivy config --ignorefile .trivyignore.yaml .
 misconfigurations:
   - id: DS-0002
     paths:

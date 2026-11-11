@@ -12,13 +12,15 @@ setup() {
     export PATH="${PATH//$REPO_ROOT\/tools:/}"
 }
 
-@test "no tools or helper script runs another repository script" {
-    # Allowed: comments, source lines, messages (echo/printf text) and the
-    # watchdog health check. Quoted calls ("$TOOLS_DIR/x.sh") are still caught.
-    offenders=$(for f in "$REPO_ROOT"/tools/*.sh "$REPO_ROOT"/helper.docker.*.sh; do
+@test "no repository script runs another repository script" {
+    # Allowed: comments, source lines, messages (echo/printf text), the
+    # watchdog health check and scripts run inside the container by
+    # quick_test.sh (docker exec). Quoted calls ("$TOOLS_DIR/x.sh") are still caught.
+    offenders=$(for f in "$REPO_ROOT"/tools/*.sh "$REPO_ROOT"/helper.docker.*.sh \
+        "$REPO_ROOT"/quick_test.sh "$REPO_ROOT"/.github/scripts/*.sh; do
         grep -vE '^\s*#' "$f" |
             sed -E 's/^\s*source "[^"]*"//; s/(echo|printf) "[^"]*"//g' |
-            grep -E '[A-Za-z_.-]+\.sh' | grep -v 'node\.health\.sh' |
+            grep -E '[A-Za-z_.-]+\.sh' | grep -vE 'node\.health\.sh|docker exec' |
             sed "s|^|${f##*/}: |"
     done)
     [ -z "$offenders" ] || {
@@ -99,4 +101,30 @@ setup() {
 
     [ "$status" -eq 1 ]
     [[ "$output" == *"Error creating new wallet"* ]]
+}
+
+@test "scripts sourced by others, or with an entry point, run nothing when sourced" {
+    # Every sourced script and every script with a guarded entry point must
+    # carry the guard, and sourcing it with no command on the PATH must print
+    # nothing and fail nothing (definitions only).
+    local guard scripts f offenders=""
+    read -r guard << 'EOF'
+[[ "${BASH_SOURCE[0]}" == "$0" ]]
+EOF
+    scripts=$(
+        cd "$REPO_ROOT" || exit 1
+        grep -ohE '^\s*source "[$](TOOLS_DIR|HELPER_DIR)/[^"]+"' tools/*.sh helper.docker.*.sh |
+            sed -E 's/.*"[$]TOOLS_DIR\/([^"]+)"/tools\/\1/; s/.*"[$]HELPER_DIR\/([^"]+)"/\1/'
+        grep -lF "$guard" tools/*.sh helper.docker.*.sh quick_test.sh .github/scripts/*.sh
+    )
+    mkdir -p "$BATS_TEST_TMPDIR/no-commands"
+    for f in $(echo "$scripts" | sort -u); do
+        grep -qF "$guard" "$REPO_ROOT/$f" || offenders+="$f: no guarded entry point"$'\n'
+        run env -i PATH="$BATS_TEST_TMPDIR/no-commands" /bin/bash -c "source '$REPO_ROOT/$f'"
+        [ "$status" -eq 0 ] && [ -z "$output" ] || offenders+="$f: $status $output"$'\n'
+    done
+    [ -n "$scripts" ] && [ -z "$offenders" ] || {
+        echo "$offenders"
+        false
+    }
 }

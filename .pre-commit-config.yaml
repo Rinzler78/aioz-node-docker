@@ -1,3 +1,4 @@
+---
 # Each hook runs on the changed files only. Trivy runs only when an image input
 # changes. Install: pre-commit install. Full pass: pre-commit run --all-files.
 repos:
@@ -21,10 +22,10 @@ repos:
   - repo: https://github.com/scop/pre-commit-shfmt
     rev: v3.14.1-1
     hooks:
-      - id: shfmt # style from .editorconfig
+      - id: shfmt  # style from .editorconfig
         args: [-w]
 
-  # Linters: Dockerfiles, GitHub workflows and Markdown.
+  # Linters: Dockerfiles, YAML, GitHub workflows and Markdown.
   - repo: https://github.com/hadolint/hadolint
     rev: v2.15.1
     hooks:
@@ -34,6 +35,10 @@ repos:
     hooks:
       - id: actionlint
 
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.38.0
+    hooks:
+      - id: yamllint
   - repo: https://github.com/DavidAnson/markdownlint-cli2
     rev: v0.24.0
     hooks:
@@ -46,18 +51,20 @@ repos:
       - id: cspell
         args: [--no-progress, --no-summary, --show-context]
 
-  # Misconfigurations and vulnerabilities of the images, only when one of their inputs changes.
+  # Misconfigurations and vulnerabilities of the images, only when one of
+  # their inputs changes.
   - repo: local
     hooks:
       - id: trivy-config
         name: trivy config (Dockerfiles)
-        entry: trivy config --quiet --exit-code 1 --ignorefile .trivyignore.yaml .
+        entry: trivy config
+        args: [--quiet, --exit-code, "1", --ignorefile, .trivyignore.yaml, .]
         language: system
-        files: (^|/)Dockerfile$|^tools/deps\.txt$|^\.trivyignore\.yaml$
+        files: (^|/)Dockerfile$|^\.trivyignore\.yaml$
         pass_filenames: false
       - id: trivy-image
         name: trivy image (vulnerabilities, AIOZ binaries skipped)
         entry: .github/scripts/image-vuln-scan.sh
         language: system
-        files: ^Dockerfile$|^tools/
+        files: ^Dockerfile$|^tools/|^\.github/scripts/image-vuln-scan\.sh$
         pass_filenames: false

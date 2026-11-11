@@ -1,0 +1,8 @@
+---
+extends: default
+
+rules:
+  truthy:
+    # GitHub workflows need the `on:` key, which YAML 1.1 reads as a boolean.
+    # Values are still checked.
+    check-keys: false

@@ -3,17 +3,17 @@
 # hadolint ignore=DL3007 #trivy:ignore:DS-0001
 FROM alpine:latest
 
-ENV HOME /root
-ENV TOOLS_DIRECTORY /tools
-ENV NODEDATA_FOLDER /nodedata
-ENV NODEDATA_SEGMENT_FOLDER /nodedata/data
-ENV PATH $NODEDATA_FOLDER:$TOOLS_DIRECTORY:$HOME:$PATH
+ENV HOME=/root
+ENV TOOLS_DIRECTORY=/tools
+ENV NODEDATA_FOLDER=/nodedata
+ENV NODEDATA_SEGMENT_FOLDER=/nodedata/data
+ENV PATH=$NODEDATA_FOLDER:$TOOLS_DIRECTORY:$HOME:$PATH
 
 # PRIV_KEY_FILE is the path of the wallet key in the volume, not the key itself.
 #trivy:ignore:DS-0031
-ENV PRIV_KEY_FILE $NODEDATA_FOLDER/privkey.json
-ENV REPO_NAME AIOZNetwork/aioz-depin-cli
-ENV BINARY_NAME aioznode
+ENV PRIV_KEY_FILE=$NODEDATA_FOLDER/privkey.json
+ENV REPO_NAME=AIOZNetwork/aioz-depin-cli
+ENV BINARY_NAME=aioznode
 
 ## Tools
 COPY tools/*.* $TOOLS_DIRECTORY/
@@ -33,7 +33,7 @@ RUN chmod +x $TOOLS_DIRECTORY/*.sh \
 VOLUME ["$NODEDATA_FOLDER"]
 
 # Running timeout : Default 24H
-ENV RUN_TIMEOUT 86400
+ENV RUN_TIMEOUT=86400
 
 # Withdraw mode (command: start-watching-reward.sh).
 # WITHDRAW_ADDRESS_HEX has no default: the withdraw mode refuses to start without it.

@@ -7,3 +7,5 @@ HELPER_DIR="${BASH_SOURCE[0]%/*}"
 docker_name() {
     cat "$HELPER_DIR/helper.docker.name.txt"
 }
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then docker_name; fi
