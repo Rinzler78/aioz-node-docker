@@ -1,6 +1,6 @@
 #!/bin/bash
-# Update the CLI, configure the wallet, then run the node (aioz-io, see
-# node.io.sh) for RUN_TIMEOUT seconds. The CLI updates are run by deploy at
+# Update the CLI and its aioz-io, configure the wallet, then run the node
+# (aioz-io, see node.io.sh) for RUN_TIMEOUT seconds. The CLI updates are run by deploy at
 # every start, so the node does not update itself (--no-auto-update).
 # Docker does not restart unhealthy containers, so a watchdog stops the node after
 # HEALTH_RETRIES consecutive failed checks (a check running past HEALTH_TIMEOUT
@@ -11,7 +11,7 @@ HEALTH_START_PERIOD="${HEALTH_START_PERIOD:-300}"
 HEALTH_INTERVAL="${HEALTH_INTERVAL:-60}"
 HEALTH_RETRIES="${HEALTH_RETRIES:-3}"
 HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-30}"
-# Folder of this script, also when run by bare name (bash deploy.sh).
+# Folder of this script, also when run by bare name (bash start.sh).
 TOOLS_DIR="${BASH_SOURCE[0]%/*}"
 [ "$TOOLS_DIR" != "${BASH_SOURCE[0]}" ] || TOOLS_DIR=.
 # shellcheck source=tools/deploy.sh

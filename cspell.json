@@ -22,7 +22,6 @@
   "words": [
     "adduser",
     "aioz",
-    "aioznetwork",
     "aioznode",
     "aiozworker",
     "attoaioz",
@@ -38,8 +37,6 @@
     "keytool",
     "laddr",
     "nodedata",
-    "pgrep",
-    "pkill",
     "privkey",
     "quicktest",
     "rinzler",

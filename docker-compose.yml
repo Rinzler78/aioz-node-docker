@@ -17,6 +17,8 @@ services:
     restart: always
     # The image health check targets a local node; this container has none.
     # It needs no node either: aioz-io reads the rewards from the network.
+    # On a first install, the node creates the wallet: until then this
+    # container fails (read-only volume) and restarts.
     healthcheck:
       disable: true
     environment:

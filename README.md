@@ -106,7 +106,10 @@ they are only run through the `PATH`, so the rule does not apply to them.
 * `node.health.sh` — Health check of the watchdog and of the image
   `HEALTHCHECK`: the node answers `aioz-io stats` and the wallet reads its
   rewards (`aioz-io reward balance`, which queries the network, so it does not
-  prove the node alone)
+  prove the node alone). Each query is bounded by half of `HEALTH_TIMEOUT`.
+  While the AIOZ network is unreachable the wallet check fails, so the
+  watchdog restarts the container after 3 checks (and the update runs again):
+  a node whose wallet cannot be used is reported, not hidden
 * `node.version.sh` / `node.remoteVersion.sh` — Installed and latest release
   versions (used by `quick_test.sh`)
 * `version.lib.sh` — Version parsing, sourced by the scripts above (the CLI
@@ -135,8 +138,8 @@ they are only run through the `PATH`, so the rule does not apply to them.
   `HEALTH_RETRIES` (defaults: `300` / `60` / `30` / `3`) — Watchdog timings.
   The image `HEALTHCHECK` uses the defaults: setting these variables changes
   the watchdog only
-* `ENDPOINT` (default: `http://127.0.0.1:1317`) — Node queried by
-  `node.health.sh`
+* `ENDPOINT` (default: `http://127.0.0.1:1317`) — Node queried by the `stats`
+  half of `node.health.sh`
 * `WITHDRAW_ADDRESS_HEX` (**required** in withdraw mode) — `0x` address (40 hex
   digits) that receives the whole balance at each withdraw. The withdraw mode
   refuses to start without a valid one
@@ -164,8 +167,10 @@ The same image runs the withdraw mode when started with the command
 `start-watching-reward.sh` (see `docker-compose.yml`, which runs both, with the
 node data mounted read-only in the withdraw container). The withdraw mode needs
 no running node: `aioz-io` reads and withdraws the rewards from the network
-with the wallet key. With a plain `docker run`, disable the image health check
-for this mode (`--no-healthcheck`): it targets a local node.
+with the wallet key. On a first install the node creates the wallet; until
+then the withdraw container, whose volume is read-only, fails and restarts.
+With a plain `docker run`, disable the image health check for this mode
+(`--no-healthcheck`): it targets a local node.
 
 #### Node binary
 

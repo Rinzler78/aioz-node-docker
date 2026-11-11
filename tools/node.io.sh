@@ -5,8 +5,9 @@
 # $HOME when it runs, but only if it is missing: after an update of the
 # wrapper, node_io_sync replaces the stale copy. The CLI the copy comes from
 # is recorded by its sha256: the versions of the two binaries may differ.
-# Sourced by deploy.sh (node_io_sync), node.health.sh and withdraw.reward.sh
-# (NODE_IO); runs standalone too (image build).
+# Sourced by deploy.sh (node_io_sync; start.sh gets NODE_IO through it),
+# node.health.sh and withdraw.reward.sh (NODE_IO); runs standalone too (image
+# build).
 
 # Fixed by the wrapper, not a setting.
 NODE_IO="$HOME/.cache/aioz-depin-cli/bin/aioz-io"

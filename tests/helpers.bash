@@ -125,9 +125,11 @@ EOF
 
 # Fake aioz-io at $1 (version $2) with the v1.2.6 interface: `--endpoint` is a
 # flag of `stats` only. `start` and `stats` record their arguments in
-# $FAKE_STATE; `stats` hangs (sleep 1003) while $FAKE_STATE/hang exists and
-# fails while $FAKE_STATE/unhealthy exists; `reward balance` prints
-# $FAKE_STATE/balance.json (fails without it); `reward withdraw` records its
+# $FAKE_STATE; `stats` hangs while $FAKE_STATE/hang exists (its pid in
+# $FAKE_STATE/stats.pid) and fails while $FAKE_STATE/unhealthy exists; its
+# output is the one captured from aioz-io v1.2.6; `reward balance` prints
+# $FAKE_STATE/balance.json (fails without it, hangs while
+# $FAKE_STATE/hang-balance exists, its pid in $FAKE_STATE/balance.pid); `reward withdraw` records its
 # arguments and fails while $FAKE_STATE/withdraw.fail exists.
 make_fake_io() {
     mkdir -p "${1%/*}"
@@ -144,12 +146,16 @@ case "\$1" in
     start) echo "\$*" > "\$FAKE_STATE/start.args"; touch "\$FAKE_STATE/started"; exec sleep 1000 ;;
     stats)
         echo "\$*" > "\$FAKE_STATE/stats.args"
-        [ -e "\$FAKE_STATE/hang" ] && exec sleep 1003
+        if [ -e "\$FAKE_STATE/hang" ]; then echo \$\$ > "\$FAKE_STATE/stats.pid"; exec sleep 1000; fi
         [ -e "\$FAKE_STATE/unhealthy" ] && exit 1
         echo '{"storage":{"total_count":0,"total_size":0},"delivery":{"upstream_speed":0},"transcoding":{"status":"Standby"}}' ;;
     reward)
         case "\$2" in
-            balance) shift 2; echo "\$*" > "\$FAKE_STATE/balance.args"; cat "\$FAKE_STATE/balance.json" ;;
+            balance)
+                shift 2
+                echo "\$*" > "\$FAKE_STATE/balance.args"
+                if [ -e "\$FAKE_STATE/hang-balance" ]; then echo \$\$ > "\$FAKE_STATE/balance.pid"; exec sleep 1000; fi
+                cat "\$FAKE_STATE/balance.json" ;;
             withdraw) shift 2; echo "\$*" > "\$FAKE_STATE/withdraw.args"; [ ! -e "\$FAKE_STATE/withdraw.fail" ] ;;
             *) exit 1 ;;
         esac ;;
