@@ -312,3 +312,17 @@ workflow() {
 
     [ "$status" -eq 0 ]
 }
+
+@test "fails on every other way to write a uses: key" {
+    local form
+    for form in '- uses : actions/checkout@v4' '  uses : actions/checkout@v4' \
+        '- "uses": actions/checkout@v4' "- 'uses': actions/checkout@v4" '- uses:'; do
+        printf '      %s\n' "$form" > "$WORKFLOW"
+
+        run "$SCRIPT" "$WORKFLOW"
+
+        echo "form: $form" >&2
+        [ "$status" -eq 1 ]
+        [[ "$output" == *"cannot check: ${form#"${form%%[![:space:]]*}"}"* ]]
+    done
+}

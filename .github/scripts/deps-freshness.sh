@@ -99,13 +99,15 @@ check_action() {
 
 # Checks every `uses:` of the given workflows: quoted or not, it must be
 # owner/repo[/path]@<sha>, but for local (./) and Docker (docker://) actions.
-# Reads lines, not YAML: a `uses:` key in a flow mapping (after `{` or `,`)
-# fails, so that no step is skipped silently. `uses:` in text (a run: block,
-# a name, "causes:") is not a key and is left alone.
+# Reads lines, not YAML: any other line with a `uses` key (in a flow mapping
+# after `{` or `,`, quoted, with a space before the colon, or with no value)
+# fails, so that no step is skipped silently. Text that looks like such a key
+# fails too; other text ("causes:", a name, a run: line) is left alone.
 check_action_pins() {
     local file where line previous ref status=0
     local uses='^[[:space:]]*-?[[:space:]]*uses:[[:space:]]*["'"'"']?([^"'"'"'[:space:]]+)["'"'"']?([[:space:]]|$)'
     local pin='^([^@/]+/[^@/]+)(/[^@]+)?@([0-9a-f]{40})$'
+    local key='(^[[:space:]]*-?|[{,])[[:space:]]*["'"'"']?uses["'"'"']?[[:space:]]*:'
     for file in "$@"; do
         if [ ! -r "$file" ]; then
             echo "ERROR: cannot read $file" >&2
@@ -128,7 +130,7 @@ check_action_pins() {
                         fi
                         ;;
                 esac
-            elif [[ "$line" =~ [{,][[:space:]]*uses: && ! "$line" =~ ^[[:space:]]*# ]]; then
+            elif [[ "$line" =~ $key && ! "$line" =~ ^[[:space:]]*# ]]; then
                 echo "ERROR: $where: cannot check: ${line#"${line%%[![:space:]]*}"} (write \`- uses: owner/repo@<sha>\` on its own line)" >&2
                 status=1
             fi
