@@ -6,6 +6,10 @@ on:
     tags:
       - 'v*'  # Pushed tags starting with 'v' (e.g., v1.0.0)
 
+# The last step creates the GitHub release: the default token is read-only.
+permissions:
+  contents: write
+
 jobs:
 
   build:
