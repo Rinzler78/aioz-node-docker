@@ -1,3 +1,4 @@
+---
 name: AIOZ upstream watch
 
 # Daily check of the AIOZ DePIN hub and CLI repository while the hub is down
@@ -20,12 +21,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-    - uses: actions/checkout@v4
-      with:
-        persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
-    - name: Unit tests
-      run: .github/scripts/tests/run.sh
+      - name: Unit tests
+        run: .github/scripts/tests/run.sh
 
   watch:
     if: github.event_name != 'pull_request'
@@ -36,12 +37,12 @@ jobs:
       contents: read
       issues: write
     steps:
-    - uses: actions/checkout@v4
-      with:
-        persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
-    - name: Check upstream
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        GH_REPO: ${{ github.repository }}
-      run: .github/scripts/upstream-watch.sh
+      - name: Check upstream
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: .github/scripts/upstream-watch.sh

@@ -1,3 +1,4 @@
+---
 # Node and reward withdrawal, both from the rinzlerfr/aioznode image.
 # Required: WITHDRAW_ADDRESS_HEX (address that receives the rewards).
 # Optional: NODEDATA_PATH (host folder holding privkey.json and the node data).
@@ -32,7 +33,7 @@ services:
     environment:
       - CHECK_FREQ=60
       - ENDPOINT=http://aioznode:1317
-      - WITHDRAW_ADDRESS_HEX=${WITHDRAW_ADDRESS_HEX:?set the address that receives the rewards}
+      - WITHDRAW_ADDRESS_HEX=${WITHDRAW_ADDRESS_HEX:?set the reward address}
     networks:
       - aioznetwork
     # Read-only: this container must never create a wallet in the node data.

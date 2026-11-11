@@ -6,5 +6,11 @@ TOOLS_DIR="${BASH_SOURCE[0]%/*}"
 # shellcheck source=tools/version.lib.sh
 source "$TOOLS_DIR/version.lib.sh"
 
-command -v "$BINARY_NAME" > /dev/null || exit 1
-"$BINARY_NAME" version 2>&1 | version_of
+node_version() {
+    command -v "$BINARY_NAME" > /dev/null || return 1
+    "$BINARY_NAME" version 2>&1 | version_of
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    node_version "$@"
+fi

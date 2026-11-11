@@ -19,6 +19,9 @@ if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
     case "$1" in
         update) dist_update ;;
         clean) dist_clean ;;
-        *) echo "Usage: dist.sh update|clean" >&2; exit 2 ;;
+        *)
+            echo "Usage: dist.sh update|clean" >&2
+            exit 2
+            ;;
     esac
 fi

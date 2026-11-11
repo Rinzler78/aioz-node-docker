@@ -1,0 +1,13 @@
+# Shell style, also read by shfmt (pre-commit passes no format flags).
+[*.{sh,bash,bats}]
+indent_style = space
+indent_size = 4
+switch_case_indent = true
+space_redirects = true
+
+# Test fakes: shell scripts without an extension.
+[.github/scripts/tests/fakes/*]
+indent_style = space
+indent_size = 4
+switch_case_indent = true
+space_redirects = true

@@ -62,7 +62,7 @@ setup() {
     [ ! -e "$BIN_DIR/$BINARY_NAME" ]
 }
 
-@test "recognises the JSON version printed by the real CLI and skips the download" {
+@test "recognizes the JSON version printed by the real CLI and skips the download" {
     make_fake_cli "$BIN_DIR/$BINARY_NAME" $'{\n  "version": "v1.2.6"\n}'
     serve_release 9.9.9 # would show up if the archive were installed
 

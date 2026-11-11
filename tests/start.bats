@@ -10,9 +10,8 @@ setup() {
 
 @test "starts the installed node when the update fails" {
     make_fake_node "$BIN_DIR/$BINARY_NAME" "1.1.0"
-    export RUN_TIMEOUT=3
 
-    run start.sh
+    RUN_TIMEOUT=3 run start.sh
 
     [ "$status" -eq 143 ] # stopped by RUN_TIMEOUT (busybox timeout: SIGTERM)
     [ -e "$FAKE_STATE/started" ]
@@ -20,9 +19,8 @@ setup() {
 }
 
 @test "exits 1 without starting when no binary is available" {
-    export RUN_TIMEOUT=3
 
-    run start.sh
+    RUN_TIMEOUT=3 run start.sh
 
     [ "$status" -eq 1 ]
     [ ! -e "$FAKE_STATE/started" ]
@@ -31,10 +29,9 @@ setup() {
 @test "stops the node after 3 consecutive failed health checks" {
     make_fake_node "$BIN_DIR/$BINARY_NAME" "1.1.0"
     touch "$FAKE_STATE/unhealthy"
-    export RUN_TIMEOUT=120
     SECONDS=0
 
-    run start.sh
+    RUN_TIMEOUT=120 run start.sh
 
     [ "$status" -ne 0 ]
     [ -e "$FAKE_STATE/started" ]
@@ -45,10 +42,9 @@ setup() {
 
 @test "keeps a healthy node running until RUN_TIMEOUT" {
     make_fake_node "$BIN_DIR/$BINARY_NAME" "1.1.0"
-    export RUN_TIMEOUT=5
     SECONDS=0
 
-    run start.sh
+    RUN_TIMEOUT=5 run start.sh
 
     [ "$status" -eq 143 ]
     [ -e "$FAKE_STATE/started" ]
@@ -59,10 +55,9 @@ setup() {
 @test "counts a health check that hangs past HEALTH_TIMEOUT as failed" {
     make_fake_node "$BIN_DIR/$BINARY_NAME" "1.1.0"
     touch "$FAKE_STATE/hang"
-    export RUN_TIMEOUT=120 HEALTH_TIMEOUT=1
     SECONDS=0
 
-    run start.sh
+    RUN_TIMEOUT=120 HEALTH_TIMEOUT=1 run start.sh
 
     [ "$status" -ne 0 ]
     [[ "$output" == *"health check failed (3/3)"* ]]
@@ -71,9 +66,8 @@ setup() {
 
 @test "checks the rewards of the configured wallet on the local node" {
     make_fake_node "$BIN_DIR/$BINARY_NAME" "1.1.0"
-    export RUN_TIMEOUT=3
 
-    run start.sh
+    RUN_TIMEOUT=3 run start.sh
 
     [ "$(cat "$FAKE_STATE/reward.args")" = "reward balance --priv-key-file $PRIV_KEY_FILE --endpoint http://127.0.0.1:1317" ]
 }

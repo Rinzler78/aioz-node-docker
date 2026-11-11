@@ -9,14 +9,18 @@ source "$TOOLS_DIR/withdraw.reward.sh"
 # shellcheck source=tools/deploy.sh
 source "$TOOLS_DIR/deploy.sh"
 
-check_withdraw_address || exit 1
+start_watching_reward() {
+    check_withdraw_address || return 1
+    if ! deploy; then
+        echo "Deployment failed"
+        return 1
+    fi
+    while true; do
+        withdraw_reward
+        sleep "${CHECK_FREQ:-60}"
+    done
+}
 
-if ! deploy; then
-    echo "Deployment failed"
-    exit 1
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    start_watching_reward "$@"
 fi
-
-while true; do
-    withdraw_reward
-    sleep "${CHECK_FREQ:-60}"
-done

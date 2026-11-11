@@ -4,6 +4,12 @@
 # configured wallet. ENDPOINT targets another node; default is the local one.
 # exec: a timeout on this script stops the CLI call itself.
 
-exec "$BINARY_NAME" reward balance \
-    --priv-key-file "$PRIV_KEY_FILE" \
-    --endpoint "${ENDPOINT:-http://127.0.0.1:1317}" > /dev/null
+node_health() {
+    exec "$BINARY_NAME" reward balance \
+        --priv-key-file "$PRIV_KEY_FILE" \
+        --endpoint "${ENDPOINT:-http://127.0.0.1:1317}" > /dev/null
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    node_health "$@"
+fi

@@ -15,11 +15,6 @@ TOOLS_DIR="${BASH_SOURCE[0]%/*}"
 # shellcheck source=tools/deploy.sh
 source "$TOOLS_DIR/deploy.sh"
 
-if ! deploy; then
-    echo "Deployment failed"
-    exit 1
-fi
-
 watchdog() {
     local node_pid=$1 failures=0
     sleep "$HEALTH_START_PERIOD"
@@ -39,15 +34,24 @@ watchdog() {
     done
 }
 
-echo "Starting node for ${RUN_TIMEOUT}s..."
-timeout "${RUN_TIMEOUT}s" "$BINARY_NAME" start --home "$NODEDATA_FOLDER" \
-    --priv-key-file "$PRIV_KEY_FILE" --laddr tcp://0.0.0.0:1317 &
-node_pid=$!
+start_node() {
+    local node_pid watchdog_pid status
+    if ! deploy; then
+        echo "Deployment failed"
+        return 1
+    fi
+    echo "Starting node for ${RUN_TIMEOUT}s..."
+    timeout "${RUN_TIMEOUT}s" "$BINARY_NAME" start --home "$NODEDATA_FOLDER" \
+        --priv-key-file "$PRIV_KEY_FILE" --laddr tcp://0.0.0.0:1317 &
+    node_pid=$!
+    watchdog "$node_pid" &
+    watchdog_pid=$!
+    wait "$node_pid"
+    status=$?
+    kill "$watchdog_pid" 2> /dev/null
+    return "$status"
+}
 
-watchdog "$node_pid" &
-watchdog_pid=$!
-
-wait "$node_pid"
-status=$?
-kill "$watchdog_pid" 2> /dev/null
-exit "$status"
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    start_node "$@"
+fi
