@@ -409,6 +409,12 @@ scan; the other tools are installed by pre-commit:
 brew install trivy hadolint
 ```
 
+The same hooks run in CI (`.github/workflows/pre-commit.yml`): on a pull
+request, on the files it changes (`--from-ref` its base); after a merge into
+`develop` or `master`, on every file. CI installs the latest trivy
+(`aquasecurity/setup-trivy`) and hadolint (release binary, checked against its
+`checksums.sha256`), like the rolling `alpine:latest` base.
+
 Accepted findings are kept with their reason, next to the line they concern
 when the format allows comments:
 
@@ -416,6 +422,9 @@ when the format allows comments:
   instruction (hadolint and trivy both read only the comment right above an
   instruction);
 * in `.trivyignore.yaml`, the findings about a whole file (root user);
+* in `.github/workflows/pre-commit.yml`, `# zizmor: ignore[unpinned-tools]` on
+  the trivy `version: latest` line: CI tools follow their latest release, like
+  the image base;
 * in `cspell.json`, the words of the GitHub API fixtures that are not English
   and cannot be changed: GitHub node IDs and AIOZ wallet addresses (two
   patterns), and the names and logins of upstream users (`ignoreWords`).

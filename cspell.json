@@ -46,6 +46,8 @@
     "laddr",
     "nodedata",
     "nullglob",
+    "pipefail",
+    "pipx",
     "privkey",
     "quicktest",
     "rhysd",
