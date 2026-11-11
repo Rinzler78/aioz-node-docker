@@ -271,7 +271,8 @@ WITHDRAW_ADDRESS_HEX=0xYourAddress \
 `rinzlerfr/aioznode` is public on Docker Hub. Pushing a `v*` tag runs
 `.github/workflows/docker-image.yml`: it builds the image, runs `tests/run.sh`
 and `quick_test.sh`, pushes `rinzlerfr/aioznode:<tag>` and `:latest`, then
-creates the GitHub release (the workflow needs `contents: write` for that).
+creates the GitHub release. Only that last job gets a write token: the build
+and the tests, which run the AIOZ binary, keep a read-only one.
 
 ---
 
