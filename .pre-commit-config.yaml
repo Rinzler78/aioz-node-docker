@@ -49,7 +49,14 @@ repos:
     rev: v10.4.0
     hooks:
       - id: cspell
-        args: [--no-progress, --no-summary, --show-context]
+        # The hook's own args plus --show-context; --files must stay last.
+        args:
+          - --no-must-find-files
+          - --no-progress
+          - --no-summary
+          - --gitignore
+          - --show-context
+          - --files
 
   # Misconfigurations and vulnerabilities of the images, only when one of
   # their inputs changes.

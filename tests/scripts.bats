@@ -12,16 +12,53 @@ setup() {
     export PATH="${PATH//$REPO_ROOT\/tools:/}"
 }
 
+# Lines of a script (on stdin) that may run a .sh file as its own process.
+spawn_candidates() {
+    sed -E 's/^\s*source "[^"]*"//
+        s/(echo|printf) "([^"$]|[$][^(])*"//g
+        s/"[$]TOOLS_DIR\/node\.health\.sh"//g
+        s/docker exec [^;&|)]*//g' |
+        grep -E '\.sh([^A-Za-z0-9_]|$)'
+}
+
+@test "spawn detection catches the forms of a spawn and allows the rest" {
+    local spawns allowed
+    spawns=$(
+        cat << 'EOF'
+./x.sh
+bash x.sh
+sh "$DIR"/x.sh
+v=$(./x.sh)
+echo "result: $(./x.sh)"
+docker exec "$c" true; ./x.sh
+timeout 5 "$TOOLS_DIR/node.health.sh" && ./x.sh
+bash "$TOOLS_DIR/${s}.sh"
+"$TOOLS_DIR/$f".sh
+source "$TOOLS_DIR/a.sh"; ./x.sh
+EOF
+    )
+    allowed=$(
+        cat << 'EOF'
+source "$TOOLS_DIR/deploy.sh"
+echo "node.version.sh returned $version"
+printf "see start.sh\n"
+timeout "${HEALTH_TIMEOUT}s" "$TOOLS_DIR/node.health.sh"
+v=$(docker exec "$c" /tools/node.version.sh)
+EOF
+    )
+    [ "$(echo "$spawns" | spawn_candidates | wc -l)" -eq "$(echo "$spawns" | wc -l)" ]
+    [ -z "$(echo "$allowed" | spawn_candidates)" ]
+}
+
 @test "no repository script runs another repository script" {
-    # Allowed: comments, source lines, messages (echo/printf text), the
-    # watchdog health check and scripts run inside the container by
-    # quick_test.sh (docker exec). Quoted calls ("$TOOLS_DIR/x.sh") are still caught.
+    # Allowed, and removed before the search: comments, source lines, message
+    # text without a command substitution, the watchdog health check and the
+    # scripts run inside the container by quick_test.sh (docker exec). Whatever
+    # else is on the line is still searched; quoted or variable names
+    # ("$TOOLS_DIR/x.sh", "$DIR/$name".sh) are caught.
     offenders=$(for f in "$REPO_ROOT"/tools/*.sh "$REPO_ROOT"/helper.docker.*.sh \
         "$REPO_ROOT"/quick_test.sh "$REPO_ROOT"/.github/scripts/*.sh; do
-        grep -vE '^\s*#' "$f" |
-            sed -E 's/^\s*source "[^"]*"//; s/(echo|printf) "[^"]*"//g' |
-            grep -E '[A-Za-z_.-]+\.sh' | grep -vE 'node\.health\.sh|docker exec' |
-            sed "s|^|${f##*/}: |"
+        grep -vE '^\s*#' "$f" | spawn_candidates | sed "s|^|${f##*/}: |"
     done)
     [ -z "$offenders" ] || {
         echo "$offenders"
@@ -103,27 +140,21 @@ setup() {
     [[ "$output" == *"Error creating new wallet"* ]]
 }
 
-@test "scripts sourced by others, or with an entry point, run nothing when sourced" {
-    # Every sourced script and every script with a guarded entry point must
-    # carry the guard, and sourcing it with no command on the PATH must print
-    # nothing and fail nothing (definitions only).
-    local guard scripts f offenders=""
+@test "every repository script has a guarded entry point and runs nothing when sourced" {
+    # Every script must carry the guard, and sourcing it with no command on the
+    # PATH must print nothing and fail nothing (definitions only).
+    local guard f offenders=""
     read -r guard << 'EOF'
 [[ "${BASH_SOURCE[0]}" == "$0" ]]
 EOF
-    scripts=$(
-        cd "$REPO_ROOT" || exit 1
-        grep -ohE '^\s*source "[$](TOOLS_DIR|HELPER_DIR)/[^"]+"' tools/*.sh helper.docker.*.sh |
-            sed -E 's/.*"[$]TOOLS_DIR\/([^"]+)"/tools\/\1/; s/.*"[$]HELPER_DIR\/([^"]+)"/\1/'
-        grep -lF "$guard" tools/*.sh helper.docker.*.sh quick_test.sh .github/scripts/*.sh
-    )
     mkdir -p "$BATS_TEST_TMPDIR/no-commands"
-    for f in $(echo "$scripts" | sort -u); do
-        grep -qF "$guard" "$REPO_ROOT/$f" || offenders+="$f: no guarded entry point"$'\n'
-        run env -i PATH="$BATS_TEST_TMPDIR/no-commands" /bin/bash -c "source '$REPO_ROOT/$f'"
-        [ "$status" -eq 0 ] && [ -z "$output" ] || offenders+="$f: $status $output"$'\n'
+    for f in "$REPO_ROOT"/tools/*.sh "$REPO_ROOT"/helper.docker.*.sh \
+        "$REPO_ROOT"/quick_test.sh "$REPO_ROOT"/.github/scripts/*.sh; do
+        grep -qF "$guard" "$f" || offenders+="${f#"$REPO_ROOT"/}: no guarded entry point"$'\n'
+        run env -i PATH="$BATS_TEST_TMPDIR/no-commands" /bin/bash -c "source '$f'"
+        [ "$status" -eq 0 ] && [ -z "$output" ] || offenders+="${f#"$REPO_ROOT"/}: $status $output"$'\n'
     done
-    [ -n "$scripts" ] && [ -z "$offenders" ] || {
+    [ -z "$offenders" ] || {
         echo "$offenders"
         false
     }

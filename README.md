@@ -75,11 +75,11 @@ one shell process (plus the CLI and system tools); every script still runs
 standalone. `tests/scripts.bats` enforces it: the only script run as its own
 process is `node.health.sh`, because the watchdog bounds it with `timeout`.
 
-The same rule holds for the other scripts of the repository
-(`helper.docker.*.sh`, which share `helper.docker.lib.sh`, `quick_test.sh` and
-`.github/scripts/*.sh`): functions first, then an entry point guarded by
-`[[ "${BASH_SOURCE[0]}" == "$0" ]]`. `tests/scripts.bats` also checks that
-sourcing any of them prints and runs nothing.
+Every script of the repository (`tools/*.sh`, `helper.docker.*.sh`, which share
+`helper.docker.lib.sh`, `quick_test.sh` and `.github/scripts/*.sh`) has its
+functions first, then an entry point guarded by
+`[[ "${BASH_SOURCE[0]}" == "$0" ]]`. `tests/scripts.bats` checks every one of
+them for the guard, and that sourcing it prints and runs nothing.
 
 * `deploy.sh` — `deploy`: updates the system packages, installs or updates the
   CLI, configures the wallet, cleans the packages
@@ -344,7 +344,7 @@ they source, see `.shellcheckrc`):
   `/root/.cache/aioz-depin-cli/`) are skipped: they come from upstream, are
   replaced at every start, and cannot be fixed here
 * Hygiene — pre-commit-hooks (whitespace, end of file, YAML/JSON syntax, large
-  files, file modes, private keys): every file. The JSON files are test fixtures
+  files, file modes, private keys): any file type. The JSON files are test fixtures
   captured from the GitHub API, so a syntax check is their linter
 
 Trivy and hadolint must be installed on the machine, with Docker for the image

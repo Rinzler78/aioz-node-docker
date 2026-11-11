@@ -1,4 +1,9 @@
 #!/bin/bash
+# Build the image, run it and check that it becomes healthy with the latest
+# CLI release. Usage: quick_test.sh --help
+# Folder of this script: the image is built from it, wherever it is run from.
+QUICK_TEST_DIR="${BASH_SOURCE[0]%/*}"
+[ "$QUICK_TEST_DIR" != "${BASH_SOURCE[0]}" ] || QUICK_TEST_DIR=.
 
 # --------------------
 # Globals & Defaults
@@ -13,6 +18,7 @@ image_name_from_flag=""
 image_name_from_positional=""
 run_timeout=$DEFAULT_TIMEOUT
 ports="$DEFAULT_PORTS"
+show_help=""
 
 container_id=""
 
@@ -20,7 +26,7 @@ container_id=""
 # Helper: Print usage
 # --------------------
 print_help() {
-    echo "Usage: $0 [--image_name IMAGE_NAME] [POSITIONAL_IMAGE_NAME] [--timeout SECONDS] [--ports \"host:cont ...\"]"
+    echo "Usage: ${BASH_SOURCE[0]##*/} [--image_name IMAGE_NAME] [POSITIONAL_IMAGE_NAME] [--timeout SECONDS] [--ports \"host:cont ...\"]"
     printf '\nOptions:\n'
     echo "  --image_name Docker image name (default: $DEFAULT_IMAGE_NAME)"
     echo "  [POSITIONAL_IMAGE_NAME] Positional argument for Docker image name (overridden by --image_name if both are present)"
@@ -30,7 +36,8 @@ print_help() {
 }
 
 # --------------------
-# Parse CLI arguments into image_name, run_timeout and ports
+# Parse CLI arguments into image_name, run_timeout, ports and show_help;
+# returns 1 on an unknown option.
 # --------------------
 parse_args() {
     # Check for positional image name argument first
@@ -54,13 +61,13 @@ parse_args() {
                 shift 2
                 ;;
             --help)
-                print_help
-                exit 0
+                show_help=1
+                shift
                 ;;
             *)
                 echo "Unknown option: $1"
                 print_help
-                exit 1
+                return 1
                 ;;
         esac
     done
@@ -76,19 +83,12 @@ parse_args() {
     else
         image_name="$DEFAULT_IMAGE_NAME"
     fi
-
-    # Ensure image_name is set
-    if [ -z "$image_name" ]; then
-        echo "[ERROR] Image name could not be determined. Please specify an image or ensure a default is set." >&2
-        print_help >&2 # Show help on error
-        exit 1
-    fi
 }
 
 # --------------------
 # Trap for cleanup
 # --------------------
-docker_delete() {
+quick_test_delete() {
     if [ -n "$container_id" ]; then
         docker rm -f "$container_id" > /dev/null 2>&1
         echo "Container $container_id deleted."
@@ -98,9 +98,9 @@ docker_delete() {
 # --------------------
 # Function: Build Docker image
 # --------------------
-docker_build() {
+quick_test_build() {
     echo "[INFO] Building Docker image '$1'..."
-    if ! docker build . --tag "$1"; then
+    if ! docker build "$QUICK_TEST_DIR" --tag "$1"; then
         echo "[ERROR] Docker build failed."
         return 10
     fi
@@ -110,7 +110,7 @@ docker_build() {
 # --------------------
 # Function: Run Docker container
 # --------------------
-docker_run() {
+quick_test_run() {
     local image_name="$1"
     local ports_list="$2"
     local run_timeout="$3"
@@ -139,24 +139,28 @@ docker_run() {
 # --------------------
 # Main logic
 # --------------------
-main() {
-    parse_args "$@"
+quick_test() {
+    parse_args "$@" || return 1
+    if [ -n "$show_help" ]; then
+        print_help
+        return 0
+    fi
 
     if ! command -v docker &> /dev/null; then
         echo "docker is required but not installed. Aborting."
-        exit 2
+        return 2
     fi
 
-    trap docker_delete EXIT
+    trap quick_test_delete EXIT
 
-    if ! docker_build "$image_name"; then
+    if ! quick_test_build "$image_name"; then
         echo "[FAIL] Docker build failed."
-        exit 10
+        return 10
     fi
 
-    if ! docker_run "$image_name" "$ports" "$run_timeout"; then
+    if ! quick_test_run "$image_name" "$ports" "$run_timeout"; then
         echo "[FAIL] Docker run failed."
-        exit 11
+        return 11
     fi
 
     # Wait for container healthcheck to report 'healthy'
@@ -164,12 +168,12 @@ main() {
     for _ in $(seq 1 "$run_timeout"); do
         if ! health_status=$(docker inspect --format='{{.State.Health.Status}}' "$container_id" 2> /dev/null); then
             echo "[FAIL] Container is gone."
-            exit 13
+            return 13
         fi
         if [ "$(docker inspect --format='{{.State.Running}}' "$container_id")" != "true" ]; then
             echo "[FAIL] Container exited before becoming healthy."
             docker logs "$container_id" 2>&1 | tail -30
-            exit 12
+            return 12
         fi
         echo "[INFO] Health status: $health_status"
         if [ "$health_status" = "healthy" ]; then
@@ -177,14 +181,14 @@ main() {
             break
         elif [ "$health_status" = "unhealthy" ]; then
             echo "[FAIL] Container is unhealthy."
-            exit 14
+            return 14
         fi
         sleep 1
     done
     if [ "$health_status" != "healthy" ]; then
         echo "[FAIL] Container not healthy after ${run_timeout}s (last status: ${health_status:-none})."
         docker logs "$container_id" 2>&1 | tail -30
-        exit 15
+        return 15
     fi
 
     # Test version (locale)
@@ -193,8 +197,7 @@ main() {
         echo "[SUCCESS] node.version.sh returned a valid version: $version"
     else
         echo "[FAIL] node.version.sh did not return a valid version: $version"
-        docker rm -f "$container_id"
-        exit 16
+        return 16
     fi
 
     # Test update logic (compare local/remote)
@@ -206,7 +209,7 @@ main() {
         echo "[SUCCESS] Local and remote versions match."
     else
         echo "[FAIL] Installed version $version is not the latest release $remote_version."
-        exit 17
+        return 17
     fi
 
     echo "[INFO] Stopping container..."
@@ -214,4 +217,6 @@ main() {
     echo "[SUCCESS] All tests passed."
 }
 
-if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then main "$@"; fi
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    quick_test "$@"
+fi
