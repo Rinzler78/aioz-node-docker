@@ -2,7 +2,9 @@
 # deps-freshness.sh against fake git and pre-commit. Fixtures are real
 # captures (2026-11-11): `git ls-remote --tags` of actions/checkout and
 # rhysd/actionlint, and the output of `pre-commit autoupdate` on this
-# repository's config (home and temporary paths shortened in the error one).
+# repository's config: as is (fresh), with actionlint set back to v1.7.10
+# (outdated), and with the yamllint repository renamed to a missing one
+# (error; home and temporary paths shortened).
 
 SCRIPT="$BATS_TEST_DIRNAME/../deps-freshness.sh"
 FIXTURES="$BATS_TEST_DIRNAME/fixtures"
@@ -172,4 +174,94 @@ workflow() {
     run "$SCRIPT" "$WORKFLOW"
 
     [ "$status" -eq 0 ]
+}
+
+@test "fails when a workflow cannot be read" {
+    run "$SCRIPT" "$BATS_TEST_TMPDIR/missing.yml"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"cannot read $BATS_TEST_TMPDIR/missing.yml"* ]]
+}
+
+@test "checks the .yml and .yaml workflows by default" {
+    mkdir -p "$BATS_TEST_TMPDIR/repo/.github/workflows"
+    cd "$BATS_TEST_TMPDIR/repo"
+    workflow .github/workflows/a.yml "# actions/checkout v7.0.0" "actions/checkout@$V700"
+    workflow .github/workflows/b.yaml "# actions/checkout v7.0.1" "actions/checkout@$V700"
+
+    run "$SCRIPT"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"a.yml: actions/checkout v7.0.0, latest v7.0.1"* ]]
+    [[ "$output" == *"b.yaml: actions/checkout@$V700 is not v7.0.1"* ]]
+}
+
+@test "fails when there is no workflow to check" {
+    mkdir -p "$BATS_TEST_TMPDIR/repo"
+    cd "$BATS_TEST_TMPDIR/repo"
+
+    run "$SCRIPT"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"no workflow in .github/workflows"* ]]
+}
+
+@test "checks a quoted pin" {
+    workflow "$WORKFLOW" "# actions/checkout v7.0.0" "\"actions/checkout@$V700\""
+
+    run "$SCRIPT" "$WORKFLOW"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"actions/checkout v7.0.0, latest v7.0.1"* ]]
+}
+
+@test "fails when an action is not pinned to a commit" {
+    workflow "$WORKFLOW" "# actions/checkout v7.0.1" "actions/checkout@v7.0.1"
+
+    run "$SCRIPT" "$WORKFLOW"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"actions/checkout@v7.0.1 is not pinned to a commit SHA"* ]]
+}
+
+@test "checks an action in a folder of its repository against that repository" {
+    workflow "$WORKFLOW" "# actions/checkout/sub v7.0.0" "actions/checkout/sub@$V700"
+
+    run "$SCRIPT" "$WORKFLOW"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"actions/checkout/sub v7.0.0, latest v7.0.1"* ]]
+}
+
+@test "leaves local and Docker actions alone" {
+    printf '      - uses: ./.github/actions/local\n      - uses: docker://alpine:3\n' > "$WORKFLOW"
+
+    run "$SCRIPT" "$WORKFLOW"
+
+    [ "$status" -eq 0 ]
+}
+
+@test "removes its copy of the config, also when autoupdate fails" {
+    workflow "$WORKFLOW" "# actions/checkout v7.0.1" "actions/checkout@$V701"
+
+    run "$SCRIPT" "$WORKFLOW"
+    [ "$status" -eq 0 ]
+    [ ! -e "$(cat "$FAKE_GIT_DIR/autoupdate-config")" ]
+
+    FAKE_AUTOUPDATE="$FIXTURES/autoupdate-error.txt" FAKE_AUTOUPDATE_RC=3
+    run "$SCRIPT" "$WORKFLOW"
+    [ "$status" -eq 1 ]
+    [ ! -e "$(cat "$FAKE_GIT_DIR/autoupdate-config")" ]
+}
+
+@test "says so when an action has no vX.Y.Z tag" {
+    # The checkout capture without its vX.Y.Z tags: v7 is left.
+    grep -v 'refs/tags/v[0-9]*\.[0-9]*\.[0-9]*$' "$FIXTURES/ls-remote-actions-checkout.txt" \
+        > "$FAKE_GIT_DIR/actions_checkout.txt"
+    workflow "$WORKFLOW" "# actions/checkout v7" "actions/checkout@$V701"
+
+    run "$SCRIPT" "$WORKFLOW"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"actions/checkout v7, no vX.Y.Z release tag"* ]]
 }

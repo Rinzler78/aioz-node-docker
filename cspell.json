@@ -52,6 +52,7 @@
     "rinzlerfr",
     "shellcheck",
     "shfmt",
+    "subshell",
     "trivyignore",
     "worktrees",
     "zipball",

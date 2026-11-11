@@ -2,12 +2,13 @@
 # Fail when a pinned dependency is not its latest release:
 # - pre-commit hooks: `pre-commit autoupdate` runs on a copy of the config and
 #   lists the hooks it would update; the config itself is never rewritten;
-# - GitHub Actions pinned to a commit SHA, with "# owner/repo vX.Y.Z" on the
-#   line above: the SHA must be the commit of that version, and that version
-#   the highest vX.Y.Z tag of the action.
+# - GitHub Actions: each `uses:` (but local ./ and docker:// ones) must be
+#   pinned to a commit SHA, with "# <action> vX.Y.Z" on the line above; the SHA
+#   must be the commit of that version, and that version the highest vX.Y.Z
+#   tag of the action's repository.
 # Reports every problem, then exits 1. Network: git ls-remote, no token.
 # Usage: .github/scripts/deps-freshness.sh [workflow...]
-#        (default: .github/workflows/*.yml; config: $PRE_COMMIT_CONFIG)
+#        (default: .github/workflows/*.yml and *.yaml; config: $PRE_COMMIT_CONFIG)
 
 PRE_COMMIT_CONFIG="${PRE_COMMIT_CONFIG:-.pre-commit-config.yaml}"
 # A missing repository must fail, not wait for credentials.
@@ -16,7 +17,8 @@ export GIT_TERMINAL_PROMPT=0
 # without_git_env <command...>: runs it without the GIT_ variables git gives
 # its hooks. git commit sets GIT_INDEX_FILE (in a worktree, the absolute path
 # of its index): the clones of autoupdate would check out into it. Same filter
-# as pre-commit for its own clones (pre_commit.git.no_git_env).
+# as pre-commit for its own clones (pre_commit.git.no_git_env), but
+# GIT_TERMINAL_PROMPT is kept, so a missing repository still fails at once.
 without_git_env() {
     (
         for var in $(compgen -e); do
@@ -33,27 +35,22 @@ without_git_env() {
 }
 
 # Lists the hooks `pre-commit autoupdate` would update; 1 if any, or if it
-# cannot check them.
-check_hook_revs() {
-    local copy out
-    copy=$(mktemp) || return 1
-    cp "$PRE_COMMIT_CONFIG" "$copy" || {
-        rm -f "$copy"
-        return 1
-    }
+# cannot check them. Runs in a subshell, whose exit removes the copy.
+check_hook_revs() (
+    copy=$(mktemp) || exit 1
+    trap 'rm -f "$copy"' EXIT
+    cp "$PRE_COMMIT_CONFIG" "$copy" || exit 1
     if ! out=$(without_git_env pre-commit autoupdate --config "$copy" --jobs 4 2>&1); then
-        rm -f "$copy"
         echo "ERROR: pre-commit autoupdate cannot check the hooks:" >&2
         printf '%s\n' "$out" >&2
-        return 1
+        exit 1
     fi
-    rm -f "$copy"
     out=$(grep ' updating ' <<< "$out")
-    [ -z "$out" ] && return 0
+    [ -z "$out" ] && exit 0
     echo "ERROR: outdated pre-commit hooks (run pre-commit autoupdate):" >&2
     printf '%s\n' "$out" >&2
-    return 1
-}
+    exit 1
+)
 
 # tag_commit <ls-remote output> <tag>: the commit of the tag; for an annotated
 # tag, the commit it points to (^{} line), not the tag object.
@@ -70,39 +67,64 @@ latest_release() {
         sort -V | tail -n 1
 }
 
-# check_action <file> <action> <sha> <comment line above>
+# check_action <file> <action> <repository> <sha> <comment line above>
+# An action in a folder of its repository (owner/repo/path) has the tags of
+# that repository.
 check_action() {
     local version tags latest
-    if [[ ! "$4" =~ ^[[:space:]]*#[[:space:]]*([^[:space:]]+)[[:space:]]+(v[^[:space:]]+)[[:space:]]*$ ]] ||
+    if [[ ! "$5" =~ ^[[:space:]]*#[[:space:]]*([^[:space:]]+)[[:space:]]+(v[^[:space:]]+)[[:space:]]*$ ]] ||
         [ "${BASH_REMATCH[1]}" != "$2" ]; then
-        echo "ERROR: $1: $2@$3: no \"# $2 vX.Y.Z\" version comment on the line above" >&2
+        echo "ERROR: $1: $2@$4: no \"# $2 vX.Y.Z\" version comment on the line above" >&2
         return 1
     fi
     version="${BASH_REMATCH[2]}"
-    if ! tags=$(git ls-remote --tags "https://github.com/$2" 2>&1); then
-        echo "ERROR: $1: cannot read the tags of $2: $tags" >&2
+    if ! tags=$(git ls-remote --tags "https://github.com/$3" 2>&1); then
+        echo "ERROR: $1: cannot read the tags of $3: $tags" >&2
         return 1
     fi
-    if [ "$(tag_commit "$tags" "$version")" != "$3" ]; then
-        echo "ERROR: $1: $2@$3 is not $version" >&2
+    if [ "$(tag_commit "$tags" "$version")" != "$4" ]; then
+        echo "ERROR: $1: $2@$4 is not $version" >&2
         return 1
     fi
     latest=$(latest_release "$tags")
+    if [ -z "$latest" ]; then
+        echo "ERROR: $1: $2 $version, no vX.Y.Z release tag in $3" >&2
+        return 1
+    fi
     if [ "$version" != "$latest" ]; then
         echo "ERROR: $1: $2 $version, latest $latest" >&2
         return 1
     fi
 }
 
-# Checks every action pinned to a commit SHA in the given workflows.
+# Checks every `uses:` of the given workflows: quoted or not, it must be
+# owner/repo[/path]@<sha>, but for local (./) and Docker (docker://) actions.
 check_action_pins() {
-    local file where line previous status=0
-    local pin='^[[:space:]]*-?[[:space:]]*uses:[[:space:]]*([^@[:space:]]+)@([0-9a-f]{40})([[:space:]]|$)'
+    local file where line previous ref status=0
+    local uses='^[[:space:]]*-?[[:space:]]*uses:[[:space:]]*["'"'"']?([^"'"'"'[:space:]]+)["'"'"']?([[:space:]]|$)'
+    local pin='^([^@/]+/[^@/]+)(/[^@]+)?@([0-9a-f]{40})$'
     for file in "$@"; do
+        if [ ! -r "$file" ]; then
+            echo "ERROR: cannot read $file" >&2
+            status=1
+            continue
+        fi
         previous="" where="$file"
         while IFS= read -r line || [ -n "$line" ]; do
-            if [[ "$line" =~ $pin ]]; then
-                check_action "$where" "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}" "$previous" || status=1
+            if [[ "$line" =~ $uses ]]; then
+                ref="${BASH_REMATCH[1]}"
+                case "$ref" in
+                    ./* | docker://*) ;;
+                    *)
+                        if [[ "$ref" =~ $pin ]]; then
+                            check_action "$where" "${BASH_REMATCH[1]}${BASH_REMATCH[2]}" \
+                                "${BASH_REMATCH[1]}" "${BASH_REMATCH[3]}" "$previous" || status=1
+                        else
+                            echo "ERROR: $where: $ref is not pinned to a commit SHA (owner/repo@<40 hex>)" >&2
+                            status=1
+                        fi
+                        ;;
+                esac
             fi
             previous="$line"
         done < "$file"
@@ -112,7 +134,15 @@ check_action_pins() {
 
 deps_freshness() {
     local status=0
-    [ $# -gt 0 ] || set -- .github/workflows/*.yml
+    if [ $# -eq 0 ]; then
+        shopt -s nullglob
+        set -- .github/workflows/*.yml .github/workflows/*.yaml
+        shopt -u nullglob
+        if [ $# -eq 0 ]; then
+            echo "ERROR: no workflow in .github/workflows" >&2
+            status=1
+        fi
+    fi
     check_hook_revs || status=1
     check_action_pins "$@" || status=1
     return "$status"
