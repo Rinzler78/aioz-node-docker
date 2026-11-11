@@ -94,6 +94,7 @@ repos:
           (?x)^(
             \.pre-commit-config\.yaml|
             \.github/workflows/.*|
-            \.github/scripts/deps-freshness\.sh
+            \.github/scripts/deps-freshness\.sh|
+            \.github/scripts/release\.lib\.sh
           )$
         pass_filenames: false

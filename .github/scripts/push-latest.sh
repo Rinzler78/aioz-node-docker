@@ -1,9 +1,11 @@
 #!/bin/bash
 # Move <image>:latest to <image>:<tag> and push it, only when <tag> is the
 # highest vX.Y.Z release of $GITHUB_REPOSITORY. The tags are read at push
-# time, so an older tag whose build ends last leaves latest alone, and so
-# does a fix tag on an older line: Watchtower follows latest, it must never
-# go back. Fails when the tags cannot be read, and pushes nothing then.
+# time, so a fix tag on an older line leaves latest alone, and so does an
+# older tag whose build ends last, unless it read the tags before the newer
+# tag existed (a window of seconds, against minutes of build). Watchtower
+# follows latest, it must never go back. Fails when the tags cannot be
+# read, and pushes nothing then.
 # Usage: GITHUB_REPOSITORY=owner/repo .github/scripts/push-latest.sh <image> <tag>
 # Folder of this script, also when run by bare name (bash push-latest.sh).
 PUSH_LATEST_DIR="${BASH_SOURCE[0]%/*}"
