@@ -7,7 +7,7 @@ TESTS_DIR="${BASH_SOURCE[0]%/*}"
 
 run_tests() {
     local repo
-    repo=$(cd "$TESTS_DIR/.." && pwd) || return 1
+    repo=$(cd "$TESTS_DIR/.." && pwd) || return
     docker build --quiet -t aioznode-tests -f "$repo/tests/Dockerfile" "$repo" > /dev/null || return
     docker run --rm -v "$repo":/repo aioznode-tests "${@:-tests}"
 }

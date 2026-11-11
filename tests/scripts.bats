@@ -15,19 +15,57 @@ setup() {
 # Every shell script of the repository. The extension-less test doubles in
 # .github/scripts/tests/fakes stand in for external commands: they are run by
 # PATH lookup only, never sourced, so the script rules do not apply to them.
-# The exclusions are anchored on the repository root: the checkout itself may
-# live under a .worktrees folder.
+# The exclusions are anchored on the root, given relative to it so that the
+# root is never read as a pattern: the checkout itself may live under a
+# .worktrees folder.
 repository_scripts() {
-    find "$REPO_ROOT" \( -path "$REPO_ROOT/.git" -o -path "$REPO_ROOT/.worktrees" \) -prune \
-        -o -name '*.sh' -print | sort
+    local root="${1:-$REPO_ROOT}" f
+    (cd "$root" && find . \( -path ./.git -o -path ./.worktrees \) -prune -o -name '*.sh' -print) |
+        sort | while IFS= read -r f; do echo "$root/${f#./}"; done
 }
 
-@test "the script list holds the repository scripts wherever the checkout lives" {
-    run repository_scripts
+# Scripts under ROOT (default: the repository) without the guard, or that print
+# or fail when sourced with no command on the PATH, one per line.
+guard_offenders() {
+    local root="${1:-$REPO_ROOT}" guard f out status
+    read -r guard << 'EOF'
+[[ "${BASH_SOURCE[0]}" == "$0" ]]
+EOF
+    mkdir -p "$BATS_TEST_TMPDIR/no-commands"
+    # The list comes on fd 3 and the sourced script reads /dev/null: a script
+    # reading its input cannot eat the names of the next ones.
+    while IFS= read -r f <&3; do
+        grep -qF "$guard" "$f" || echo "${f#"$root"/}: no guarded entry point"
+        out=$(env -i PATH="$BATS_TEST_TMPDIR/no-commands" /bin/bash -c "source '$f'" 2>&1 < /dev/null)
+        status=$?
+        [ "$status" -eq 0 ] && [ -z "$out" ] || echo "${f#"$root"/}: $status $out"
+    done 3< <(repository_scripts "$root")
+}
 
-    [[ "$output" == *"$REPO_ROOT/tools/start.sh"* ]]
-    [[ "$output" == *"$REPO_ROOT/tests/run.sh"* ]]
-    [[ "$output" == *"$REPO_ROOT/.github/scripts/upstream-watch.sh"* ]]
+@test "the script checks cover every script of a checkout, wherever it lives" {
+    # A checkout inside a .worktrees folder, holding a nested worktree and a
+    # script that reads its standard input before a faulty one.
+    local co="$BATS_TEST_TMPDIR/x/.worktrees/co"
+    mkdir -p "$co/tools" "$co/.worktrees/other" "$co/.git"
+    cat > "$co/tools/a.sh" << 'EOF'
+f() { :; }
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then f; fi
+EOF
+    cat > "$co/tools/b.sh" << 'EOF'
+IFS= read -r line
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then :; fi
+EOF
+    printf '%s\n' 'echo BAD' > "$co/tools/c.sh"
+    printf '%s\n' 'echo nested' > "$co/.worktrees/other/d.sh"
+    printf '%s\n' 'echo git' > "$co/.git/e.sh"
+
+    run repository_scripts "$co"
+    [ "$output" = "$co/tools/a.sh"$'\n'"$co/tools/b.sh"$'\n'"$co/tools/c.sh" ]
+
+    run guard_offenders "$co"
+    [[ "$output" == *"tools/c.sh: no guarded entry point"* ]]
+    [[ "$output" == *"tools/c.sh: 0 BAD"* ]]
+    [[ "$output" != *"tools/a.sh"* ]]
 }
 
 # Lines of a script (on stdin) that may run a .sh file as its own process.
@@ -162,18 +200,11 @@ EOF
 @test "every repository script has a guarded entry point and runs nothing when sourced" {
     # Every script must carry the guard, and sourcing it with no command on the
     # PATH must print nothing and fail nothing (definitions only).
-    local guard f offenders=""
-    read -r guard << 'EOF'
-[[ "${BASH_SOURCE[0]}" == "$0" ]]
-EOF
-    mkdir -p "$BATS_TEST_TMPDIR/no-commands"
-    while IFS= read -r f; do
-        grep -qF "$guard" "$f" || offenders+="${f#"$REPO_ROOT"/}: no guarded entry point"$'\n'
-        run env -i PATH="$BATS_TEST_TMPDIR/no-commands" /bin/bash -c "source '$f'"
-        [ "$status" -eq 0 ] && [ -z "$output" ] || offenders+="${f#"$REPO_ROOT"/}: $status $output"$'\n'
-    done < <(repository_scripts)
-    [ -z "$offenders" ] || {
-        echo "$offenders"
+    run guard_offenders
+
+    [ "$status" -eq 0 ]
+    [ -z "$output" ] || {
+        echo "$output"
         false
     }
 }

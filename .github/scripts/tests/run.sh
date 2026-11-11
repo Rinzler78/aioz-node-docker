@@ -7,7 +7,7 @@ WATCH_TESTS_DIR="${BASH_SOURCE[0]%/*}"
 
 run_watch_tests() {
     local repo
-    repo=$(cd "$WATCH_TESTS_DIR/../../.." && pwd) || return 1
+    repo=$(cd "$WATCH_TESTS_DIR/../../.." && pwd) || return
     docker run --rm -v "$repo":/repo -w /repo alpine:latest \
         sh -c 'apk add --no-cache -q bash bats coreutils jq > /dev/null && bats .github/scripts/tests'
 }

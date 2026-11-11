@@ -343,12 +343,11 @@ they source, see `.shellcheckrc`):
   fails on HIGH or CRITICAL vulnerabilities (trivy image), run only when
   `Dockerfile`, `tools/` or the scan script changes. The image is kept as
   `aioznode:vuln-scan`, so the next build reuses its layers. The AIOZ CLI
-  binaries (`/bin/aioznode`,
-  `/root/.cache/aioz-depin-cli/`) are skipped: they come from upstream, are
-  replaced at every start, and cannot be fixed here
+  binaries (`/bin/aioznode`, `/root/.cache/aioz-depin-cli/`) are skipped: they
+  come from upstream, are replaced at every start, and cannot be fixed here
 * Hygiene — pre-commit-hooks (whitespace, end of file, YAML/JSON syntax, large
-  files, file modes, private keys): any file type. The JSON files are test fixtures
-  captured from the GitHub API, so a syntax check is their linter
+  files, file modes, private keys): any file type. The JSON files are test
+  fixtures captured from the GitHub API, so a syntax check is their linter
 
 Trivy and hadolint must be installed on the machine, with Docker for the image
 scan; the other tools are installed by pre-commit:
