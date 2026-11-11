@@ -110,20 +110,24 @@ they are only run through the `PATH`, so the rule does not apply to them.
   the watchdog passes its `HEALTH_TIMEOUT` (`node.health.sh <seconds>`), the
   image `HEALTHCHECK` passes none, so the default is its `--timeout` (30s).
   While the AIOZ network is unreachable the wallet check fails, so the
-  watchdog restarts the container after 3 checks (and the update runs again):
+  watchdog restarts the container after `HEALTH_RETRIES` checks (and the update
+  runs again):
   a node whose wallet cannot be used is reported, not hidden
 * `node.version.sh` / `node.remoteVersion.sh` — Installed and latest release
   versions (used by `quick_test.sh`)
 * `version.lib.sh` — Version parsing, sourced by the scripts above (the CLI
   prints its version as JSON)
+* `seconds.lib.sh` — `is_seconds`: a whole number of seconds, without a leading
+  zero; sourced by `start.sh` and `node.health.sh`
 * `git.releases.latest.sh` — Latest release JSON from the GitHub API
   (`GITHUB_TOKEN` when set), sourced by the scripts above; standalone:
   `git.releases.latest.sh <owner/repo>`
 * `start.sh` — Entrypoint script: runs deployment, starts the node (`aioz-io
   start --no-auto-update`: updates run at each container start), and stops it
-  after 3 consecutive failed health checks (a check running past 30s fails) so
-  that the restart policy restarts the container (and re-runs the update).
-  Docker itself never restarts an unhealthy container
+  after `HEALTH_RETRIES` consecutive failed health checks (a check running past
+  `HEALTH_TIMEOUT` fails) so that the restart policy restarts the container
+  (and re-runs the update). Docker itself never restarts an unhealthy
+  container. A timing that is not a whole number of seconds stops it at once
 * `start-watching-reward.sh` — Withdraw mode entrypoint: runs `deploy`, then
   every `CHECK_FREQ` seconds calls `withdraw_reward` (`withdraw.reward.sh`),
   which withdraws the whole balance to `WITHDRAW_ADDRESS_HEX` once it exceeds
@@ -137,7 +141,8 @@ they are only run through the `PATH`, so the rule does not apply to them.
 * `RUN_TIMEOUT` (default: `86400`) — Seconds before the node is stopped, so the
   container restarts and updates
 * `HEALTH_START_PERIOD` / `HEALTH_INTERVAL` / `HEALTH_TIMEOUT` /
-  `HEALTH_RETRIES` (defaults: `300` / `60` / `30` / `3`) — Watchdog timings.
+  `HEALTH_RETRIES` (defaults: `300` / `60` / `30` / `3`) — Watchdog timings,
+  whole numbers (`start.sh` refuses `30s` or `08`).
   The image `HEALTHCHECK` keeps the defaults: setting these variables changes
   the watchdog only. To change the Docker check, override `healthcheck:` and
   pass its timeout: `["CMD", "node.health.sh", "<seconds>"]`
@@ -186,7 +191,9 @@ calls `aioz-io keytool encrypt --password`, a flag `aioz-io` does not have
 The scripts therefore run `aioz-io` directly, for the node, its health check
 and the rewards; the wrapper is still used to install, extract and create the
 wallet. **AI computing does not run** (`aioz-ai` is not started): the scripts
-go back to the wrapper `start` once the upstream bug is fixed.
+go back to the wrapper `start` once the upstream bug is fixed. `aioz-io reward
+balance` may print a log line on stdout before its JSON (measured, exit code
+0): the withdraw mode reads the JSON only.
 
 ---
 

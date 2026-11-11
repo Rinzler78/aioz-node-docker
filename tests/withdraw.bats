@@ -154,3 +154,15 @@ setup() {
     [[ "$output" == *"Node is not installed"* ]]
     [ ! -e "$FAKE_STATE/balance.args" ]
 }
+
+@test "reads the rewards when aioz-io logs before them on stdout" {
+    serve_balance 7761729917265715262
+    # aioz-io v1.2.6 sometimes prints this log line first (captured, rc 0).
+    cat "$REPO_ROOT/tests/fixtures/aioz-io-log-line-v1.2.6.txt" "$FAKE_STATE/balance.json" > "$FAKE_STATE/out"
+    mv "$FAKE_STATE/out" "$FAKE_STATE/balance.json"
+
+    run withdraw.reward.sh
+
+    [ "$status" -eq 0 ]
+    [[ "$(cat "$FAKE_STATE/withdraw.args")" == *"--amount 7761729917265715262attoaioz"* ]]
+}

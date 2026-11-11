@@ -3,7 +3,8 @@
   "language": "en",
   "ignoreRegExpList": [
     "GitHubNodeId",
-    "AiozAddress"
+    "AiozAddress",
+    "AnsiColor"
   ],
   "patterns": [
     {
@@ -13,6 +14,10 @@
     {
       "name": "AiozAddress",
       "pattern": "/\\baioz1[02-9ac-hj-np-z]{38}\\b/g"
+    },
+    {
+      "name": "AnsiColor",
+      "pattern": "/\\x1b\\[[0-9;]*m/g"
     }
   ],
   "ignorePaths": [

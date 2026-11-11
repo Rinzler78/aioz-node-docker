@@ -102,7 +102,7 @@ source "$TOOLS_DIR/deploy.sh"
     source "$TOOLS_DIR/deploy.sh"
 echo "node.version.sh returned $version"
 printf "see start.sh\n"
-timeout "${HEALTH_TIMEOUT}s" "$TOOLS_DIR/node.health.sh"
+timeout "${HEALTH_TIMEOUT}s" "$TOOLS_DIR/node.health.sh" "$HEALTH_TIMEOUT"
 v=$(docker exec "$c" /tools/node.version.sh)
 EOF
     )

@@ -35,7 +35,9 @@ withdraw_reward() {
         return 1
     fi
 
+    # Keep the JSON: aioz-io may log on stdout before it (exit code 0).
     if ! reward=$("$NODE_IO" reward balance --priv-key-file "$PRIV_KEY_FILE") ||
+        ! reward=$(sed -n '/^{/,$p' <<< "$reward") ||
         ! jq -e '.balance' <<< "$reward" > /dev/null 2>&1; then
         echo "ERROR: cannot read the rewards of $PRIV_KEY_FILE" >&2
         return 1

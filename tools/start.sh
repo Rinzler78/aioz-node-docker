@@ -16,6 +16,19 @@ TOOLS_DIR="${BASH_SOURCE[0]%/*}"
 [ "$TOOLS_DIR" != "${BASH_SOURCE[0]}" ] || TOOLS_DIR=.
 # shellcheck source=tools/deploy.sh
 source "$TOOLS_DIR/deploy.sh"
+# shellcheck source=tools/seconds.lib.sh
+source "$TOOLS_DIR/seconds.lib.sh"
+
+# A bad timing would fail every check (timeout 30ss): refuse it at once.
+check_timings() {
+    local name
+    for name in RUN_TIMEOUT HEALTH_START_PERIOD HEALTH_INTERVAL HEALTH_RETRIES HEALTH_TIMEOUT; do
+        if ! is_seconds "${!name}"; then
+            echo "ERROR: $name must be a whole number: ${!name}" >&2
+            return 1
+        fi
+    done
+}
 
 watchdog() {
     local node_pid=$1 failures=0
@@ -38,6 +51,7 @@ watchdog() {
 
 start_node() {
     local node_pid watchdog_pid status
+    check_timings || return 1
     if ! deploy; then
         echo "Deployment failed"
         return 1

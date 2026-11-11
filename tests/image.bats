@@ -10,9 +10,9 @@ healthcheck() {
         END { print line }' "$REPO_ROOT/Dockerfile" | tr -s ' ' | sed 's/^ //'
 }
 
-# Default check timeout of node.health.sh (local timeout="${1:-value}" ...).
+# Default check timeout of node.health.sh (local check_timeout="${1:-value}" ...).
 check_default_timeout() {
-    sed -n 's/^ *local timeout="\${1:-\([0-9]*\)}"\( .*\)*$/\1/p' "$REPO_ROOT/tools/node.health.sh"
+    sed -n 's/^ *local check_timeout="\${1:-\([0-9]*\)}"\( .*\)*$/\1/p' "$REPO_ROOT/tools/node.health.sh"
 }
 
 # Default of the start.sh watchdog setting $1 (NAME="${NAME:-value}").

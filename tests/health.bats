@@ -55,6 +55,14 @@ query_running() {
     [ ! -e "$FAKE_STATE/stats.args" ]
 }
 
+@test "rejects a check timeout with a leading zero (bash reads it as octal)" {
+    run node.health.sh 08
+
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"ERROR"*"08"* ]]
+    [ ! -e "$FAKE_STATE/stats.args" ]
+}
+
 @test "a hanging node query fails the check within its timeout" {
     touch "$FAKE_STATE/hang"
     SECONDS=0
@@ -85,11 +93,11 @@ query_running() {
     touch "$FAKE_STATE/hang"
 
     # stderr off the bats pipe: a query left running must not hold the test.
-    run sh -c 'timeout -s KILL 1 node.health.sh 4 2> /dev/null'
+    run sh -c 'timeout -s KILL 2 node.health.sh 8 2> /dev/null'
 
     [ "$status" -ne 0 ]
-    query_running # the budget (half of the 4s timeout) is not over yet
-    sleep 2
+    query_running # the budget (half of the 8s timeout) is not over yet
+    sleep 3
     run query_running
     [ "$status" -ne 0 ]
 }

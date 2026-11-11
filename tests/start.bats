@@ -73,6 +73,16 @@ teardown() {
     [ "$status" -ne 0 ]
 }
 
+@test "refuses a timing that is not a number of seconds, before deploying" {
+    make_fake_node "$BIN_DIR/$BINARY_NAME" "1.1.0"
+
+    RUN_TIMEOUT=3 HEALTH_TIMEOUT=30s run start.sh
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"ERROR: HEALTH_TIMEOUT"*"30s"* ]]
+    [ ! -e "$FAKE_STATE/started" ]
+}
+
 @test "starts aioz-io on the node data and wallet, listening outside the container" {
     make_fake_node "$BIN_DIR/$BINARY_NAME" "1.1.0"
 

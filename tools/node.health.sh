@@ -16,16 +16,16 @@ TOOLS_DIR="${BASH_SOURCE[0]%/*}"
 [ "$TOOLS_DIR" != "${BASH_SOURCE[0]}" ] || TOOLS_DIR=.
 # shellcheck source=tools/node.io.sh
 source "$TOOLS_DIR/node.io.sh"
+# shellcheck source=tools/seconds.lib.sh
+source "$TOOLS_DIR/seconds.lib.sh"
 
 node_health() {
-    local timeout="${1:-30}" budget
-    case "$timeout" in
-        '' | *[!0-9]*)
-            echo "ERROR: check timeout must be a number of seconds: $timeout" >&2
-            return 1
-            ;;
-    esac
-    budget=$((timeout / 2))
+    local check_timeout="${1:-30}" budget
+    if ! is_seconds "$check_timeout"; then
+        echo "ERROR: check timeout must be a number of seconds: $check_timeout" >&2
+        return 1
+    fi
+    budget=$((check_timeout / 2))
     [ "$budget" -ge 1 ] || budget=1
     timeout "${budget}s" "$NODE_IO" stats \
         --endpoint "${ENDPOINT:-http://127.0.0.1:1317}" > /dev/null || return 1
