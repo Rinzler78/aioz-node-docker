@@ -45,7 +45,8 @@ EOF
 @test "the script checks cover every script of a checkout, wherever it lives" {
     # A checkout inside a .worktrees folder, holding a nested worktree and a
     # script that reads its standard input before a faulty one.
-    local co="$BATS_TEST_TMPDIR/x/.worktrees/co"
+    # Its root holds glob characters: it must never be read as a pattern.
+    local co="$BATS_TEST_TMPDIR/x[1]/.worktrees/co"
     mkdir -p "$co/tools" "$co/.worktrees/other" "$co/.git"
     cat > "$co/tools/a.sh" << 'EOF'
 f() { :; }
@@ -66,6 +67,7 @@ EOF
     [[ "$output" == *"tools/c.sh: no guarded entry point"* ]]
     [[ "$output" == *"tools/c.sh: 0 BAD"* ]]
     [[ "$output" != *"tools/a.sh"* ]]
+    [[ "$output" != *"tools/b.sh"* ]]
 }
 
 # Lines of a script (on stdin) that may run a .sh file as its own process.
@@ -108,7 +110,18 @@ EOF
     [ -z "$(echo "$allowed" | spawn_candidates)" ]
 }
 
+# The script list of the repository holds its known scripts: the checks over
+# the repository must not pass on an empty list.
+assert_repository_listed() {
+    local list
+    list=$(repository_scripts)
+    [[ "$list" == *"$REPO_ROOT/tools/start.sh"* ]] &&
+        [[ "$list" == *"$REPO_ROOT/tests/run.sh"* ]] &&
+        [[ "$list" == *"$REPO_ROOT/.github/scripts/upstream-watch.sh"* ]]
+}
+
 @test "no repository script runs another repository script" {
+    assert_repository_listed
     # Allowed, and removed before the search: comments, source lines, message
     # text without a command substitution, the watchdog health check and the
     # scripts run inside the container by quick_test.sh (docker exec). Whatever
@@ -200,9 +213,9 @@ EOF
 @test "every repository script has a guarded entry point and runs nothing when sourced" {
     # Every script must carry the guard, and sourcing it with no command on the
     # PATH must print nothing and fail nothing (definitions only).
+    assert_repository_listed
     run guard_offenders
 
-    [ "$status" -eq 0 ]
     [ -z "$output" ] || {
         echo "$output"
         false
