@@ -1,6 +1,7 @@
 ---
 # Each hook runs on the changed files only. Trivy runs only when an image input
-# changes. Install: pre-commit install. Full pass: pre-commit run --all-files.
+# changes, the dependency check only when a dependency file changes.
+# Install: pre-commit install. Full pass: pre-commit run --all-files.
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
@@ -16,7 +17,7 @@ repos:
 
   # Linter and formatter: shell scripts, bats tests and test fakes.
   - repo: https://github.com/shellcheck-py/shellcheck-py
-    rev: v0.11.0.1
+    rev: v0.11.0.1-1
     hooks:
       - id: shellcheck
   - repo: https://github.com/scop/pre-commit-shfmt
@@ -79,4 +80,20 @@ repos:
         entry: .github/scripts/image-vuln-scan.sh
         language: system
         files: ^Dockerfile$|^tools/|^\.github/scripts/image-vuln-scan\.sh$
+        pass_filenames: false
+
+  # Dependencies up to date (blocking): hook revs and pinned actions, only
+  # when one of them, or the check itself, changes.
+  - repo: local
+    hooks:
+      - id: deps-freshness
+        name: dependencies up to date (pre-commit hooks, GitHub Actions)
+        entry: .github/scripts/deps-freshness.sh
+        language: system
+        files: |
+          (?x)^(
+            \.pre-commit-config\.yaml|
+            \.github/workflows/.*|
+            \.github/scripts/deps-freshness\.sh
+          )$
         pass_filenames: false

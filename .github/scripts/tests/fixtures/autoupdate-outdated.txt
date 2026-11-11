@@ -1,0 +1,9 @@
+[https://github.com/shellcheck-py/shellcheck-py] updating v0.11.0.1 -> v0.11.0.1-1
+[https://github.com/scop/pre-commit-shfmt] already up to date!
+[https://github.com/pre-commit/pre-commit-hooks] already up to date!
+[https://github.com/hadolint/hadolint] already up to date!
+[https://github.com/zizmorcore/zizmor-pre-commit] already up to date!
+[https://github.com/rhysd/actionlint] updating v1.7.10 -> v1.7.12
+[https://github.com/adrienverge/yamllint] already up to date!
+[https://github.com/DavidAnson/markdownlint-cli2] already up to date!
+[https://github.com/streetsidesoftware/cspell-cli] already up to date!

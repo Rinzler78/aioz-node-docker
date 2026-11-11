@@ -82,7 +82,8 @@ runners `tests/run.sh` and `.github/scripts/tests/run.sh`) has its functions
 first, then an entry point guarded by `[[ "${BASH_SOURCE[0]}" == "$0" ]]`.
 `tests/scripts.bats` checks every `*.sh` file of the repository for the guard,
 and that sourcing it prints and runs nothing. The extension-less test doubles in
-`.github/scripts/tests/fakes` stand in for external commands (`gh`, `curl`):
+`.github/scripts/tests/fakes` stand in for external commands (`gh`, `curl`,
+`git`, `pre-commit`):
 they are only run through the `PATH`, so the rule does not apply to them.
 
 * `deploy.sh` — `deploy`: updates the system packages, installs or updates the
@@ -375,6 +376,17 @@ they source, see `.shellcheckrc`):
   SHA, with their version in a comment on the line above; every permission is
   commented; only the release job (`contents`) and the upstream watch job
   (`issues`) may write
+* Dependencies up to date (blocking) — `.github/scripts/deps-freshness.sh`, run
+  only when `.pre-commit-config.yaml`, a workflow or the script changes. It
+  fails when `pre-commit autoupdate` (run on a copy, the config is never
+  rewritten) would update a hook. In the workflows (`*.yml`, `*.yaml`), every
+  `uses:` but local (`./`) and Docker (`docker://`) actions must be pinned to a
+  commit SHA, with `# <action> vX.Y.Z` on the line above (a `uses` key in
+  another form, such as a flow mapping, fails); it fails when the SHA
+  is not the commit of that version, or that version is not the highest
+  `vX.Y.Z` tag of the action's repository. Fix: `pre-commit autoupdate`, or pin
+  the new release's SHA and comment. Needs the network (`git ls-remote`, no
+  token); tests: `.github/scripts/tests/run.sh` (Docker)
 * Spelling (English) — cspell, words in `cspell.json`: every text file
 * Misconfigurations — trivy config: Dockerfiles, run only when `Dockerfile`,
   `tests/Dockerfile` or `.trivyignore.yaml` changes

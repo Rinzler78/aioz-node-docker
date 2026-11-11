@@ -1,0 +1,20 @@
+#!/bin/bash
+# Fake pre-commit: `autoupdate --config <file> ...` prints $FAKE_AUTOUPDATE
+# (a captured output) and exits with $FAKE_AUTOUPDATE_RC, like the real one.
+# It also writes to the config it was given, as the real one does on update,
+# and logs that path to $FAKE_GIT_DIR/autoupdate-config, and the names of the
+# GIT_ variables it received to $FAKE_GIT_DIR/autoupdate-env.
+if [ "$1" != "autoupdate" ]; then
+    echo "fake pre-commit: unexpected call: $*" >&2
+    exit 2
+fi
+config=""
+while [ $# -gt 0 ]; do
+    [ "$1" = "--config" ] && config="$2" && shift
+    shift
+done
+echo "$config" > "$FAKE_GIT_DIR/autoupdate-config"
+env | sed -n 's/^\(GIT_[A-Za-z0-9_]*\)=.*/\1/p' | sort > "$FAKE_GIT_DIR/autoupdate-env"
+[ -n "$config" ] && echo "# rewritten by autoupdate" >> "$config"
+cat "$FAKE_AUTOUPDATE"
+exit "${FAKE_AUTOUPDATE_RC:-0}"
