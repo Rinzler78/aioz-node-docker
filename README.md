@@ -370,6 +370,9 @@ they source, see `.shellcheckrc`):
 * Linters and format — shellcheck, shfmt (style in `.editorconfig`), hadolint,
   yamllint (`.yamllint.yaml`), actionlint, markdownlint: shell scripts, bats
   tests, Dockerfiles, YAML, workflows, Markdown
+* Workflow security — zizmor: GitHub workflows. Actions are pinned to a commit
+  SHA, with their version in a comment on the line above; every permission is
+  commented; the release job alone may write
 * Spelling (English) — cspell, words in `cspell.json`: every text file
 * Misconfigurations — trivy config: Dockerfiles, run only when `Dockerfile`,
   `tests/Dockerfile` or `.trivyignore.yaml` changes
