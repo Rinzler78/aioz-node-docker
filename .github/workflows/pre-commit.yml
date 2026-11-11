@@ -1,0 +1,67 @@
+---
+name: pre-commit
+
+# The hooks of .pre-commit-config.yaml, as on a developer machine: on a pull
+# request, on the files it changes; after a merge into develop or master, on
+# every file (the full pass that catches collisions between pull requests).
+on:
+  pull_request:
+  push:
+    branches:
+      - develop
+      - master
+
+permissions:
+  contents: read  # checkout
+
+# One run per pull request or branch; a newer push to a pull request cancels
+# the older run, a run on develop or master is never cut short.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  pre-commit:
+    name: Run the pre-commit hooks
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      # actions/checkout v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          fetch-depth: 0  # the base of the pull request, for --from-ref
+
+      # Trivy and hadolint are system hooks: pre-commit does not install them.
+      # Latest releases on purpose, like the rolling alpine:latest base of the
+      # image (see README): the tool is not pinned, the action is.
+      # aquasecurity/setup-trivy v0.3.1
+      - uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567
+        with:
+          version: latest  # zizmor: ignore[unpinned-tools]
+
+      - name: Install hadolint and pre-commit
+        run: |
+          set -euo pipefail
+          url=https://github.com/hadolint/hadolint/releases/latest/download
+          bin=hadolint-linux-x86_64
+          cd "$RUNNER_TEMP"
+          curl -fsSL -o "$bin" "$url/$bin"
+          curl -fsSL -o checksums.sha256 "$url/checksums.sha256"
+          grep " \*$bin\$" checksums.sha256 | sha256sum -c -
+          mkdir -p "$HOME/.local/bin"
+          install -m 755 "$bin" "$HOME/.local/bin/hadolint"
+          pipx install pre-commit
+          hadolint --version
+          trivy --version
+          pre-commit --version
+
+      - name: pre-commit run
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            pre-commit run --show-diff-on-failure --color always \
+              --from-ref "origin/$GITHUB_BASE_REF" --to-ref HEAD
+          else
+            pre-commit run --show-diff-on-failure --color always --all-files
+          fi
