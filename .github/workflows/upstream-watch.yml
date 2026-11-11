@@ -37,7 +37,7 @@ jobs:
         run: .github/scripts/tests/run.sh
 
   watch:
-    name: Watch upstream releases
+    name: Watch the upstream hub and CLI
     if: github.event_name != 'pull_request'
     needs: test
     runs-on: ubuntu-latest
