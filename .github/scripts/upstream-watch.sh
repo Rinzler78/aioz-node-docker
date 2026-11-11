@@ -14,17 +14,6 @@ HUB_URLS="${HUB_URLS:-https://main-hub.aioz.network/ https://delivery-main-hub.a
 CONTROL_URL="${CONTROL_URL:-https://wallet.aioz.network/}"
 TRACKING_TITLE="${TRACKING_TITLE:-AIOZ upstream watch}"
 
-# GNU date (runner), BSD date (local macOS run). An empty window would report
-# the whole history as new, so stop instead.
-since=$(date -u -d "$WINDOW_HOURS hours ago" +%Y-%m-%dT%H:%M:%SZ 2> /dev/null ||
-    date -u -v-"${WINDOW_HOURS}"H +%Y-%m-%dT%H:%M:%SZ 2> /dev/null)
-if [ -z "$since" ]; then
-    echo "ERROR: cannot compute the start of the $WINDOW_HOURS hours window" >&2
-    exit 1
-fi
-changes=()
-report=""
-
 http_code() {
     curl -s -o /dev/null -m 20 -w '%{http_code}' "$1"
 }
@@ -40,7 +29,7 @@ hub_back() {
     [ "$1" != "000" ] && [[ ! "$1" =~ ^52[0-9]$ ]]
 }
 
-# gh api; on error, logs it and returns 1. Callers must `|| exit 1`: an API
+# gh api; on error, logs it and returns 1. Callers must `|| return 1`: an API
 # error is not an upstream change. gh prints the error JSON on stdout.
 api() {
     local out
@@ -51,59 +40,75 @@ api() {
     printf '%s\n' "$out"
 }
 
-# 1. Hub. Only trusted when the control URL answers (our network is fine).
-control=$(http_code "$CONTROL_URL")
-hub_lines=""
-for url in $HUB_URLS; do
-    code=$(http_code "$url")
-    hub_lines+="- \`$url\`: $code"$'\n'
-    if answers "$control" && hub_back "$code"; then
-        changes+=("hub")
+upstream_watch() {
+    local since changes=() report="" control hub_lines="" url code release tag
+    local state comments commits body issue
+    # GNU date (runner), BSD date (local macOS run). An empty window would report
+    # the whole history as new, so stop instead.
+    since=$(date -u -d "$WINDOW_HOURS hours ago" +%Y-%m-%dT%H:%M:%SZ 2> /dev/null ||
+        date -u -v-"${WINDOW_HOURS}"H +%Y-%m-%dT%H:%M:%SZ 2> /dev/null)
+    if [ -z "$since" ]; then
+        echo "ERROR: cannot compute the start of the $WINDOW_HOURS hours window" >&2
+        return 1
     fi
-done
-report+="### Hub (control \`$CONTROL_URL\`: $control)"$'\n'"$hub_lines"
-answers "$control" || report+="Control URL not answering: hub result ignored."$'\n'
 
-# 2. Latest release (one call: tag and page).
-release=$(api "repos/$UPSTREAM_REPO/releases/latest" --jq '"\(.tag_name) \(.html_url)"') || exit 1
-tag="${release%% *}"
-report+=$'\n'"### Latest release: $tag (known: $KNOWN_TAG)"$'\n'
-if [ "$tag" != "$KNOWN_TAG" ]; then
-    changes+=("release")
-    report+="${release#* }"$'\n'
-fi
+    # 1. Hub. Only trusted when the control URL answers (our network is fine).
+    control=$(http_code "$CONTROL_URL")
+    for url in $HUB_URLS; do
+        code=$(http_code "$url")
+        hub_lines+="- \`$url\`: $code"$'\n'
+        if answers "$control" && hub_back "$code"; then
+            changes+=("hub")
+        fi
+    done
+    report+="### Hub (control \`$CONTROL_URL\`: $control)"$'\n'"$hub_lines"
+    answers "$control" || report+="Control URL not answering: hub result ignored."$'\n'
 
-# 3. Upstream issue and repository activity since the last window.
-# Mentions are broken (zero-width space after @) so quoting a comment does not
-# notify its author.
-state=$(api "repos/$UPSTREAM_REPO/issues/$WATCH_ISSUE" --jq '.state') || exit 1
-comments=$(api "repos/$UPSTREAM_REPO/issues/$WATCH_ISSUE/comments" --paginate \
-    --jq ".[] | select(.created_at > \"$since\") | \"- \(.user.login), \(.created_at): \(.body | split(\"\n\")[0] | .[0:200] | gsub(\"@\"; \"@​\")) (\(.html_url))\"") || exit 1
-commits=$(api "repos/$UPSTREAM_REPO/commits?since=$since" --paginate \
-    --jq '.[] | "- \(.commit.author.date) \(.commit.message | split("\n")[0] | gsub("@"; "@​")) (\(.html_url))"') || exit 1
+    # 2. Latest release (one call: tag and page).
+    release=$(api "repos/$UPSTREAM_REPO/releases/latest" --jq '"\(.tag_name) \(.html_url)"') || return 1
+    tag="${release%% *}"
+    report+=$'\n'"### Latest release: $tag (known: $KNOWN_TAG)"$'\n'
+    if [ "$tag" != "$KNOWN_TAG" ]; then
+        changes+=("release")
+        report+="${release#* }"$'\n'
+    fi
 
-report+=$'\n'"### Issue $UPSTREAM_REPO#$WATCH_ISSUE: $state"$'\n'
-[ -n "$comments" ] && report+="New comments since $since:"$'\n'"$comments"$'\n'
-[ "$state" != "open" ] && changes+=("issue-state")
-[ -n "$comments" ] && changes+=("issue-comments")
+    # 3. Upstream issue and repository activity since the last window.
+    # Mentions are broken (zero-width space after @) so quoting a comment does not
+    # notify its author.
+    state=$(api "repos/$UPSTREAM_REPO/issues/$WATCH_ISSUE" --jq '.state') || return 1
+    comments=$(api "repos/$UPSTREAM_REPO/issues/$WATCH_ISSUE/comments" --paginate \
+        --jq ".[] | select(.created_at > \"$since\") | \"- \(.user.login), \(.created_at): \(.body | split(\"\n\")[0] | .[0:200] | gsub(\"@\"; \"@​\")) (\(.html_url))\"") || return 1
+    commits=$(api "repos/$UPSTREAM_REPO/commits?since=$since" --paginate \
+        --jq '.[] | "- \(.commit.author.date) \(.commit.message | split("\n")[0] | gsub("@"; "@​")) (\(.html_url))"') || return 1
 
-report+=$'\n'"### Commits since $since"$'\n'"${commits:-none}"$'\n'
-[ -n "$commits" ] && changes+=("commits")
+    report+=$'\n'"### Issue $UPSTREAM_REPO#$WATCH_ISSUE: $state"$'\n'
+    [ -n "$comments" ] && report+="New comments since $since:"$'\n'"$comments"$'\n'
+    [ "$state" != "open" ] && changes+=("issue-state")
+    [ -n "$comments" ] && changes+=("issue-comments")
 
-if [ ${#changes[@]} -eq 0 ]; then
-    echo "No change."
-    echo "$report"
-    exit 0
-fi
+    report+=$'\n'"### Commits since $since"$'\n'"${commits:-none}"$'\n'
+    [ -n "$commits" ] && changes+=("commits")
 
-body="Upstream change detected: $(printf '%s\n' "${changes[@]}" | sort -u | paste -sd, -)"$'\n\n'"$report"$'\n'"Next step: re-run the hotfix spikes (start path wrapper vs aioz-io, health check, quick_test)."
-echo "$body"
+    if [ ${#changes[@]} -eq 0 ]; then
+        echo "No change."
+        echo "$report"
+        return 0
+    fi
 
-[ "${DRY_RUN:-0}" = "1" ] && exit 0
+    body="Upstream change detected: $(printf '%s\n' "${changes[@]}" | sort -u | paste -sd, -)"$'\n\n'"$report"$'\n'"Next step: re-run the hotfix spikes (start path wrapper vs aioz-io, health check, quick_test)."
+    echo "$body"
 
-issue=$(gh issue list --state open --search "\"$TRACKING_TITLE\" in:title" --json number --jq '.[0].number') || exit 1
-if [ -z "$issue" ]; then
-    gh issue create --title "$TRACKING_TITLE" --body "$body"
-else
-    gh issue comment "$issue" --body "$body"
+    [ "${DRY_RUN:-0}" = "1" ] && return 0
+
+    issue=$(gh issue list --state open --search "\"$TRACKING_TITLE\" in:title" --json number --jq '.[0].number') || return 1
+    if [ -z "$issue" ]; then
+        gh issue create --title "$TRACKING_TITLE" --body "$body"
+    else
+        gh issue comment "$issue" --body "$body"
+    fi
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    upstream_watch "$@"
 fi

@@ -8,11 +8,14 @@ setup() {
     setup_node_env
 }
 
+teardown() {
+    [ ! -e "$FAKE_STATE/stats.pid" ] || kill "$(cat "$FAKE_STATE/stats.pid")" 2> /dev/null || true
+}
+
 @test "starts the installed node when the update fails" {
     make_fake_node "$BIN_DIR/$BINARY_NAME" "1.1.0"
-    export RUN_TIMEOUT=3
 
-    run start.sh
+    RUN_TIMEOUT=3 run start.sh
 
     [ "$status" -eq 143 ] # stopped by RUN_TIMEOUT (busybox timeout: SIGTERM)
     [ -e "$FAKE_STATE/started" ]
@@ -20,9 +23,8 @@ setup() {
 }
 
 @test "exits 1 without starting when no binary is available" {
-    export RUN_TIMEOUT=3
 
-    run start.sh
+    RUN_TIMEOUT=3 run start.sh
 
     [ "$status" -eq 1 ]
     [ ! -e "$FAKE_STATE/started" ]
@@ -31,10 +33,9 @@ setup() {
 @test "stops the node after 3 consecutive failed health checks" {
     make_fake_node "$BIN_DIR/$BINARY_NAME" "1.1.0"
     touch "$FAKE_STATE/unhealthy"
-    export RUN_TIMEOUT=120
     SECONDS=0
 
-    run start.sh
+    RUN_TIMEOUT=120 run start.sh
 
     [ "$status" -ne 0 ]
     [ -e "$FAKE_STATE/started" ]
@@ -45,10 +46,9 @@ setup() {
 
 @test "keeps a healthy node running until RUN_TIMEOUT" {
     make_fake_node "$BIN_DIR/$BINARY_NAME" "1.1.0"
-    export RUN_TIMEOUT=5
     SECONDS=0
 
-    run start.sh
+    RUN_TIMEOUT=5 run start.sh
 
     [ "$status" -eq 143 ]
     [ -e "$FAKE_STATE/started" ]
@@ -59,21 +59,52 @@ setup() {
 @test "counts a health check that hangs past HEALTH_TIMEOUT as failed" {
     make_fake_node "$BIN_DIR/$BINARY_NAME" "1.1.0"
     touch "$FAKE_STATE/hang"
-    export RUN_TIMEOUT=120 HEALTH_TIMEOUT=1
     SECONDS=0
 
-    run start.sh
+    # Output to a file: `run` would wait for a query left running on its pipe.
+    RUN_TIMEOUT=120 HEALTH_TIMEOUT=1 run sh -c 'start.sh > "$FAKE_STATE/start.log" 2>&1'
 
     [ "$status" -ne 0 ]
-    [[ "$output" == *"health check failed (3/3)"* ]]
+    [[ "$(cat "$FAKE_STATE/start.log")" == *"health check failed (3/3)"* ]]
     [ "$SECONDS" -lt 60 ]
+    # The check got HEALTH_TIMEOUT: its query stopped with it (no orphan).
+    sleep 1
+    run kill -0 "$(cat "$FAKE_STATE/stats.pid")"
+    [ "$status" -ne 0 ]
 }
 
-@test "checks the rewards of the configured wallet on the local node" {
+@test "refuses a bad timing before deploying: not a whole number, a leading zero, or 0" {
+    local name value
     make_fake_node "$BIN_DIR/$BINARY_NAME" "1.1.0"
-    export RUN_TIMEOUT=3
 
-    run start.sh
+    # busybox `timeout 0s` kills at once, and `30ss` is refused: every
+    # check would fail, or the node would stop at once. Only the start
+    # period may be 0.
+    for name in RUN_TIMEOUT HEALTH_START_PERIOD HEALTH_INTERVAL HEALTH_RETRIES HEALTH_TIMEOUT; do
+        for value in 30s 08 0 -1 99999999999999999999; do
+            [ "$name$value" != HEALTH_START_PERIOD0 ] || continue
+            run env RUN_TIMEOUT=3 "$name=$value" start.sh
 
-    [ "$(cat "$FAKE_STATE/reward.args")" = "reward balance --priv-key-file $PRIV_KEY_FILE --endpoint http://127.0.0.1:1317" ]
+            [ "$status" -eq 1 ]
+            [[ "$output" == *"ERROR: $name"*"$value"* ]]
+            [[ "$output" != *"[: "* ]] # no bash error: refused before arithmetic
+            [ ! -e "$FAKE_STATE/started" ]
+        done
+    done
+}
+
+@test "starts aioz-io on the node data and wallet, listening outside the container" {
+    make_fake_node "$BIN_DIR/$BINARY_NAME" "1.1.0"
+
+    RUN_TIMEOUT=3 run start.sh
+
+    [ "$(cat "$FAKE_STATE/start.args")" = "start --home $NODEDATA_FOLDER --priv-key-file $PRIV_KEY_FILE --laddr tcp://0.0.0.0:1317 --no-auto-update" ]
+}
+
+@test "checks the local node with aioz-io stats" {
+    make_fake_node "$BIN_DIR/$BINARY_NAME" "1.1.0"
+
+    RUN_TIMEOUT=3 run start.sh
+
+    [ "$(cat "$FAKE_STATE/stats.args")" = "stats --endpoint http://127.0.0.1:1317" ]
 }

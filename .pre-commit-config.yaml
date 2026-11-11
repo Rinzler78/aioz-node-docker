@@ -1,0 +1,77 @@
+---
+# Each hook runs on the changed files only. Trivy runs only when an image input
+# changes. Install: pre-commit install. Full pass: pre-commit run --all-files.
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-added-large-files
+      - id: check-executables-have-shebangs
+      - id: check-shebang-scripts-are-executable
+      - id: detect-private-key
+
+  # Linter and formatter: shell scripts, bats tests and test fakes.
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.11.0.1
+    hooks:
+      - id: shellcheck
+  - repo: https://github.com/scop/pre-commit-shfmt
+    rev: v3.14.1-1
+    hooks:
+      - id: shfmt  # style from .editorconfig
+        args: [-w]
+
+  # Linters: Dockerfiles, YAML, GitHub workflows and Markdown.
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.15.1
+    hooks:
+      - id: hadolint
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.12
+    hooks:
+      - id: actionlint
+
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.38.0
+    hooks:
+      - id: yamllint
+  - repo: https://github.com/DavidAnson/markdownlint-cli2
+    rev: v0.24.0
+    hooks:
+      - id: markdownlint-cli2
+
+  # Spelling: English only, every text file.
+  - repo: https://github.com/streetsidesoftware/cspell-cli
+    rev: v10.4.0
+    hooks:
+      - id: cspell
+        # The hook's own args plus --show-context; --files must stay last.
+        args:
+          - --no-must-find-files
+          - --no-progress
+          - --no-summary
+          - --gitignore
+          - --show-context
+          - --files
+
+  # Misconfigurations and vulnerabilities of the images, only when one of
+  # their inputs changes.
+  - repo: local
+    hooks:
+      - id: trivy-config
+        name: trivy config (Dockerfiles)
+        entry: trivy config
+        args: [--quiet, --exit-code, "1", --ignorefile, .trivyignore.yaml, .]
+        language: system
+        files: (^|/)Dockerfile$|^\.trivyignore\.yaml$
+        pass_filenames: false
+      - id: trivy-image
+        name: trivy image (vulnerabilities, AIOZ binaries skipped)
+        entry: .github/scripts/image-vuln-scan.sh
+        language: system
+        files: ^Dockerfile$|^tools/|^\.github/scripts/image-vuln-scan\.sh$
+        pass_filenames: false

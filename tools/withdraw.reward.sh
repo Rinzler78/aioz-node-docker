@@ -1,11 +1,14 @@
 #!/bin/bash
-# Withdraw the node rewards (queried on ENDPOINT) to WITHDRAW_ADDRESS_HEX once
-# the balance exceeds WITHDRAW_MIN_VALUE (attoaioz, a bc expression).
+# Withdraw the rewards of the wallet PRIV_KEY_FILE to WITHDRAW_ADDRESS_HEX once
+# the balance exceeds WITHDRAW_MIN_VALUE (attoaioz, a bc expression). aioz-io
+# (see node.io.sh) queries the network with the wallet key: no node endpoint.
 # Sourced by start-watching-reward.sh (withdraw_reward); runs once standalone.
 # Amounts are compared with bc: they exceed 64-bit integers above ~9.22 AIOZ.
-
-# Node to watch: the aioznode service of the compose file by default.
-ENDPOINT="${ENDPOINT:-http://aioznode:1317}"
+# Folder of this script, also when run by bare name (bash withdraw.reward.sh).
+TOOLS_DIR="${BASH_SOURCE[0]%/*}"
+[ "$TOOLS_DIR" != "${BASH_SOURCE[0]}" ] || TOOLS_DIR=.
+# shellcheck source=tools/node.io.sh
+source "$TOOLS_DIR/node.io.sh"
 
 # The whole balance goes to this address at every withdraw: refuse a typo.
 check_withdraw_address() {
@@ -27,14 +30,17 @@ to_token() {
 withdraw_reward() {
     local reward balance denom minimum remaining amount field
     check_withdraw_address || return 1
-    if ! command -v "$BINARY_NAME" > /dev/null; then
+    if [ ! -x "$NODE_IO" ]; then
         echo "Node is not installed"
         return 1
     fi
 
-    if ! reward=$("$BINARY_NAME" reward balance --endpoint "$ENDPOINT") ||
-        ! jq -e '.balance' <<< "$reward" > /dev/null 2>&1; then
-        echo "ERROR: cannot read the rewards on $ENDPOINT" >&2
+    # aioz-io prints its JSON on one line, but may log on stdout around it
+    # (exit code 0): keep the last line that is JSON with a balance.
+    if ! reward=$("$NODE_IO" reward balance --priv-key-file "$PRIV_KEY_FILE") ||
+        ! reward=$(jq -R -n -e '[inputs | fromjson? | select(type == "object" and has("balance"))] | last' \
+            <<< "$reward" 2> /dev/null); then
+        echo "ERROR: cannot read the rewards of $PRIV_KEY_FILE" >&2
         return 1
     fi
     balance=$(amount_of balance "$reward")
@@ -42,7 +48,7 @@ withdraw_reward() {
     minimum=$(echo "$WITHDRAW_MIN_VALUE" | bc -l)
     remaining=$(echo "$minimum - $balance" | bc)
 
-    echo "Node rewards status ($ENDPOINT) : "
+    echo "Node rewards status : "
     for field in Balance:balance Storage:storage_earned Delivery:delivery_earned Withdraw:withdraw; do
         amount=$(amount_of "${field#*:}" "$reward")
         echo "=> ${field%%:*} : $amount $TOKEN_DENOM => $(to_token "$amount") $TOKEN_NAME"
@@ -53,9 +59,12 @@ withdraw_reward() {
     echo " "
 
     if [ "$(echo "$balance > $minimum" | bc)" = "1" ]; then
-        echo "Try to withdraw... $BINARY_NAME reward withdraw --endpoint $ENDPOINT --address $WITHDRAW_ADDRESS_HEX --amount $balance$denom --priv-key-file $PRIV_KEY_FILE"
-        "$BINARY_NAME" reward withdraw --endpoint "$ENDPOINT" --address "$WITHDRAW_ADDRESS_HEX" \
-            --amount "$balance$denom" --priv-key-file "$PRIV_KEY_FILE"
+        echo "Try to withdraw... ${NODE_IO##*/} reward withdraw --address $WITHDRAW_ADDRESS_HEX --amount $balance$denom --priv-key-file $PRIV_KEY_FILE"
+        if ! "$NODE_IO" reward withdraw --address "$WITHDRAW_ADDRESS_HEX" \
+            --amount "$balance$denom" --priv-key-file "$PRIV_KEY_FILE"; then
+            echo "ERROR: withdraw of $balance$denom failed" >&2
+            return 1
+        fi
     fi
 }
 

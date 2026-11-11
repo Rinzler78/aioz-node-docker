@@ -1,0 +1,3 @@
+# Follow the scripts named by `source` (and their shellcheck source= directives),
+# also when pre-commit passes only the changed file.
+external-sources=true
