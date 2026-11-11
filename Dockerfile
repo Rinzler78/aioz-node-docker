@@ -18,31 +18,30 @@ ENV BINARY_NAME aioznode
 ## Tools
 COPY tools/*.* $TOOLS_DIRECTORY/
 
-## Node data
-VOLUME ["$NODEDATA_FOLDER"]
-
 # ports
 EXPOSE 1317
 
 ## Install deps and the node
 # Unpinned packages on purpose: Alpine keeps only the latest version of a package
 # in a branch, and tools/deploy.sh runs apk upgrade at every start anyway.
-# hadolint ignore=DL3018
 RUN chmod +x $TOOLS_DIRECTORY/*.sh \
     && mkdir -p $NODEDATA_FOLDER \
     && xargs apk add --no-cache < $TOOLS_DIRECTORY/deps.txt \
     && node.install.sh
+
+## Node data
+VOLUME ["$NODEDATA_FOLDER"]
 
 # Running timeout : Default 24H
 ENV RUN_TIMEOUT 86400
 
 # Withdraw mode (command: start-watching-reward.sh).
 # WITHDRAW_ADDRESS_HEX has no default: the withdraw mode refuses to start without it.
+ENV CHECK_FREQ=60 \
+    WITHDRAW_MIN_VALUE=10^18
 # TOKEN_* describe the coin (name, denomination, decimals): they are not secrets.
 # hadolint ignore=DL3064 #trivy:ignore:DS-0031
-ENV CHECK_FREQ=60 \
-    WITHDRAW_MIN_VALUE=10^18 \
-    TOKEN_NAME=aioz \
+ENV TOKEN_NAME=aioz \
     TOKEN_DENOM=attoaioz \
     TOKEN_DECIMALS=10^18
 

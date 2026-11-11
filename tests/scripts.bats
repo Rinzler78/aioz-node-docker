@@ -12,10 +12,10 @@ setup() {
     export PATH="${PATH//$REPO_ROOT\/tools:/}"
 }
 
-@test "no tools script runs another repository script" {
+@test "no tools or helper script runs another repository script" {
     # Allowed: comments, source lines, messages (echo/printf text) and the
     # watchdog health check. Quoted calls ("$TOOLS_DIR/x.sh") are still caught.
-    offenders=$(for f in "$REPO_ROOT"/tools/*.sh; do
+    offenders=$(for f in "$REPO_ROOT"/tools/*.sh "$REPO_ROOT"/helper.docker.*.sh; do
         grep -vE '^\s*#' "$f" |
             sed -E 's/^\s*source "[^"]*"//; s/(echo|printf) "[^"]*"//g' |
             grep -E '[A-Za-z_.-]+\.sh' | grep -v 'node\.health\.sh' |

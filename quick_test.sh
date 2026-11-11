@@ -123,7 +123,7 @@ docker_run() {
     local run_timeout="$3"
     local ports_mapping=() mapping
     for mapping in $ports_list; do
-        ports_mapping+=(-p "$(echo "$mapping" | cut -d: -f1):$(echo "$mapping" | cut -d: -f2)")
+        ports_mapping+=(-p "$mapping")
     done
     echo "[INFO] Running Docker container..."
     echo "docker run \\

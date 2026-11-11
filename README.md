@@ -15,7 +15,8 @@
 [![Contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/Rinzler78/aioz-node-docker/issues)
 [![Made with Love](https://img.shields.io/badge/made%20with-%E2%9D%A4-red)](https://github.com/Rinzler78/aioz-node-docker)
 
-This repository allows you to build a Docker image containing all necessary components to run an AIOZ node in a fully automated and reproducible way.
+This repository allows you to build a Docker image containing all necessary
+components to run an AIOZ node in a fully automated and reproducible way.
 
 For more information about the AIOZ project, visit: <https://aioz.network/>
 
@@ -27,6 +28,7 @@ Official downloads and client installation: <https://aioz.network/aioz-node>
   * [Dockerfile](#dockerfile)
   * [Installed packages](#installed-packages)
   * [Build instructions](#build-instructions)
+  * [Tests](#tests)
   * [Before running](#before-running)
   * [Run instructions](#run-instructions)
   * [Public Docker image](#public-docker-image)
@@ -38,6 +40,7 @@ Official downloads and client installation: <https://aioz.network/aioz-node>
 * [Upstream watch](#upstream-watch)
 * [Support](#support)
 * [Contribution](#contribution)
+  * [Pre-commit hooks](#pre-commit-hooks)
 
 ---
 
@@ -47,7 +50,10 @@ Official downloads and client installation: <https://aioz.network/aioz-node>
 
 #### Base container
 
-This container is based on `alpine:latest` for a lightweight and secure environment. The base and the packages are not pinned on purpose: at every start the container upgrades its packages and installs the latest AIOZ CLI (see `tools/deploy.sh`), so the container runs as root.
+This container is based on `alpine:latest` for a lightweight and secure
+environment. The base and the packages are not pinned on purpose: at every start
+the container upgrades its packages and installs the latest AIOZ CLI (see
+`tools/deploy.sh`), so the container runs as root.
 
 #### Installed packages
 
@@ -63,35 +69,71 @@ The following packages are installed (see `tools/deps.txt`):
 
 #### Scripts and logic
 
-All logic is handled by scripts in the `tools/` directory. A script that needs another one **sources** it and calls its function, so a container start runs as one shell process (plus the CLI and system tools); every script still runs standalone. `tests/scripts.bats` enforces it: the only script run as its own process is `node.health.sh`, because the watchdog bounds it with `timeout`.
+All logic is handled by scripts in the `tools/` directory. A script that needs
+another one **sources** it and calls its function, so a container start runs as
+one shell process (plus the CLI and system tools); every script still runs
+standalone. `tests/scripts.bats` enforces it: the only script run as its own
+process is `node.health.sh`, because the watchdog bounds it with `timeout`.
 
-* `deploy.sh` — `deploy`: updates the system packages, installs or updates the CLI, configures the wallet, cleans the packages
-* `dist.sh` — `dist_update` / `dist_clean` (Alpine packages); standalone: `dist.sh update|clean`
-* `node.install.sh` — `node_install`: installs or updates the CLI from the `linux-amd64` asset of the latest [AIOZNetwork/aioz-depin-cli](https://github.com/AIOZNetwork/aioz-depin-cli) release (one GitHub API call), after checking the archive against the release `SHA256SUMS`. The update is skipped when the installed version is already the latest. If the update fails, the installed binary is kept and a `WARN` is logged; with no binary at all, the container exits with an error
-* `wallet.configure.sh` — `wallet_configure`: creates the wallet (`PRIV_KEY_FILE`) when it does not exist
-* `node.health.sh` — Health check of the watchdog: the node answers `reward balance` for the configured wallet
-* `node.version.sh` / `node.remoteVersion.sh` — Installed and latest release versions (used by `quick_test.sh`)
-* `version.lib.sh` — Version parsing, sourced by the scripts above (the CLI prints its version as JSON)
-* `git.releases.latest.sh` — Latest release JSON from the GitHub API (`GITHUB_TOKEN` when set), sourced by the scripts above; standalone: `git.releases.latest.sh <owner/repo>`
-* `start.sh` — Entrypoint script: runs deployment, starts the node, and stops it after 3 consecutive failed health checks (a check running past 30s fails) so that the restart policy restarts the container (and re-runs the update). Docker itself never restarts an unhealthy container
-* `start-watching-reward.sh` — Withdraw mode entrypoint: runs `deploy`, then every `CHECK_FREQ` seconds calls `withdraw_reward` (`withdraw.reward.sh`), which withdraws the whole balance to `WITHDRAW_ADDRESS_HEX` once it exceeds `WITHDRAW_MIN_VALUE`
+* `deploy.sh` — `deploy`: updates the system packages, installs or updates the
+  CLI, configures the wallet, cleans the packages
+* `dist.sh` — `dist_update` / `dist_clean` (Alpine packages); standalone:
+  `dist.sh update|clean`
+* `node.install.sh` — `node_install`: installs or updates the CLI from the
+  `linux-amd64` asset of the latest
+  [AIOZNetwork/aioz-depin-cli](https://github.com/AIOZNetwork/aioz-depin-cli)
+  release (one GitHub API call), after checking the archive against the release
+  `SHA256SUMS`. The update is skipped when the installed version is already the
+  latest. If the update fails, the installed binary is kept and a `WARN` is
+  logged; with no binary at all, the container exits with an error
+* `wallet.configure.sh` — `wallet_configure`: creates the wallet
+  (`PRIV_KEY_FILE`) when it does not exist
+* `node.health.sh` — Health check of the watchdog: the node answers `reward
+  balance` for the configured wallet
+* `node.version.sh` / `node.remoteVersion.sh` — Installed and latest release
+  versions (used by `quick_test.sh`)
+* `version.lib.sh` — Version parsing, sourced by the scripts above (the CLI
+  prints its version as JSON)
+* `git.releases.latest.sh` — Latest release JSON from the GitHub API
+  (`GITHUB_TOKEN` when set), sourced by the scripts above; standalone:
+  `git.releases.latest.sh <owner/repo>`
+* `start.sh` — Entrypoint script: runs deployment, starts the node, and stops it
+  after 3 consecutive failed health checks (a check running past 30s fails) so
+  that the restart policy restarts the container (and re-runs the update).
+  Docker itself never restarts an unhealthy container
+* `start-watching-reward.sh` — Withdraw mode entrypoint: runs `deploy`, then
+  every `CHECK_FREQ` seconds calls `withdraw_reward` (`withdraw.reward.sh`),
+  which withdraws the whole balance to `WITHDRAW_ADDRESS_HEX` once it exceeds
+  `WITHDRAW_MIN_VALUE`
 
 #### Environment variables
 
-| Variable | Default | Purpose |
-|---|---|---|
-| `GITHUB_TOKEN` | unset | Optional. Authenticates the release lookup (5000 instead of 60 calls per hour per IP) |
-| `RUN_TIMEOUT` | `86400` | Seconds before the node is stopped, so the container restarts and updates |
-| `HEALTH_START_PERIOD` / `HEALTH_INTERVAL` / `HEALTH_TIMEOUT` / `HEALTH_RETRIES` | `300` / `60` / `30` / `3` | Watchdog timings. The image `HEALTHCHECK` still runs the former check (`reward balance`, 1s interval); it will be aligned once the v1.2.6 CLI interface is confirmed, since its `start` is broken upstream ([aioz-depin-cli#10](https://github.com/AIOZNetwork/aioz-depin-cli/issues/10)) |
-| `ENDPOINT` | `http://127.0.0.1:1317` (node mode), `http://aioznode:1317` (withdraw mode) | Node queried by `node.health.sh` and the withdraw mode |
-| `WITHDRAW_ADDRESS_HEX` | **required** in withdraw mode | `0x` address (40 hex digits) that receives the whole balance at each withdraw. The withdraw mode refuses to start without a valid one |
-| `WITHDRAW_MIN_VALUE` | `10^18` (1 AIOZ) | Balance, in attoaioz, above which the rewards are withdrawn |
-| `CHECK_FREQ` | `60` | Seconds between two withdraw checks |
-| `TOKEN_NAME` / `TOKEN_DENOM` / `TOKEN_DECIMALS` | `aioz` / `attoaioz` / `10^18` | Units shown in the withdraw mode logs |
+* `GITHUB_TOKEN` (default: unset) — Optional. Authenticates the release lookup
+  (5000 instead of 60 calls per hour per IP)
+* `RUN_TIMEOUT` (default: `86400`) — Seconds before the node is stopped, so the
+  container restarts and updates
+* `HEALTH_START_PERIOD` / `HEALTH_INTERVAL` / `HEALTH_TIMEOUT` /
+  `HEALTH_RETRIES` (defaults: `300` / `60` / `30` / `3`) — Watchdog timings. The
+  image `HEALTHCHECK` still runs the former check (`reward balance`, 1s
+  interval); it will be aligned once the v1.2.6 CLI interface is confirmed,
+  since its `start` is broken upstream
+  ([aioz-depin-cli#10](https://github.com/AIOZNetwork/aioz-depin-cli/issues/10))
+* `ENDPOINT` (default: `http://127.0.0.1:1317` in node mode,
+  `http://aioznode:1317` in withdraw mode) — Node queried by `node.health.sh`
+  and the withdraw mode
+* `WITHDRAW_ADDRESS_HEX` (**required** in withdraw mode) — `0x` address (40 hex
+  digits) that receives the whole balance at each withdraw. The withdraw mode
+  refuses to start without a valid one
+* `WITHDRAW_MIN_VALUE` (default: `10^18`, 1 AIOZ) — Balance, in attoaioz, above
+  which the rewards are withdrawn
+* `CHECK_FREQ` (default: `60`) — Seconds between two withdraw checks
+* `TOKEN_NAME` / `TOKEN_DENOM` / `TOKEN_DECIMALS` (defaults: `aioz` / `attoaioz`
+  / `10^18`) — Units shown in the withdraw mode logs
 
 #### Volumes
 
-A persistent data directory is created at `/nodedata` and must be mounted to a directory on your Docker host.
+A persistent data directory is created at `/nodedata` and must be mounted to a
+directory on your Docker host.
 
 #### Ports
 
@@ -99,11 +141,24 @@ A persistent data directory is created at `/nodedata` and must be mounted to a d
 
 #### Entrypoint
 
-The container starts with `start.sh`, which ensures the node is up-to-date and launches it with the correct configuration.
+The container starts with `start.sh`, which ensures the node is up-to-date and
+launches it with the correct configuration.
 
-The same image runs the withdraw mode when started with the command `start-watching-reward.sh` (see `docker-compose.yml`, which runs both, with the node health check aligned on the watchdog and the node data mounted read-only in the withdraw container). With a plain `docker run`, disable the image health check for this mode (`--no-healthcheck`): it targets a local node.
+The same image runs the withdraw mode when started with the command
+`start-watching-reward.sh` (see `docker-compose.yml`, which runs both, with the
+node health check aligned on the watchdog and the node data mounted read-only in
+the withdraw container). With a plain `docker run`, disable the image health
+check for this mode (`--no-healthcheck`): it targets a local node.
 
-**Known limitation:** the withdraw mode queries the node with `reward balance --endpoint` / `reward withdraw --endpoint`. The v1.2.6 CLI wrapper has no `--endpoint` (only `--priv-key-file`) and its `start` is broken upstream ([aioz-depin-cli#10](https://github.com/AIOZNetwork/aioz-depin-cli/issues/10)), so this mode cannot work until the upstream CLI is fixed; the scripts are kept as they ran with the previous CLI. For the same reason, in `docker-compose.yml` the node never becomes healthy (its health check passes `--endpoint`), so the withdraw service does not start; a failed balance query is logged as an `ERROR` and nothing is withdrawn.
+**Known limitation:** the withdraw mode queries the node with `reward balance
+--endpoint` / `reward withdraw --endpoint`. The v1.2.6 CLI wrapper has no
+`--endpoint` (only `--priv-key-file`) and its `start` is broken upstream
+([aioz-depin-cli#10](https://github.com/AIOZNetwork/aioz-depin-cli/issues/10)),
+so this mode cannot work until the upstream CLI is fixed; the scripts are kept
+as they ran with the previous CLI. For the same reason, in `docker-compose.yml`
+the node never becomes healthy (its health check passes `--endpoint`), so the
+withdraw service does not start; a failed balance query is logged as an `ERROR`
+and nothing is withdrawn.
 
 ---
 
@@ -116,8 +171,9 @@ docker build -t aioznode .
 ### Tests
 
 ```sh
-tests/run.sh      # bats unit tests, in an Alpine container, against a fake GitHub
-./quick_test.sh   # builds the image, waits for healthy, checks the installed version is the latest release
+tests/run.sh      # bats unit tests in an Alpine container, fake GitHub
+./quick_test.sh   # builds the image, waits for healthy,
+                  # checks the installed version is the latest release
 ```
 
 ---
@@ -126,7 +182,8 @@ tests/run.sh      # bats unit tests, in an Alpine container, against a fake GitH
 
 #### nodedata directory
 
-Create a directory on your Docker host to be mounted as the node's data directory. Example:
+Create a directory on your Docker host to be mounted as the node's data
+directory. Example:
 
 ```sh
 mkdir -p ~/MyDockers/aioznode/nodedata
@@ -134,7 +191,8 @@ mkdir -p ~/MyDockers/aioznode/nodedata
 
 #### Private key configuration
 
-Place your `privkey.json` file in the data directory you will mount (see below). This is required for the node to start.
+Place your `privkey.json` file in the data directory you will mount (see below).
+This is required for the node to start.
 
 ---
 
@@ -151,22 +209,27 @@ docker run -d \
 ```
 
 Where:
+
 * `~/MyDockers/aioznode/nodedata` is your persistent data directory on the host
 * `/nodedata` is the internal container path
 
-The node will automatically check for updates and start with the provided private key.
+The node will automatically check for updates and start with the provided
+private key.
 
 To run the node and the automatic reward withdrawal together:
 
 ```sh
-WITHDRAW_ADDRESS_HEX=0xYourAddress NODEDATA_PATH=~/MyDockers/aioznode/nodedata docker compose up -d
+WITHDRAW_ADDRESS_HEX=0xYourAddress \
+  NODEDATA_PATH=~/MyDockers/aioznode/nodedata \
+  docker compose up -d
 ```
 
 ---
 
 ### Public Docker image
 
-A public image may be available in the future. For now, build locally as described above.
+A public image may be available in the future. For now, build locally as
+described above.
 
 ---
 
@@ -174,7 +237,8 @@ A public image may be available in the future. For now, build locally as describ
 
 ### Install Docker
 
-If not already installed, go to the Package Center, search for Docker, and install it.
+If not already installed, go to the Package Center, search for Docker, and
+install it.
 
 ### Search aioznode image
 
@@ -182,39 +246,58 @@ In the Docker GUI, search for your built image or import it if needed.
 
 ### Create nodedata directory
 
-Using File Station, create a directory on your NAS to be used as the node's data directory. Example: `docker/aioznode/nodedata`
+Using File Station, create a directory on your NAS to be used as the node's data
+directory. Example: `docker/aioznode/nodedata`
 
 ### Configure image and start container
 
 1. In Docker GUI, go to Images, select your `aioznode` image, and click Launch.
 2. Name your container (e.g., `aioznode`).
-3. (Optional) Enable resource limits: set CPU priority to high, memory limit to 1024 MB.
+3. (Optional) Enable resource limits: set CPU priority to high, memory limit to
+   1024 MB.
 4. Go to Advanced Settings and enable auto-restart.
-5. In Volumes, add the directory you created (e.g., `docker/aioznode/nodedata`) and mount it to `/nodedata` inside the container.
+5. In Volumes, add the directory you created (e.g., `docker/aioznode/nodedata`)
+   and mount it to `/nodedata` inside the container.
 6. Validate and launch the container.
 
 ---
 
 ## Upstream watch
 
-The AIOZ DePIN hub is down (Cloudflare 521) and the CLI v1.2.6 `start` is broken upstream ([AIOZNetwork/aioz-depin-cli#10](https://github.com/AIOZNetwork/aioz-depin-cli/issues/10)). The workflow `.github/workflows/upstream-watch.yml` runs `.github/scripts/upstream-watch.sh` every day at 08:00 UTC (and on demand from the Actions tab) to tell when the node can be tried again.
+The AIOZ DePIN hub is down (Cloudflare 521) and the CLI v1.2.6 `start` is broken
+upstream
+([AIOZNetwork/aioz-depin-cli#10](https://github.com/AIOZNetwork/aioz-depin-cli/issues/10)).
+The workflow `.github/workflows/upstream-watch.yml` runs
+`.github/scripts/upstream-watch.sh` every day at 08:00 UTC (and on demand from
+the Actions tab) to tell when the node can be tried again.
 
 What counts as a change:
 
-* a hub URL no longer returns Cloudflare 52x (origin down) nor 000 (no answer), while the control URL `https://wallet.aioz.network/` answers 2xx-4xx; when the control URL does not answer, the hub result is ignored;
+* a hub URL no longer returns Cloudflare 52x (origin down) nor 000 (no answer),
+  while the control URL `https://wallet.aioz.network/` answers 2xx-4xx; when the
+  control URL does not answer, the hub result is ignored;
 * the latest upstream release is not `KNOWN_TAG` (`v1.2.6`);
-* the upstream issue #10 is no longer open, or got comments in the last 25 hours;
+* the upstream issue #10 is no longer open, or got comments in the last 25
+  hours;
 * upstream commits in the last 25 hours.
 
-On change, the script comments on the open issue titled **AIOZ upstream watch** of this repository (and creates it if missing). Mentions in quoted comments are neutralized so their authors are not notified. Nothing is posted when nothing changed.
+On change, the script comments on the open issue titled **AIOZ upstream watch**
+of this repository (and creates it if missing). Mentions in quoted comments are
+neutralized so their authors are not notified. Nothing is posted when nothing
+changed.
 
-A GitHub API error (rate limit, bad token, outage) fails the run (red in Actions) and posts nothing, so a broken watch never looks like an upstream change.
+A GitHub API error (rate limit, bad token, outage) fails the run (red in
+Actions) and posts nothing, so a broken watch never looks like an upstream
+change.
 
 Maintenance:
 
 * after moving to a new upstream release, update `KNOWN_TAG` in the script;
-* GitHub disables scheduled workflows of a public repository after 60 days without activity: re-enable it from the Actions tab (**AIOZ upstream watch** > **Enable workflow**);
-* run locally with `DRY_RUN=1 .github/scripts/upstream-watch.sh` (needs `gh` logged in); tests: `.github/scripts/tests/run.sh` (Docker).
+* GitHub disables scheduled workflows of a public repository after 60 days
+  without activity: re-enable it from the Actions tab (**AIOZ upstream watch** >
+  **Enable workflow**);
+* run locally with `DRY_RUN=1 .github/scripts/upstream-watch.sh` (needs `gh`
+  logged in); tests: `.github/scripts/tests/run.sh` (Docker).
 
 ---
 
@@ -238,18 +321,31 @@ pre-commit install          # once per clone
 pre-commit run --all-files  # full pass
 ```
 
-Each hook checks the changed files only (shellcheck still follows the scripts they source, see `.shellcheckrc`):
+Each hook checks the changed files only (shellcheck still follows the scripts
+they source, see `.shellcheckrc`):
 
-| Check | Tools | Files |
-|---|---|---|
-| Linters and format | shellcheck, shfmt (`-i 4 -sr -ci`), hadolint, actionlint | shell scripts, bats tests, Dockerfiles, workflows |
-| Spelling (English) | cspell, words in `cspell.json` | every text file |
-| Vulnerabilities and misconfigurations | trivy config | Dockerfiles, run only when `Dockerfile`, `tests/Dockerfile`, `tools/deps.txt` or `.trivyignore.yaml` changes |
-| Hygiene | pre-commit-hooks (whitespace, end of file, YAML/JSON, file modes, private keys) | every file |
+* Linters and format — shellcheck, shfmt (style in `.editorconfig`), hadolint,
+  actionlint, markdownlint: shell scripts, bats tests, Dockerfiles, workflows,
+  Markdown
+* Spelling (English) — cspell, words in `cspell.json`: every text file
+* Misconfigurations — trivy config: Dockerfiles, run only when `Dockerfile`,
+  `tests/Dockerfile`, `tools/deps.txt` or `.trivyignore.yaml` changes
+* Vulnerabilities — `.github/scripts/image-vuln-scan.sh` builds the image and
+  fails on HIGH or CRITICAL vulnerabilities (trivy image), run only when
+  `Dockerfile` or `tools/` changes. The AIOZ CLI binaries (`/bin/aioznode`,
+  `/root/.cache/aioz-depin-cli/`) are skipped: they come from upstream, are
+  replaced at every start, and cannot be fixed here
+* Hygiene — pre-commit-hooks (whitespace, end of file, YAML/JSON, file modes,
+  private keys): every file
 
-Trivy and hadolint must be installed on the machine (`brew install trivy hadolint`); the other tools are installed by pre-commit.
+Trivy and hadolint must be installed on the machine (`brew install trivy
+hadolint`), with Docker for the image scan; the other tools are installed by
+pre-commit.
 
-Accepted findings are kept next to the line they concern, with their reason: `# hadolint ignore=… #trivy:ignore:…` above the instruction in the Dockerfiles (hadolint and trivy both read only the comment right above an instruction), and `.trivyignore.yaml` for the findings about a whole file (root user).
+Accepted findings are kept next to the line they concern, with their reason: `#
+hadolint ignore=… #trivy:ignore:…` above the instruction in the Dockerfiles
+(hadolint and trivy both read only the comment right above an instruction), and
+`.trivyignore.yaml` for the findings about a whole file (root user).
 
 ---
 

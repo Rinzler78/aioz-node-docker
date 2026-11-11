@@ -21,10 +21,10 @@ repos:
   - repo: https://github.com/scop/pre-commit-shfmt
     rev: v3.14.1-1
     hooks:
-      - id: shfmt
-        args: [-w, -i, "4", -sr, -ci]
+      - id: shfmt # style from .editorconfig
+        args: [-w]
 
-  # Linters: Dockerfiles and GitHub workflows.
+  # Linters: Dockerfiles, GitHub workflows and Markdown.
   - repo: https://github.com/hadolint/hadolint
     rev: v2.15.1
     hooks:
@@ -34,6 +34,11 @@ repos:
     hooks:
       - id: actionlint
 
+  - repo: https://github.com/DavidAnson/markdownlint-cli2
+    rev: v0.24.0
+    hooks:
+      - id: markdownlint-cli2
+
   # Spelling: English only, every text file.
   - repo: https://github.com/streetsidesoftware/cspell-cli
     rev: v10.4.0
@@ -41,7 +46,7 @@ repos:
       - id: cspell
         args: [--no-progress, --no-summary, --show-context]
 
-  # Vulnerabilities and misconfigurations of the images, when one of their inputs changes.
+  # Misconfigurations and vulnerabilities of the images, only when one of their inputs changes.
   - repo: local
     hooks:
       - id: trivy-config
@@ -49,4 +54,10 @@ repos:
         entry: trivy config --quiet --exit-code 1 --ignorefile .trivyignore.yaml .
         language: system
         files: (^|/)Dockerfile$|^tools/deps\.txt$|^\.trivyignore\.yaml$
+        pass_filenames: false
+      - id: trivy-image
+        name: trivy image (vulnerabilities, AIOZ binaries skipped)
+        entry: .github/scripts/image-vuln-scan.sh
+        language: system
+        files: ^Dockerfile$|^tools/
         pass_filenames: false
