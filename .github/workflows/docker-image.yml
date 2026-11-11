@@ -6,6 +6,12 @@ on:
     tags:
       - 'v*'  # Pushed tags starting with 'v' (e.g., v1.0.0)
 
+# Read-only by default: build and quick_test run code from the repository and
+# the AIOZ binary (which receives GITHUB_TOKEN). Only the release job, which
+# runs neither, may write.
+permissions:
+  contents: read
+
 jobs:
 
   build:
@@ -14,6 +20,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Extract tag name
         id: extract_tag
         run: echo "tag_name=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
@@ -51,12 +59,20 @@ jobs:
           docker push "rinzlerfr/aioznode:$TAG"
           docker push rinzlerfr/aioznode:latest
 
+  release:
+
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.extract_tag.outputs.tag_name }}
-          name: Release ${{ steps.extract_tag.outputs.tag_name }}
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
           body: |
-            Automated release for ${{ steps.extract_tag.outputs.tag_name }}.
+            Automated release for ${{ github.ref_name }}.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
