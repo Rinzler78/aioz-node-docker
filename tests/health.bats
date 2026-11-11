@@ -47,12 +47,20 @@ query_running() {
     [ "$status" -ne 0 ]
 }
 
-@test "a hanging node query fails the check within HEALTH_TIMEOUT" {
+@test "rejects a check timeout that is not a number of seconds" {
+    run node.health.sh 30s
+
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"ERROR"*"30s"* ]]
+    [ ! -e "$FAKE_STATE/stats.args" ]
+}
+
+@test "a hanging node query fails the check within its timeout" {
     touch "$FAKE_STATE/hang"
     SECONDS=0
 
     # Bounded and off the bats pipe: an unbounded query must fail, not hang.
-    HEALTH_TIMEOUT=2 run sh -c 'timeout 5 node.health.sh 2> /dev/null'
+    run sh -c 'timeout 5 node.health.sh 2 2> /dev/null'
 
     [ "$status" -ne 0 ]
     [ "$SECONDS" -lt 4 ] # budget 1s; the outer timeout is 5s
@@ -60,12 +68,12 @@ query_running() {
     [ "$status" -ne 0 ]
 }
 
-@test "a hanging wallet query fails the check within HEALTH_TIMEOUT" {
+@test "a hanging wallet query fails the check within its timeout" {
     touch "$FAKE_STATE/hang-balance"
     SECONDS=0
 
     # Bounded and off the bats pipe: an unbounded query must fail, not hang.
-    HEALTH_TIMEOUT=2 run sh -c 'timeout 5 node.health.sh 2> /dev/null'
+    run sh -c 'timeout 5 node.health.sh 2 2> /dev/null'
 
     [ "$status" -ne 0 ]
     [ "$SECONDS" -lt 4 ] # budget 1s; the outer timeout is 5s
@@ -77,11 +85,21 @@ query_running() {
     touch "$FAKE_STATE/hang"
 
     # stderr off the bats pipe: a query left running must not hold the test.
-    HEALTH_TIMEOUT=4 run sh -c 'timeout -s KILL 1 node.health.sh 2> /dev/null'
+    run sh -c 'timeout -s KILL 1 node.health.sh 4 2> /dev/null'
 
     [ "$status" -ne 0 ]
-    query_running # the budget (HEALTH_TIMEOUT / 2) is not over yet
+    query_running # the budget (half of the 4s timeout) is not over yet
     sleep 2
     run query_running
     [ "$status" -ne 0 ]
+}
+
+@test "the image check keeps its default timeout whatever the watchdog HEALTH_TIMEOUT" {
+    touch "$FAKE_STATE/hang"
+
+    # Docker runs the check with no argument, in the container environment.
+    HEALTH_TIMEOUT=2 run sh -c 'timeout -s KILL 3 node.health.sh 2> /dev/null'
+
+    [ "$status" -ne 0 ]
+    query_running # bounded by half of the 30s default, not by HEALTH_TIMEOUT
 }

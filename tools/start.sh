@@ -21,7 +21,7 @@ watchdog() {
     local node_pid=$1 failures=0
     sleep "$HEALTH_START_PERIOD"
     while kill -0 "$node_pid" 2> /dev/null; do
-        if timeout "${HEALTH_TIMEOUT}s" "$TOOLS_DIR/node.health.sh"; then
+        if timeout "${HEALTH_TIMEOUT}s" "$TOOLS_DIR/node.health.sh" "$HEALTH_TIMEOUT"; then
             failures=0
         else
             failures=$((failures + 1))

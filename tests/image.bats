@@ -10,6 +10,11 @@ healthcheck() {
         END { print line }' "$REPO_ROOT/Dockerfile" | tr -s ' ' | sed 's/^ //'
 }
 
+# Default check timeout of node.health.sh (local timeout="${1:-value}" ...).
+check_default_timeout() {
+    sed -n 's/^ *local timeout="\${1:-\([0-9]*\)}"\( .*\)*$/\1/p' "$REPO_ROOT/tools/node.health.sh"
+}
+
 # Default of the start.sh watchdog setting $1 (NAME="${NAME:-value}").
 watchdog_default() {
     sed -n "s/^$1=\"\${$1:-\([0-9]*\)}\"$/\1/p" "$REPO_ROOT/tools/start.sh"
@@ -24,4 +29,12 @@ watchdog_default() {
     [ -n "$interval" ] && [ -n "$timeout" ] && [ -n "$start_period" ] && [ -n "$retries" ]
 
     [ "$(healthcheck)" = "HEALTHCHECK --interval=${interval}s --timeout=${timeout}s --start-period=${start_period}s --retries=$retries CMD [\"node.health.sh\"]" ]
+}
+
+@test "node.health.sh run with no argument defaults to the image HEALTHCHECK timeout" {
+    local timeout
+    timeout=$(check_default_timeout)
+    [ -n "$timeout" ]
+
+    [[ "$(healthcheck)" == *" --timeout=${timeout}s "* ]]
 }

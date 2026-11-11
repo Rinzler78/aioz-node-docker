@@ -8,6 +8,10 @@ setup() {
     setup_node_env
 }
 
+teardown() {
+    [ ! -e "$FAKE_STATE/stats.pid" ] || kill "$(cat "$FAKE_STATE/stats.pid")" 2> /dev/null || true
+}
+
 @test "starts the installed node when the update fails" {
     make_fake_node "$BIN_DIR/$BINARY_NAME" "1.1.0"
 
@@ -57,11 +61,16 @@ setup() {
     touch "$FAKE_STATE/hang"
     SECONDS=0
 
-    RUN_TIMEOUT=120 HEALTH_TIMEOUT=1 run start.sh
+    # Output to a file: `run` would wait for a query left running on its pipe.
+    RUN_TIMEOUT=120 HEALTH_TIMEOUT=1 run sh -c 'start.sh > "$FAKE_STATE/start.log" 2>&1'
 
     [ "$status" -ne 0 ]
-    [[ "$output" == *"health check failed (3/3)"* ]]
+    [[ "$(cat "$FAKE_STATE/start.log")" == *"health check failed (3/3)"* ]]
     [ "$SECONDS" -lt 60 ]
+    # The check got HEALTH_TIMEOUT: its query stopped with it (no orphan).
+    sleep 1
+    run kill -0 "$(cat "$FAKE_STATE/stats.pid")"
+    [ "$status" -ne 0 ]
 }
 
 @test "starts aioz-io on the node data and wallet, listening outside the container" {

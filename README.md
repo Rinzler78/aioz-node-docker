@@ -106,7 +106,9 @@ they are only run through the `PATH`, so the rule does not apply to them.
 * `node.health.sh` — Health check of the watchdog and of the image
   `HEALTHCHECK`: the node answers `aioz-io stats` and the wallet reads its
   rewards (`aioz-io reward balance`, which queries the network, so it does not
-  prove the node alone). Each query is bounded by half of `HEALTH_TIMEOUT`.
+  prove the node alone). Each query is bounded by half of the check timeout:
+  the watchdog passes its `HEALTH_TIMEOUT` (`node.health.sh <seconds>`), the
+  image `HEALTHCHECK` passes none, so the default is its `--timeout` (30s).
   While the AIOZ network is unreachable the wallet check fails, so the
   watchdog restarts the container after 3 checks (and the update runs again):
   a node whose wallet cannot be used is reported, not hidden
@@ -136,8 +138,9 @@ they are only run through the `PATH`, so the rule does not apply to them.
   container restarts and updates
 * `HEALTH_START_PERIOD` / `HEALTH_INTERVAL` / `HEALTH_TIMEOUT` /
   `HEALTH_RETRIES` (defaults: `300` / `60` / `30` / `3`) — Watchdog timings.
-  The image `HEALTHCHECK` uses the defaults: setting these variables changes
-  the watchdog only
+  The image `HEALTHCHECK` keeps the defaults: setting these variables changes
+  the watchdog only. To change the Docker check, override `healthcheck:` and
+  pass its timeout: `["CMD", "node.health.sh", "<seconds>"]`
 * `ENDPOINT` (default: `http://127.0.0.1:1317`) — Node queried by the `stats`
   half of `node.health.sh`
 * `WITHDRAW_ADDRESS_HEX` (**required** in withdraw mode) — `0x` address (40 hex
@@ -217,7 +220,8 @@ mkdir -p ~/MyDockers/aioznode/nodedata
 #### Private key configuration
 
 Place your `privkey.json` file in the data directory you will mount (see below).
-This is required for the node to start.
+Without one, the node creates a new wallet there at its first start: keep a
+backup of it.
 
 ---
 
@@ -363,7 +367,9 @@ they source, see `.shellcheckrc`):
   come from upstream, are replaced at every start, and cannot be fixed here
 * Hygiene — pre-commit-hooks (whitespace, end of file, YAML/JSON syntax, large
   files, file modes, private keys): any file type. The JSON files are test
-  fixtures captured from the GitHub API, so a syntax check is their linter
+  fixtures captured from the GitHub API and from `aioz-io reward balance`
+  (balances of a node wallet, no address or key), so a syntax check is their
+  linter
 
 Trivy and hadolint must be installed on the machine, with Docker for the image
 scan; the other tools are installed by pre-commit:
