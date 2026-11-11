@@ -12,9 +12,11 @@ on:
 permissions:
   contents: read  # checkout; the release job asks for more
 
-# One release at a time: two tags must not push :latest concurrently.
+# One run per tag: a tag pushed again waits for its previous run. A group per
+# tag, not per workflow: GitHub keeps one pending run per group, so a shared
+# group would cancel a tag queued behind two others.
 concurrency:
-  group: ${{ github.workflow }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:

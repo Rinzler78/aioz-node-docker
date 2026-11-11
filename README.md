@@ -272,7 +272,8 @@ WITHDRAW_ADDRESS_HEX=0xYourAddress \
 `.github/workflows/docker-image.yml`: it builds the image, runs `tests/run.sh`
 and `quick_test.sh`, pushes `rinzlerfr/aioznode:<tag>` and `:latest`, then
 creates the GitHub release. Only that last job gets a write token: the build
-and the tests, which run the AIOZ binary, keep a read-only one.
+and the tests, which run the AIOZ binary, keep a read-only one. A tag is
+released once: if its GitHub release already exists, the release job fails.
 
 ---
 
@@ -372,7 +373,8 @@ they source, see `.shellcheckrc`):
   tests, Dockerfiles, YAML, workflows, Markdown
 * Workflow security — zizmor: GitHub workflows. Actions are pinned to a commit
   SHA, with their version in a comment on the line above; every permission is
-  commented; the release job alone may write
+  commented; only the release job (`contents`) and the upstream watch job
+  (`issues`) may write
 * Spelling (English) — cspell, words in `cspell.json`: every text file
 * Misconfigurations — trivy config: Dockerfiles, run only when `Dockerfile`,
   `tests/Dockerfile` or `.trivyignore.yaml` changes
