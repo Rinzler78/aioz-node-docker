@@ -83,7 +83,7 @@ first, then an entry point guarded by `[[ "${BASH_SOURCE[0]}" == "$0" ]]`.
 `tests/scripts.bats` checks every `*.sh` file of the repository for the guard,
 and that sourcing it prints and runs nothing. The extension-less test doubles in
 `.github/scripts/tests/fakes` stand in for external commands (`gh`, `curl`,
-`git`, `pre-commit`):
+`git`, `pre-commit`, `docker`):
 they are only run through the `PATH`, so the rule does not apply to them.
 
 * `deploy.sh` — `deploy`: updates the system packages, installs or updates the
@@ -276,10 +276,17 @@ WITHDRAW_ADDRESS_HEX=0xYourAddress \
 
 `rinzlerfr/aioznode` is public on Docker Hub. Pushing a `v*` tag runs
 `.github/workflows/docker-image.yml`: it builds the image, runs `tests/run.sh`
-and `quick_test.sh`, pushes `rinzlerfr/aioznode:<tag>` and `:latest`, then
-creates the GitHub release. Only that last job gets a write token: the build
-and the tests, which run the AIOZ binary, keep a read-only one. A tag is
-released once: if its GitHub release already exists, the release job fails.
+and `quick_test.sh`, pushes `rinzlerfr/aioznode:<tag>`, then creates the GitHub
+release. `.github/scripts/push-latest.sh` moves `:latest` to the tag only when
+it is the highest `vX.Y.Z` tag of the repository (compared as numbers, read with
+`git ls-remote` at push time): a hotfix pushed on an older line or a `v2-beta`
+tag leaves `:latest`, and so Watchtower, on the newest release. The highest
+tag counts even when its build failed: `:latest` then stays on the previous
+image until that tag is built again or a higher one ships. Only the release job
+gets a write token: the build and the tests, which run the AIOZ binary, keep a
+read-only one. A tag is released once: if its GitHub release already exists,
+the release job fails. Tests of `push-latest.sh`: `.github/scripts/tests/run.sh`
+(Docker).
 
 ---
 
@@ -382,7 +389,8 @@ they source, see `.shellcheckrc`):
   commented; only the release job (`contents`) and the upstream watch job
   (`issues`) may write
 * Dependencies up to date (blocking) — `.github/scripts/deps-freshness.sh`, run
-  only when `.pre-commit-config.yaml`, a workflow or the script changes. It
+  only when `.pre-commit-config.yaml`, a workflow, the script or the
+  `release.lib.sh` it sources changes. It
   fails when `pre-commit autoupdate` (run on a copy, the config is never
   rewritten) would update a hook. In the workflows (`*.yml`, `*.yaml`), every
   `uses:` but local (`./`) and Docker (`docker://`) actions must be pinned to a

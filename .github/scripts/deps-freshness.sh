@@ -10,6 +10,12 @@
 # Usage: .github/scripts/deps-freshness.sh [workflow...]
 #        (default: .github/workflows/*.yml and *.yaml; config: $PRE_COMMIT_CONFIG)
 
+# Folder of this script, also when run by bare name (bash deps-freshness.sh).
+DEPS_FRESHNESS_DIR="${BASH_SOURCE[0]%/*}"
+[ "$DEPS_FRESHNESS_DIR" != "${BASH_SOURCE[0]}" ] || DEPS_FRESHNESS_DIR=.
+# shellcheck source=.github/scripts/release.lib.sh
+source "$DEPS_FRESHNESS_DIR/release.lib.sh"
+
 PRE_COMMIT_CONFIG="${PRE_COMMIT_CONFIG:-.pre-commit-config.yaml}"
 # A missing repository must fail, not wait for credentials.
 export GIT_TERMINAL_PROMPT=0
@@ -59,12 +65,6 @@ tag_commit() {
     peeled=$(awk -v ref="refs/tags/$2^{}" '$2 == ref { print $1 }' <<< "$1")
     [ -n "$peeled" ] && echo "$peeled" && return
     awk -v ref="refs/tags/$2" '$2 == ref { print $1 }' <<< "$1"
-}
-
-# latest_release <ls-remote output>: the highest vX.Y.Z tag.
-latest_release() {
-    awk '{ sub("^refs/tags/", "", $2) } $2 ~ /^v[0-9]+\.[0-9]+\.[0-9]+$/ { print $2 }' <<< "$1" |
-        sort -V | tail -n 1
 }
 
 # check_action <file> <action> <repository> <sha> <comment line above>
