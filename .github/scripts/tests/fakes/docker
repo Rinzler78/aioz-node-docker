@@ -1,0 +1,8 @@
+#!/bin/bash
+# Fake docker: logs each call to $FAKE_DOCKER_DIR/calls and pushes nothing.
+# Exits 1 for the subcommand named in $FAKE_DOCKER_FAIL (tag or push).
+echo "$*" >> "$FAKE_DOCKER_DIR/calls"
+if [ -n "${FAKE_DOCKER_FAIL:-}" ] && [ "$1" = "$FAKE_DOCKER_FAIL" ]; then
+    echo "fake docker: $1 failed" >&2
+    exit 1
+fi
