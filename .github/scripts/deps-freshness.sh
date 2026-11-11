@@ -99,6 +99,8 @@ check_action() {
 
 # Checks every `uses:` of the given workflows: quoted or not, it must be
 # owner/repo[/path]@<sha>, but for local (./) and Docker (docker://) actions.
+# Reads lines, not YAML: a line holding `uses:` in another form (a flow
+# mapping, text in a run: block) fails, so that nothing is skipped silently.
 check_action_pins() {
     local file where line previous ref status=0
     local uses='^[[:space:]]*-?[[:space:]]*uses:[[:space:]]*["'"'"']?([^"'"'"'[:space:]]+)["'"'"']?([[:space:]]|$)'
@@ -125,6 +127,9 @@ check_action_pins() {
                         fi
                         ;;
                 esac
+            elif [[ "$line" == *uses:* && ! "$line" =~ ^[[:space:]]*# ]]; then
+                echo "ERROR: $where: cannot check: ${line#"${line%%[![:space:]]*}"} (write \`- uses: owner/repo@<sha>\` on its own line)" >&2
+                status=1
             fi
             previous="$line"
         done < "$file"
@@ -133,11 +138,12 @@ check_action_pins() {
 }
 
 deps_freshness() {
-    local status=0
+    local status=0 nullglob
     if [ $# -eq 0 ]; then
+        nullglob=$(shopt -p nullglob)
         shopt -s nullglob
         set -- .github/workflows/*.yml .github/workflows/*.yaml
-        shopt -u nullglob
+        eval "$nullglob"
         if [ $# -eq 0 ]; then
             echo "ERROR: no workflow in .github/workflows" >&2
             status=1

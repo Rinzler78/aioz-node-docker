@@ -265,3 +265,32 @@ workflow() {
     [ "$status" -eq 1 ]
     [[ "$output" == *"actions/checkout v7, no vX.Y.Z release tag"* ]]
 }
+
+@test "fails on a uses: it cannot read, such as a flow mapping" {
+    printf '      - { uses: actions/checkout@v4 }\n' > "$WORKFLOW"
+
+    run "$SCRIPT" "$WORKFLOW"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"cannot check: - { uses: actions/checkout@v4 }"* ]]
+}
+
+@test "ignores uses: in a comment" {
+    printf '      # uses: actions/checkout@v4 is not pinned\n' > "$WORKFLOW"
+
+    run "$SCRIPT" "$WORKFLOW"
+
+    [ "$status" -eq 0 ]
+}
+
+@test "leaves the nullglob setting of a shell that sources it as it was" {
+    mkdir -p "$BATS_TEST_TMPDIR/repo/.github/workflows"
+    cd "$BATS_TEST_TMPDIR/repo"
+    workflow .github/workflows/a.yml "# actions/checkout v7.0.1" "actions/checkout@$V701"
+
+    run bash -c 'source "$1"; shopt -s nullglob; deps_freshness; shopt -q nullglob' _ "$SCRIPT"
+    [ "$status" -eq 0 ]
+
+    run bash -c 'source "$1"; deps_freshness; ! shopt -q nullglob' _ "$SCRIPT"
+    [ "$status" -eq 0 ]
+}

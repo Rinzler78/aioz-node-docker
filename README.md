@@ -381,7 +381,8 @@ they source, see `.shellcheckrc`):
   fails when `pre-commit autoupdate` (run on a copy, the config is never
   rewritten) would update a hook. In the workflows (`*.yml`, `*.yaml`), every
   `uses:` but local (`./`) and Docker (`docker://`) actions must be pinned to a
-  commit SHA, with `# <action> vX.Y.Z` on the line above; it fails when the SHA
+  commit SHA, with `# <action> vX.Y.Z` on the line above (a `uses:` the check
+  cannot read, such as a flow mapping, fails); it fails when the SHA
   is not the commit of that version, or that version is not the highest
   `vX.Y.Z` tag of the action's repository. Fix: `pre-commit autoupdate`, or pin
   the new release's SHA and comment. Needs the network (`git ls-remote`, no
