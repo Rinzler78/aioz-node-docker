@@ -76,10 +76,13 @@ standalone. `tests/scripts.bats` enforces it: the only script run as its own
 process is `node.health.sh`, because the watchdog bounds it with `timeout`.
 
 Every script of the repository (`tools/*.sh`, `helper.docker.*.sh`, which share
-`helper.docker.lib.sh`, `quick_test.sh` and `.github/scripts/*.sh`) has its
-functions first, then an entry point guarded by
-`[[ "${BASH_SOURCE[0]}" == "$0" ]]`. `tests/scripts.bats` checks every one of
-them for the guard, and that sourcing it prints and runs nothing.
+`helper.docker.lib.sh`, `quick_test.sh`, `.github/scripts/*.sh` and the test
+runners `tests/run.sh` and `.github/scripts/tests/run.sh`) has its functions
+first, then an entry point guarded by `[[ "${BASH_SOURCE[0]}" == "$0" ]]`.
+`tests/scripts.bats` checks every `*.sh` file of the repository for the guard,
+and that sourcing it prints and runs nothing. The extension-less test doubles in
+`.github/scripts/tests/fakes` stand in for external commands (`gh`, `curl`):
+they are only run through the `PATH`, so the rule does not apply to them.
 
 * `deploy.sh` — `deploy`: updates the system packages, installs or updates the
   CLI, configures the wallet, cleans the packages
@@ -359,7 +362,10 @@ Accepted findings are kept next to the line they concern, with their reason:
 * in the Dockerfiles, `# hadolint ignore=… #trivy:ignore:…` above the
   instruction (hadolint and trivy both read only the comment right above an
   instruction);
-* in `.trivyignore.yaml`, the findings about a whole file (root user).
+* in `.trivyignore.yaml`, the findings about a whole file (root user);
+* in `cspell.json`, the words of the GitHub API fixtures that are not English
+  and cannot be changed: GitHub node IDs and AIOZ wallet addresses (two
+  patterns), and the logins of upstream users (`ignoreWords`).
 
 ---
 

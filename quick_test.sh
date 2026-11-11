@@ -62,7 +62,7 @@ parse_args() {
                 ;;
             --help)
                 show_help=1
-                shift
+                return 0
                 ;;
             *)
                 echo "Unknown option: $1"

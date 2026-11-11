@@ -12,12 +12,19 @@ setup() {
     export PATH="${PATH//$REPO_ROOT\/tools:/}"
 }
 
+# Every shell script of the repository. The extension-less test doubles in
+# .github/scripts/tests/fakes stand in for external commands: they are run by
+# PATH lookup only, never sourced, so the script rules do not apply to them.
+repository_scripts() {
+    find "$REPO_ROOT" -name '*.sh' -not -path '*/.git/*' -not -path '*/.worktrees/*' | sort
+}
+
 # Lines of a script (on stdin) that may run a .sh file as its own process.
 spawn_candidates() {
     sed -E 's/^\s*source "[^"]*"//
         s/(echo|printf) "([^"$]|[$][^(])*"//g
         s/"[$]TOOLS_DIR\/node\.health\.sh"//g
-        s/docker exec [^;&|)]*//g' |
+        s/docker exec [^;&|()]*//g' |
         grep -E '\.sh([^A-Za-z0-9_]|$)'
 }
 
@@ -31,6 +38,7 @@ sh "$DIR"/x.sh
 v=$(./x.sh)
 echo "result: $(./x.sh)"
 docker exec "$c" true; ./x.sh
+docker exec "$c" true $(./x.sh)
 timeout 5 "$TOOLS_DIR/node.health.sh" && ./x.sh
 bash "$TOOLS_DIR/${s}.sh"
 "$TOOLS_DIR/$f".sh
@@ -40,6 +48,7 @@ EOF
     allowed=$(
         cat << 'EOF'
 source "$TOOLS_DIR/deploy.sh"
+    source "$TOOLS_DIR/deploy.sh"
 echo "node.version.sh returned $version"
 printf "see start.sh\n"
 timeout "${HEALTH_TIMEOUT}s" "$TOOLS_DIR/node.health.sh"
@@ -56,8 +65,7 @@ EOF
     # scripts run inside the container by quick_test.sh (docker exec). Whatever
     # else is on the line is still searched; quoted or variable names
     # ("$TOOLS_DIR/x.sh", "$DIR/$name".sh) are caught.
-    offenders=$(for f in "$REPO_ROOT"/tools/*.sh "$REPO_ROOT"/helper.docker.*.sh \
-        "$REPO_ROOT"/quick_test.sh "$REPO_ROOT"/.github/scripts/*.sh; do
+    offenders=$(for f in $(repository_scripts); do
         grep -vE '^\s*#' "$f" | spawn_candidates | sed "s|^|${f##*/}: |"
     done)
     [ -z "$offenders" ] || {
@@ -148,8 +156,7 @@ EOF
 [[ "${BASH_SOURCE[0]}" == "$0" ]]
 EOF
     mkdir -p "$BATS_TEST_TMPDIR/no-commands"
-    for f in "$REPO_ROOT"/tools/*.sh "$REPO_ROOT"/helper.docker.*.sh \
-        "$REPO_ROOT"/quick_test.sh "$REPO_ROOT"/.github/scripts/*.sh; do
+    for f in $(repository_scripts); do
         grep -qF "$guard" "$f" || offenders+="${f#"$REPO_ROOT"/}: no guarded entry point"$'\n'
         run env -i PATH="$BATS_TEST_TMPDIR/no-commands" /bin/bash -c "source '$f'"
         [ "$status" -eq 0 ] && [ -z "$output" ] || offenders+="${f#"$REPO_ROOT"/}: $status $output"$'\n'
