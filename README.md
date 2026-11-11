@@ -357,7 +357,8 @@ scan; the other tools are installed by pre-commit:
 brew install trivy hadolint
 ```
 
-Accepted findings are kept next to the line they concern, with their reason:
+Accepted findings are kept with their reason, next to the line they concern
+when the format allows comments:
 
 * in the Dockerfiles, `# hadolint ignore=… #trivy:ignore:…` above the
   instruction (hadolint and trivy both read only the comment right above an
@@ -365,7 +366,7 @@ Accepted findings are kept next to the line they concern, with their reason:
 * in `.trivyignore.yaml`, the findings about a whole file (root user);
 * in `cspell.json`, the words of the GitHub API fixtures that are not English
   and cannot be changed: GitHub node IDs and AIOZ wallet addresses (two
-  patterns), and the logins of upstream users (`ignoreWords`).
+  patterns), and the names and logins of upstream users (`ignoreWords`).
 
 ---
 

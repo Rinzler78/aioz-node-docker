@@ -15,8 +15,19 @@ setup() {
 # Every shell script of the repository. The extension-less test doubles in
 # .github/scripts/tests/fakes stand in for external commands: they are run by
 # PATH lookup only, never sourced, so the script rules do not apply to them.
+# The exclusions are anchored on the repository root: the checkout itself may
+# live under a .worktrees folder.
 repository_scripts() {
-    find "$REPO_ROOT" -name '*.sh' -not -path '*/.git/*' -not -path '*/.worktrees/*' | sort
+    find "$REPO_ROOT" \( -path "$REPO_ROOT/.git" -o -path "$REPO_ROOT/.worktrees" \) -prune \
+        -o -name '*.sh' -print | sort
+}
+
+@test "the script list holds the repository scripts wherever the checkout lives" {
+    run repository_scripts
+
+    [[ "$output" == *"$REPO_ROOT/tools/start.sh"* ]]
+    [[ "$output" == *"$REPO_ROOT/tests/run.sh"* ]]
+    [[ "$output" == *"$REPO_ROOT/.github/scripts/upstream-watch.sh"* ]]
 }
 
 # Lines of a script (on stdin) that may run a .sh file as its own process.
@@ -65,9 +76,9 @@ EOF
     # scripts run inside the container by quick_test.sh (docker exec). Whatever
     # else is on the line is still searched; quoted or variable names
     # ("$TOOLS_DIR/x.sh", "$DIR/$name".sh) are caught.
-    offenders=$(for f in $(repository_scripts); do
+    offenders=$(while IFS= read -r f; do
         grep -vE '^\s*#' "$f" | spawn_candidates | sed "s|^|${f##*/}: |"
-    done)
+    done < <(repository_scripts))
     [ -z "$offenders" ] || {
         echo "$offenders"
         false
@@ -156,11 +167,11 @@ EOF
 [[ "${BASH_SOURCE[0]}" == "$0" ]]
 EOF
     mkdir -p "$BATS_TEST_TMPDIR/no-commands"
-    for f in $(repository_scripts); do
+    while IFS= read -r f; do
         grep -qF "$guard" "$f" || offenders+="${f#"$REPO_ROOT"/}: no guarded entry point"$'\n'
         run env -i PATH="$BATS_TEST_TMPDIR/no-commands" /bin/bash -c "source '$f'"
         [ "$status" -eq 0 ] && [ -z "$output" ] || offenders+="${f#"$REPO_ROOT"/}: $status $output"$'\n'
-    done
+    done < <(repository_scripts)
     [ -z "$offenders" ] || {
         echo "$offenders"
         false
