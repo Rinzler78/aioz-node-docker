@@ -15,7 +15,8 @@ permissions:
   contents: read  # checkout
 
 # One run per pull request or branch; a newer push to a pull request cancels
-# the older run, a run on develop or master is never cut short.
+# the older run. A run on develop or master is never cut short, but of several
+# merges queued behind it only the last one runs: --all-files covers the others.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -60,8 +61,8 @@ jobs:
         run: |
           set -euo pipefail
           if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
-            pre-commit run --show-diff-on-failure --color always \
-              --from-ref "origin/$GITHUB_BASE_REF" --to-ref HEAD
+            scope=(--from-ref "origin/$GITHUB_BASE_REF" --to-ref HEAD)
           else
-            pre-commit run --show-diff-on-failure --color always --all-files
+            scope=(--all-files)
           fi
+          pre-commit run --show-diff-on-failure --color always "${scope[@]}"
