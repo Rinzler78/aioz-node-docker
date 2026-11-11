@@ -216,6 +216,11 @@ tests/run.sh      # bats tests in an Alpine container against a fake GitHub
                   # checks the installed version is the latest release
 ```
 
+CI runs `tests/run.sh` (`.github/workflows/tests.yml`) on a pull request that
+touches a `*.sh` file, `tools/`, `tests/` or the `Dockerfile`, and after every
+merge into `develop` or `master`. `quick_test.sh` needs the AIOZ network and
+runs only on release tags (see Public Docker image).
+
 ---
 
 ### Before running
