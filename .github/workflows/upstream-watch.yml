@@ -14,14 +14,22 @@ on:
       - '.github/workflows/upstream-watch.yml'
 
 permissions:
-  contents: read
+  contents: read  # checkout
+
+# One run per pull request or branch; a newer push to a pull request cancels
+# the older run, a scheduled watch is never cut short.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   test:
+    name: Test the watch scripts
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      # actions/checkout v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
 
@@ -29,15 +37,17 @@ jobs:
         run: .github/scripts/tests/run.sh
 
   watch:
+    name: Watch the upstream hub and CLI
     if: github.event_name != 'pull_request'
     needs: test
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
-      contents: read
-      issues: write
+      contents: read  # checkout
+      issues: write  # comment on the upstream watch issue
     steps:
-      - uses: actions/checkout@v4
+      # actions/checkout v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
 

@@ -48,10 +48,10 @@
     "rinzlerfr",
     "shellcheck",
     "shfmt",
-    "softprops",
     "trivyignore",
     "worktrees",
-    "zipball"
+    "zipball",
+    "zizmor"
   ],
   "ignoreWords": [
     "Onizuka",
