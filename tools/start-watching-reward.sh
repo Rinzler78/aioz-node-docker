@@ -1,7 +1,7 @@
 #!/bin/bash
 # Withdraw mode: every CHECK_FREQ seconds, withdraw the node rewards to
 # WITHDRAW_ADDRESS_HEX once they exceed WITHDRAW_MIN_VALUE.
-# Folder of this script, also when run by bare name (bash deploy.sh).
+# Folder of this script, also when run by bare name (bash start-watching-reward.sh).
 TOOLS_DIR="${BASH_SOURCE[0]%/*}"
 [ "$TOOLS_DIR" != "${BASH_SOURCE[0]}" ] || TOOLS_DIR=.
 # shellcheck source=tools/withdraw.reward.sh

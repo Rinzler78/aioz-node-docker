@@ -102,7 +102,7 @@ source "$TOOLS_DIR/deploy.sh"
     source "$TOOLS_DIR/deploy.sh"
 echo "node.version.sh returned $version"
 printf "see start.sh\n"
-timeout "${HEALTH_TIMEOUT}s" "$TOOLS_DIR/node.health.sh"
+timeout "${HEALTH_TIMEOUT}s" "$TOOLS_DIR/node.health.sh" "$HEALTH_TIMEOUT"
 v=$(docker exec "$c" /tools/node.version.sh)
 EOF
     )
@@ -172,6 +172,18 @@ assert_repository_listed() {
     [ -e "$FAKE_STATE/started" ]
 }
 
+@test "number.lib.sh checks a whole number against a minimum, standalone" {
+    run "$REPO_ROOT/tools/number.lib.sh" 5 1
+    [ "$status" -eq 0 ]
+
+    run "$REPO_ROOT/tools/number.lib.sh" 0 1
+    [ "$status" -ne 0 ]
+
+    run "$REPO_ROOT/tools/number.lib.sh" 5 abc
+    [ "$status" -ne 0 ]
+    [[ "$output" != *"[: "* ]] # no bash error, the value is checked first
+}
+
 @test "dist.sh clean removes the packages of other kernels, then the cache" {
     run "$REPO_ROOT/tools/dist.sh" clean
 
@@ -201,8 +213,18 @@ assert_repository_listed() {
     [[ "$output" == *"Wallet successfully configured"* ]]
 }
 
+@test "wallet.configure.sh creates a missing wallet with the CLI" {
+    rm "$PRIV_KEY_FILE"
+
+    run "$REPO_ROOT/tools/wallet.configure.sh"
+
+    [ "$status" -eq 0 ]
+    [ -f "$PRIV_KEY_FILE" ]
+}
+
 @test "wallet.configure.sh fails when the wallet cannot be created" {
-    rm "$PRIV_KEY_FILE" # the fake CLI does not create keys
+    rm "$PRIV_KEY_FILE"
+    make_fake_cli "$BIN_DIR/$BINARY_NAME" "1.1.0" # answers version only
 
     run "$REPO_ROOT/tools/wallet.configure.sh"
 

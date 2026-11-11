@@ -9,7 +9,7 @@ QUICK_TEST_DIR="${BASH_SOURCE[0]%/*}"
 # Globals & Defaults
 # --------------------
 DEFAULT_IMAGE_NAME="aioznode:latest"
-DEFAULT_TIMEOUT=600 # room for the 300s start period once the HEALTHCHECK is aligned on the watchdog
+DEFAULT_TIMEOUT=600 # room for the 300s HEALTHCHECK start period
 DEFAULT_PORTS="1317:1317"
 
 # Parameters (can be overridden by CLI)
