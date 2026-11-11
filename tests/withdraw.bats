@@ -166,3 +166,19 @@ setup() {
     [ "$status" -eq 0 ]
     [[ "$(cat "$FAKE_STATE/withdraw.args")" == *"--amount 7761729917265715262attoaioz"* ]]
 }
+
+@test "withdraws the balance of the rewards, not of JSON log lines around them" {
+    serve_balance 7761729917265715262
+    # Not a captured shape: guards the parser if aioz-io ever logs as JSON.
+    {
+        echo '{"level":"info"}'
+        cat "$FAKE_STATE/balance.json"
+        echo '{"level":"info"}'
+    } > "$FAKE_STATE/out"
+    mv "$FAKE_STATE/out" "$FAKE_STATE/balance.json"
+
+    run withdraw.reward.sh
+
+    [ "$status" -eq 0 ]
+    [[ "$(cat "$FAKE_STATE/withdraw.args")" == *"--amount 7761729917265715262attoaioz"* ]]
+}

@@ -16,13 +16,13 @@ TOOLS_DIR="${BASH_SOURCE[0]%/*}"
 [ "$TOOLS_DIR" != "${BASH_SOURCE[0]}" ] || TOOLS_DIR=.
 # shellcheck source=tools/node.io.sh
 source "$TOOLS_DIR/node.io.sh"
-# shellcheck source=tools/seconds.lib.sh
-source "$TOOLS_DIR/seconds.lib.sh"
+# shellcheck source=tools/number.lib.sh
+source "$TOOLS_DIR/number.lib.sh"
 
 node_health() {
     local check_timeout="${1:-30}" budget
-    if ! is_seconds "$check_timeout"; then
-        echo "ERROR: check timeout must be a number of seconds: $check_timeout" >&2
+    if ! is_whole_number "$check_timeout" 1; then
+        whole_number_error "check timeout" "$check_timeout" 1
         return 1
     fi
     budget=$((check_timeout / 2))

@@ -55,6 +55,14 @@ query_running() {
     [ ! -e "$FAKE_STATE/stats.args" ]
 }
 
+@test "rejects a check timeout of 0" {
+    run node.health.sh 0
+
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"ERROR"*"0"* ]]
+    [ ! -e "$FAKE_STATE/stats.args" ]
+}
+
 @test "rejects a check timeout with a leading zero (bash reads it as octal)" {
     run node.health.sh 08
 

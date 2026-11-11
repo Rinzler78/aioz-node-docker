@@ -117,8 +117,8 @@ they are only run through the `PATH`, so the rule does not apply to them.
   versions (used by `quick_test.sh`)
 * `version.lib.sh` — Version parsing, sourced by the scripts above (the CLI
   prints its version as JSON)
-* `seconds.lib.sh` — `is_seconds`: a whole number of seconds, without a leading
-  zero; sourced by `start.sh` and `node.health.sh`
+* `number.lib.sh` — `is_whole_number <value> [minimum]`: a whole number,
+  without a leading zero; sourced by `start.sh` and `node.health.sh`
 * `git.releases.latest.sh` — Latest release JSON from the GitHub API
   (`GITHUB_TOKEN` when set), sourced by the scripts above; standalone:
   `git.releases.latest.sh <owner/repo>`
@@ -127,7 +127,9 @@ they are only run through the `PATH`, so the rule does not apply to them.
   after `HEALTH_RETRIES` consecutive failed health checks (a check running past
   `HEALTH_TIMEOUT` fails) so that the restart policy restarts the container
   (and re-runs the update). Docker itself never restarts an unhealthy
-  container. A timing that is not a whole number of seconds stops it at once
+  container. It refuses, before deploying, a `RUN_TIMEOUT` or `HEALTH_*` that
+  is not a whole number of at least 1 (`HEALTH_START_PERIOD`: 0), or has a
+  leading zero: `30s` or `0` would fail every check or stop the node at once
 * `start-watching-reward.sh` — Withdraw mode entrypoint: runs `deploy`, then
   every `CHECK_FREQ` seconds calls `withdraw_reward` (`withdraw.reward.sh`),
   which withdraws the whole balance to `WITHDRAW_ADDRESS_HEX` once it exceeds
@@ -139,10 +141,10 @@ they are only run through the `PATH`, so the rule does not apply to them.
 * `GITHUB_TOKEN` (default: unset) — Optional. Authenticates the release lookup
   (5000 instead of 60 calls per hour per IP)
 * `RUN_TIMEOUT` (default: `86400`) — Seconds before the node is stopped, so the
-  container restarts and updates
+  container restarts and updates; a whole number of at least 1
 * `HEALTH_START_PERIOD` / `HEALTH_INTERVAL` / `HEALTH_TIMEOUT` /
   `HEALTH_RETRIES` (defaults: `300` / `60` / `30` / `3`) — Watchdog timings,
-  whole numbers (`start.sh` refuses `30s` or `08`).
+  whole numbers of at least 1 (`HEALTH_START_PERIOD`: 0), see `start.sh`.
   The image `HEALTHCHECK` keeps the defaults: setting these variables changes
   the watchdog only. To change the Docker check, override `healthcheck:` and
   pass its timeout: `["CMD", "node.health.sh", "<seconds>"]`
@@ -193,7 +195,7 @@ and the rewards; the wrapper is still used to install, extract and create the
 wallet. **AI computing does not run** (`aioz-ai` is not started): the scripts
 go back to the wrapper `start` once the upstream bug is fixed. `aioz-io reward
 balance` may print a log line on stdout before its JSON (measured, exit code
-0): the withdraw mode reads the JSON only.
+0): the withdraw mode reads the last JSON document that has a balance.
 
 ---
 
