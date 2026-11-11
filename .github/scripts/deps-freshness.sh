@@ -99,8 +99,9 @@ check_action() {
 
 # Checks every `uses:` of the given workflows: quoted or not, it must be
 # owner/repo[/path]@<sha>, but for local (./) and Docker (docker://) actions.
-# Reads lines, not YAML: a line holding `uses:` in another form (a flow
-# mapping, text in a run: block) fails, so that nothing is skipped silently.
+# Reads lines, not YAML: a `uses:` key in a flow mapping (after `{` or `,`)
+# fails, so that no step is skipped silently. `uses:` in text (a run: block,
+# a name, "causes:") is not a key and is left alone.
 check_action_pins() {
     local file where line previous ref status=0
     local uses='^[[:space:]]*-?[[:space:]]*uses:[[:space:]]*["'"'"']?([^"'"'"'[:space:]]+)["'"'"']?([[:space:]]|$)'
@@ -127,7 +128,7 @@ check_action_pins() {
                         fi
                         ;;
                 esac
-            elif [[ "$line" == *uses:* && ! "$line" =~ ^[[:space:]]*# ]]; then
+            elif [[ "$line" =~ [{,][[:space:]]*uses: && ! "$line" =~ ^[[:space:]]*# ]]; then
                 echo "ERROR: $where: cannot check: ${line#"${line%%[![:space:]]*}"} (write \`- uses: owner/repo@<sha>\` on its own line)" >&2
                 status=1
             fi

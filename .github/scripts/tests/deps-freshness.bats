@@ -276,7 +276,7 @@ workflow() {
 }
 
 @test "ignores uses: in a comment" {
-    printf '      # uses: actions/checkout@v4 is not pinned\n' > "$WORKFLOW"
+    printf '      # - { uses: actions/checkout@v4 } is not pinned\n' > "$WORKFLOW"
 
     run "$SCRIPT" "$WORKFLOW"
 
@@ -292,5 +292,23 @@ workflow() {
     [ "$status" -eq 0 ]
 
     run bash -c 'source "$1"; deps_freshness; ! shopt -q nullglob' _ "$SCRIPT"
+    [ "$status" -eq 0 ]
+}
+
+@test "fails on a uses: key after another key of a flow mapping" {
+    printf '      - { name: Checkout, uses: actions/checkout@v4 }\n' > "$WORKFLOW"
+
+    run "$SCRIPT" "$WORKFLOW"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"cannot check: - { name: Checkout, uses: actions/checkout@v4 }"* ]]
+}
+
+@test "leaves words ending in uses: and uses: in text alone" {
+    printf '%s\n' '      - name: Show what the job causes: nothing' \
+        '        run: echo "this step uses: no action"' > "$WORKFLOW"
+
+    run "$SCRIPT" "$WORKFLOW"
+
     [ "$status" -eq 0 ]
 }
