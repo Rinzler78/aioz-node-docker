@@ -3,7 +3,8 @@ name: AIOZ upstream watch
 
 # Daily check of the AIOZ DePIN hub and CLI repository while the hub is down
 # and v1.2.6 is broken. Comments on the "AIOZ upstream watch" issue on change.
-# The script tests run on every pull request that touches it.
+# The tests of the CI scripts (this watch and the dependency check) run on
+# every pull request that touches them.
 on:
   schedule:
     - cron: '0 8 * * *'
@@ -24,7 +25,7 @@ concurrency:
 
 jobs:
   test:
-    name: Test the watch scripts
+    name: Test the CI scripts
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

@@ -1,0 +1,14 @@
+#!/bin/bash
+# Fake git: `ls-remote --tags https://github.com/<owner>/<repo>` answers from
+# $FAKE_GIT_DIR/<owner>_<repo>.txt, like git: exit 128 when the repo is unknown.
+if [ "$1 $2" != "ls-remote --tags" ]; then
+    echo "fake git: unexpected call: $*" >&2
+    exit 2
+fi
+repo="${3#https://github.com/}"
+file="$FAKE_GIT_DIR/${repo//\//_}.txt"
+if [ ! -f "$file" ]; then
+    echo "fatal: repository '$3/' not found" >&2
+    exit 128
+fi
+cat "$file"

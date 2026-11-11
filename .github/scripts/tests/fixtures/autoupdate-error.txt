@@ -1,0 +1,11 @@
+[https://github.com/shellcheck-py/shellcheck-py] already up to date!
+[https://github.com/scop/pre-commit-shfmt] already up to date!
+[https://github.com/pre-commit/pre-commit-hooks] already up to date!
+[https://github.com/hadolint/hadolint] already up to date!
+An unexpected error has occurred: CalledProcessError: command: ('/usr/local/bin/git', '-c', 'core.useBuiltinFSMonitor=false', '-C', '/tmp/repo', 'fetch', 'origin', 'HEAD', '--quiet', '--filter=blob:none', '--tags')
+return code: 128
+stdout: (none)
+stderr:
+    remote: Repository not found.
+    fatal: repository 'https://github.com/adrienverge/yamllint-does-not-exist/' not found
+Check the log at ~/.cache/pre-commit/pre-commit.log
