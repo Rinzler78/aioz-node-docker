@@ -14,8 +14,6 @@ ENV PATH=$NODEDATA_FOLDER:$TOOLS_DIRECTORY:$HOME:$PATH
 ENV PRIV_KEY_FILE=$NODEDATA_FOLDER/privkey.json
 ENV REPO_NAME=AIOZNetwork/aioz-depin-cli
 ENV BINARY_NAME=aioznode
-# aioz-io, the node binary the CLI extracts when it runs (tools/node.io.sh).
-ENV NODE_IO=$HOME/.cache/aioz-depin-cli/bin/aioz-io
 
 ## Tools
 COPY tools/*.* $TOOLS_DIRECTORY/
@@ -48,7 +46,7 @@ ENV TOKEN_NAME=aioz \
     TOKEN_DENOM=attoaioz \
     TOKEN_DECIMALS=10^18
 
-# Same check and timings as the start.sh watchdog.
+# Same check and default timings as the start.sh watchdog.
 HEALTHCHECK --interval=60s --timeout=30s --start-period=300s --retries=3 \
     CMD ["node.health.sh"]
 

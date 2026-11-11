@@ -38,6 +38,8 @@
     "keytool",
     "laddr",
     "nodedata",
+    "pgrep",
+    "pkill",
     "privkey",
     "quicktest",
     "rinzler",

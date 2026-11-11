@@ -7,37 +7,21 @@ services:
     image: rinzlerfr/aioznode
     ports:
       - "1317:1317"
-    # Same check and timings as the start.sh watchdog.
-    healthcheck:
-      test: ["CMD", "node.health.sh"]
-      start_period: 300s
-      interval: 60s
-      timeout: 30s
-      retries: 3
     restart: always
-    networks:
-      - aioznetwork
     volumes:
       - ${NODEDATA_PATH:-./nodedata}:/nodedata
 
   aioznode-auto-withdraw-reward:
     image: rinzlerfr/aioznode
     command: start-watching-reward.sh
-    depends_on:
-      aioznode:
-        condition: service_healthy
     restart: always
     # The image health check targets a local node; this container has none.
+    # It needs no node either: aioz-io reads the rewards from the network.
     healthcheck:
       disable: true
     environment:
       - CHECK_FREQ=60
       - WITHDRAW_ADDRESS_HEX=${WITHDRAW_ADDRESS_HEX:?set the reward address}
-    networks:
-      - aioznetwork
     # Read-only: this container must never create a wallet in the node data.
     volumes:
       - ${NODEDATA_PATH:-./nodedata}:/nodedata:ro
-
-networks:
-  aioznetwork:

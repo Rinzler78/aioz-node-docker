@@ -57,8 +57,11 @@ withdraw_reward() {
 
     if [ "$(echo "$balance > $minimum" | bc)" = "1" ]; then
         echo "Try to withdraw... ${NODE_IO##*/} reward withdraw --address $WITHDRAW_ADDRESS_HEX --amount $balance$denom --priv-key-file $PRIV_KEY_FILE"
-        "$NODE_IO" reward withdraw --address "$WITHDRAW_ADDRESS_HEX" \
-            --amount "$balance$denom" --priv-key-file "$PRIV_KEY_FILE"
+        if ! "$NODE_IO" reward withdraw --address "$WITHDRAW_ADDRESS_HEX" \
+            --amount "$balance$denom" --priv-key-file "$PRIV_KEY_FILE"; then
+            echo "ERROR: withdraw of $balance$denom failed" >&2
+            return 1
+        fi
     fi
 }
 

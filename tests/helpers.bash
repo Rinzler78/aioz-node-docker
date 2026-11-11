@@ -11,8 +11,10 @@ setup_env() {
     export BIN_DIR="$BATS_TEST_TMPDIR/bin"
     export FAKE_GITHUB="$BATS_TEST_TMPDIR/github"
     export GITHUB_API_URL="file://$FAKE_GITHUB/api"
-    # Where the CLI extracts aioz-io ($HOME/.cache/aioz-depin-cli/bin in the image).
-    export NODE_IO="$BATS_TEST_TMPDIR/cache/aioz-depin-cli/bin/aioz-io"
+    # The CLI extracts aioz-io under $HOME: a home of its own for each test.
+    # NODE_IO is read by the test files; the scripts derive it from HOME.
+    export HOME="$BATS_TEST_TMPDIR/home"
+    export NODE_IO="$HOME/.cache/aioz-depin-cli/bin/aioz-io"
     mkdir -p "$BIN_DIR"
 }
 
@@ -85,6 +87,7 @@ setup_node_env() {
     export HEALTH_RETRIES=3
     mkdir -p "$NODEDATA_FOLDER" "$FAKE_STATE"
     echo '{}' > "$PRIV_KEY_FILE"
+    serve_balance 1
     # Fake apk: offline, the runner is not touched; calls logged to apk.log.
     mkdir -p "$BATS_TEST_TMPDIR/stubs"
     cat > "$BATS_TEST_TMPDIR/stubs/apk" << 'EOF'
@@ -97,18 +100,20 @@ EOF
     export PATH="$BATS_TEST_TMPDIR/stubs:$PATH"
 }
 
-# Fake CLI wrapper at $1 (version $2) with the v1.2.6 behavior measured on the
-# real one: `version` extracts the embedded aioz-io to $NODE_IO only when it is
+# Fake CLI wrapper at $1 (version $2, embedding aioz-io version $3, default
+# $2) with the v1.2.6 behavior measured on the real one: `version` extracts
+# the embedded aioz-io to $HOME/.cache/aioz-depin-cli/bin only when it is
 # missing (a stale copy is kept), `keytool new` saves a key, and `start` fails
 # like upstream AIOZNetwork/aioz-depin-cli#10. Other commands fail.
 make_fake_node() {
-    local embedded="$BATS_TEST_TMPDIR/embedded/aioz-io-$2"
-    make_fake_io "$embedded" "$2"
+    local embedded="$BATS_TEST_TMPDIR/embedded/aioz-io-$2-${3:-$2}"
+    make_fake_io "$embedded" "${3:-$2}"
     cat > "$1" << EOF
 #!/bin/sh
+io="\$HOME/.cache/aioz-depin-cli/bin/aioz-io"
 case "\$1" in
     version)
-        [ -e "\$NODE_IO" ] || { mkdir -p "\${NODE_IO%/*}" && cp "$embedded" "\$NODE_IO"; }
+        [ -e "\$io" ] || { mkdir -p "\${io%/*}" && cp "$embedded" "\$io"; }
         printf '{\n  "version": "v%s"\n}\n' "$2" ;;
     keytool) [ "\$2" = new ] && [ "\$3" = --save-priv-key ] && echo '{}' > "\$4" ;;
     start) echo "Error: unknown flag: --password" >&2; exit 1 ;;
@@ -120,10 +125,10 @@ EOF
 
 # Fake aioz-io at $1 (version $2) with the v1.2.6 interface: `--endpoint` is a
 # flag of `stats` only. `start` and `stats` record their arguments in
-# $FAKE_STATE; `stats` hangs while $FAKE_STATE/hang exists and fails while
-# $FAKE_STATE/unhealthy exists; `reward balance` prints
+# $FAKE_STATE; `stats` hangs (sleep 1003) while $FAKE_STATE/hang exists and
+# fails while $FAKE_STATE/unhealthy exists; `reward balance` prints
 # $FAKE_STATE/balance.json (fails without it); `reward withdraw` records its
-# arguments.
+# arguments and fails while $FAKE_STATE/withdraw.fail exists.
 make_fake_io() {
     mkdir -p "${1%/*}"
     cat > "$1" << EOF
@@ -139,13 +144,13 @@ case "\$1" in
     start) echo "\$*" > "\$FAKE_STATE/start.args"; touch "\$FAKE_STATE/started"; exec sleep 1000 ;;
     stats)
         echo "\$*" > "\$FAKE_STATE/stats.args"
-        [ -e "\$FAKE_STATE/hang" ] && exec sleep 1000
+        [ -e "\$FAKE_STATE/hang" ] && exec sleep 1003
         [ -e "\$FAKE_STATE/unhealthy" ] && exit 1
-        echo '{"storage":{"total_count":0,"total_size":0}}' ;;
+        echo '{"storage":{"total_count":0,"total_size":0},"delivery":{"upstream_speed":0},"transcoding":{"status":"Standby"}}' ;;
     reward)
         case "\$2" in
             balance) shift 2; echo "\$*" > "\$FAKE_STATE/balance.args"; cat "\$FAKE_STATE/balance.json" ;;
-            withdraw) shift 2; echo "\$*" > "\$FAKE_STATE/withdraw.args" ;;
+            withdraw) shift 2; echo "\$*" > "\$FAKE_STATE/withdraw.args"; [ ! -e "\$FAKE_STATE/withdraw.fail" ] ;;
             *) exit 1 ;;
         esac ;;
     *) exit 1 ;;
@@ -165,7 +170,7 @@ setup_withdraw_env() {
     export TOKEN_NAME="aioz" TOKEN_DENOM="attoaioz" TOKEN_DECIMALS="10^18"
     mkdir -p "$NODEDATA_SEGMENT_FOLDER"
     make_fake_node "$BIN_DIR/$BINARY_NAME" "1.2.6"
-    "$BIN_DIR/$BINARY_NAME" version > /dev/null
+    "$REPO_ROOT/tools/node.io.sh" > /dev/null
 }
 
 # Serve the reward balance captured on a running node (aioz-io v1.2.6), with

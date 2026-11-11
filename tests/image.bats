@@ -5,17 +5,23 @@ load helpers
 
 # HEALTHCHECK instruction of the Dockerfile, continuation lines joined.
 healthcheck() {
-    sed -n '/^HEALTHCHECK/,/[^\\]$/p' "$REPO_ROOT/Dockerfile" | sed 's/ *\\$//' | tr -s ' \n' ' '
+    awk '/^HEALTHCHECK/ { found = 1 }
+        found { more = /\\$/; sub(/[ \t]*\\$/, "", $0); line = line " " $0; if (!more) exit }
+        END { print line }' "$REPO_ROOT/Dockerfile" | tr -s ' ' | sed 's/^ //'
 }
 
-@test "the image health check is node.health.sh with the watchdog timings" {
-    [ "$(healthcheck)" = 'HEALTHCHECK --interval=60s --timeout=30s --start-period=300s --retries=3 CMD ["node.health.sh"] ' ]
+# Default of the start.sh watchdog setting $1 (NAME="${NAME:-value}").
+watchdog_default() {
+    sed -n "s/^$1=\"\${$1:-\([0-9]*\)}\"$/\1/p" "$REPO_ROOT/tools/start.sh"
 }
 
-@test "the image locates the aioz-io binary the CLI extracts" {
-    local expected
-    read -r expected << 'EOF'
-ENV NODE_IO=$HOME/.cache/aioz-depin-cli/bin/aioz-io
-EOF
-    grep -qxF "$expected" "$REPO_ROOT/Dockerfile"
+@test "the image health check is node.health.sh with the watchdog default timings" {
+    local interval timeout start_period retries
+    interval=$(watchdog_default HEALTH_INTERVAL)
+    timeout=$(watchdog_default HEALTH_TIMEOUT)
+    start_period=$(watchdog_default HEALTH_START_PERIOD)
+    retries=$(watchdog_default HEALTH_RETRIES)
+    [ -n "$interval" ] && [ -n "$timeout" ] && [ -n "$start_period" ] && [ -n "$retries" ]
+
+    [ "$(healthcheck)" = "HEALTHCHECK --interval=${interval}s --timeout=${timeout}s --start-period=${start_period}s --retries=$retries CMD [\"node.health.sh\"]" ]
 }

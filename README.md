@@ -96,15 +96,17 @@ they are only run through the `PATH`, so the rule does not apply to them.
   `SHA256SUMS`. The update is skipped when the installed version is already the
   latest. If the update fails, the installed binary is kept and a `WARN` is
   logged; with no binary at all, the container exits with an error
-* `node.io.sh` — `node_io_sync`: makes `NODE_IO` the `aioz-io` of the
-  installed CLI. The CLI (a wrapper) extracts this binary when it runs, but
-  only if it is missing, so after a CLI update the stale copy is removed and
-  extracted again; fails when the CLI extracts nothing (see
+* `node.io.sh` — `node_io_sync`: makes `aioz-io` the one of the installed
+  CLI. The CLI (a wrapper) extracts this binary under `$HOME` when it runs,
+  but only if it is missing: when the CLI changes (sha256), the stale copy is
+  removed and extracted again; fails when the CLI extracts nothing (see
   [Node binary](#node-binary))
 * `wallet.configure.sh` — `wallet_configure`: creates the wallet
   (`PRIV_KEY_FILE`) when it does not exist
 * `node.health.sh` — Health check of the watchdog and of the image
-  `HEALTHCHECK`: the node answers `aioz-io stats`
+  `HEALTHCHECK`: the node answers `aioz-io stats` and the wallet reads its
+  rewards (`aioz-io reward balance`, which queries the network, so it does not
+  prove the node alone)
 * `node.version.sh` / `node.remoteVersion.sh` — Installed and latest release
   versions (used by `quick_test.sh`)
 * `version.lib.sh` — Version parsing, sourced by the scripts above (the CLI
@@ -130,12 +132,11 @@ they are only run through the `PATH`, so the rule does not apply to them.
 * `RUN_TIMEOUT` (default: `86400`) — Seconds before the node is stopped, so the
   container restarts and updates
 * `HEALTH_START_PERIOD` / `HEALTH_INTERVAL` / `HEALTH_TIMEOUT` /
-  `HEALTH_RETRIES` (defaults: `300` / `60` / `30` / `3`) — Watchdog timings,
-  also those of the image `HEALTHCHECK`
+  `HEALTH_RETRIES` (defaults: `300` / `60` / `30` / `3`) — Watchdog timings.
+  The image `HEALTHCHECK` uses the defaults: setting these variables changes
+  the watchdog only
 * `ENDPOINT` (default: `http://127.0.0.1:1317`) — Node queried by
   `node.health.sh`
-* `NODE_IO` (default: `$HOME/.cache/aioz-depin-cli/bin/aioz-io`) — Where the
-  CLI extracts `aioz-io`
 * `WITHDRAW_ADDRESS_HEX` (**required** in withdraw mode) — `0x` address (40 hex
   digits) that receives the whole balance at each withdraw. The withdraw mode
   refuses to start without a valid one
@@ -161,16 +162,18 @@ launches it with the correct configuration.
 
 The same image runs the withdraw mode when started with the command
 `start-watching-reward.sh` (see `docker-compose.yml`, which runs both, with the
-node data mounted read-only in the withdraw container). With a plain `docker
-run`, disable the image health check for this mode (`--no-healthcheck`): it
-targets a local node.
+node data mounted read-only in the withdraw container). The withdraw mode needs
+no running node: `aioz-io` reads and withdraws the rewards from the network
+with the wallet key. With a plain `docker run`, disable the image health check
+for this mode (`--no-healthcheck`): it targets a local node.
 
 #### Node binary
 
 The CLI of the release (`aioznode`, v1.2.6) is a wrapper around two embedded
 binaries, `aioz-io` (the node) and `aioz-ai` (AI computing), which it extracts
-to `$HOME/.cache/aioz-depin-cli/bin`. Its `start` fails: it calls `aioz-io
-keytool encrypt --password`, a flag `aioz-io` does not have (upstream
+to `$HOME/.cache/aioz-depin-cli/bin` (only when missing). Its `start` fails: it
+calls `aioz-io keytool encrypt --password`, a flag `aioz-io` does not have
+(upstream
 [aioz-depin-cli#10](https://github.com/AIOZNetwork/aioz-depin-cli/issues/10)).
 The scripts therefore run `aioz-io` directly, for the node, its health check
 and the rewards; the wrapper is still used to install, extract and create the

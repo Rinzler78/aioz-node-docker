@@ -90,7 +90,8 @@ setup() {
 }
 
 @test "reports a failed balance query once, without withdrawing" {
-    # No balance served: the fake CLI fails, like the v1.2.6 CLI today.
+    rm "$FAKE_STATE/balance.json" # the fake aioz-io fails
+
     run withdraw.reward.sh
 
     [ "$status" -eq 1 ]
@@ -131,4 +132,25 @@ setup() {
 
     [ "$status" -eq 0 ]
     [ "$(cat "$FAKE_STATE/withdraw.args")" = "--address $WITHDRAW_ADDRESS_HEX --amount 7761729917265715262attoaioz --priv-key-file $PRIV_KEY_FILE" ]
+}
+
+@test "reports a failed withdraw" {
+    serve_balance 7761729917265715262
+    touch "$FAKE_STATE/withdraw.fail"
+
+    run withdraw.reward.sh
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"ERROR: withdraw"* ]]
+}
+
+@test "reports a missing node binary without querying the rewards" {
+    rm "$NODE_IO"
+    serve_balance 7761729917265715262
+
+    run withdraw.reward.sh
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Node is not installed"* ]]
+    [ ! -e "$FAKE_STATE/balance.args" ]
 }
