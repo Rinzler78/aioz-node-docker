@@ -1,5 +1,7 @@
 #!/bin/bash
-# Update the CLI, configure the wallet, then run the node for RUN_TIMEOUT seconds.
+# Update the CLI, configure the wallet, then run the node (aioz-io, see
+# node.io.sh) for RUN_TIMEOUT seconds. The CLI updates are run by deploy at
+# every start, so the node does not update itself (--no-auto-update).
 # Docker does not restart unhealthy containers, so a watchdog stops the node after
 # HEALTH_RETRIES consecutive failed checks (a check running past HEALTH_TIMEOUT
 # fails): the container exits, the restart policy starts it again, and the
@@ -41,8 +43,8 @@ start_node() {
         return 1
     fi
     echo "Starting node for ${RUN_TIMEOUT}s..."
-    timeout "${RUN_TIMEOUT}s" "$BINARY_NAME" start --home "$NODEDATA_FOLDER" \
-        --priv-key-file "$PRIV_KEY_FILE" --laddr tcp://0.0.0.0:1317 &
+    timeout "${RUN_TIMEOUT}s" "$NODE_IO" start --home "$NODEDATA_FOLDER" \
+        --priv-key-file "$PRIV_KEY_FILE" --laddr tcp://0.0.0.0:1317 --no-auto-update &
     node_pid=$!
     watchdog "$node_pid" &
     watchdog_pid=$!

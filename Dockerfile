@@ -14,6 +14,8 @@ ENV PATH=$NODEDATA_FOLDER:$TOOLS_DIRECTORY:$HOME:$PATH
 ENV PRIV_KEY_FILE=$NODEDATA_FOLDER/privkey.json
 ENV REPO_NAME=AIOZNetwork/aioz-depin-cli
 ENV BINARY_NAME=aioznode
+# aioz-io, the node binary the CLI extracts when it runs (tools/node.io.sh).
+ENV NODE_IO=$HOME/.cache/aioz-depin-cli/bin/aioz-io
 
 ## Tools
 COPY tools/*.* $TOOLS_DIRECTORY/
@@ -27,7 +29,8 @@ EXPOSE 1317
 RUN chmod +x $TOOLS_DIRECTORY/*.sh \
     && mkdir -p $NODEDATA_FOLDER \
     && xargs apk add --no-cache < $TOOLS_DIRECTORY/deps.txt \
-    && node.install.sh
+    && node.install.sh \
+    && node.io.sh
 
 ## Node data
 VOLUME ["$NODEDATA_FOLDER"]
@@ -45,8 +48,9 @@ ENV TOKEN_NAME=aioz \
     TOKEN_DENOM=attoaioz \
     TOKEN_DECIMALS=10^18
 
-HEALTHCHECK --interval=1s --timeout=1s --start-period=1s --retries=60 \
-    CMD ["aioznode", "reward", "balance"]
+# Same check and timings as the start.sh watchdog.
+HEALTHCHECK --interval=60s --timeout=30s --start-period=300s --retries=3 \
+    CMD ["node.health.sh"]
 
 # Entry point
 CMD ["start.sh"]

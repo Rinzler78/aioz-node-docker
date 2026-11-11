@@ -201,8 +201,18 @@ assert_repository_listed() {
     [[ "$output" == *"Wallet successfully configured"* ]]
 }
 
+@test "wallet.configure.sh creates a missing wallet with the CLI" {
+    rm "$PRIV_KEY_FILE"
+
+    run "$REPO_ROOT/tools/wallet.configure.sh"
+
+    [ "$status" -eq 0 ]
+    [ -f "$PRIV_KEY_FILE" ]
+}
+
 @test "wallet.configure.sh fails when the wallet cannot be created" {
-    rm "$PRIV_KEY_FILE" # the fake CLI does not create keys
+    rm "$PRIV_KEY_FILE"
+    make_fake_cli "$BIN_DIR/$BINARY_NAME" "1.1.0" # answers version only
 
     run "$REPO_ROOT/tools/wallet.configure.sh"
 

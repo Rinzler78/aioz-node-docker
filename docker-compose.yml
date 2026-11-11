@@ -32,7 +32,6 @@ services:
       disable: true
     environment:
       - CHECK_FREQ=60
-      - ENDPOINT=http://aioznode:1317
       - WITHDRAW_ADDRESS_HEX=${WITHDRAW_ADDRESS_HEX:?set the reward address}
     networks:
       - aioznetwork

@@ -1,6 +1,6 @@
 #!/bin/bash
-# Update the system packages, install or update the CLI, configure the wallet,
-# then clean the packages. Sourced by start.sh and start-watching-reward.sh
+# Update the system packages, install or update the CLI and its aioz-io,
+# configure the wallet, then clean the packages. Sourced by start.sh and start-watching-reward.sh
 # (deploy); runs standalone too.
 # Folder of this script, also when run by bare name (bash deploy.sh).
 TOOLS_DIR="${BASH_SOURCE[0]%/*}"
@@ -9,12 +9,15 @@ TOOLS_DIR="${BASH_SOURCE[0]%/*}"
 source "$TOOLS_DIR/dist.sh"
 # shellcheck source=tools/node.install.sh
 source "$TOOLS_DIR/node.install.sh"
+# shellcheck source=tools/node.io.sh
+source "$TOOLS_DIR/node.io.sh"
 # shellcheck source=tools/wallet.configure.sh
 source "$TOOLS_DIR/wallet.configure.sh"
 
 deploy() {
     dist_update
     node_install || return 1
+    node_io_sync || return 1
     wallet_configure || return 1
     dist_clean
 }

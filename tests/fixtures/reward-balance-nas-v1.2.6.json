@@ -1,0 +1,28 @@
+{
+  "balance": [
+    {
+      "denom": "attoaioz",
+      "amount": "238243494526564864"
+    }
+  ],
+  "storage_earned": [
+    {
+      "denom": "attoaioz",
+      "amount": "1855515626269222258"
+    }
+  ],
+  "delivery_earned": [
+    {
+      "denom": "attoaioz",
+      "amount": "120108867395339672540"
+    }
+  ],
+  "transcoding_earned": [],
+  "withdraw": [
+    {
+      "denom": "attoaioz",
+      "amount": "121726139527082329934"
+    }
+  ],
+  "delivery_counter": 104515
+}

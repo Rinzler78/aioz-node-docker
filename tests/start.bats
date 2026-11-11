@@ -64,10 +64,18 @@ setup() {
     [ "$SECONDS" -lt 60 ]
 }
 
-@test "checks the rewards of the configured wallet on the local node" {
+@test "starts aioz-io on the node data and wallet, listening outside the container" {
     make_fake_node "$BIN_DIR/$BINARY_NAME" "1.1.0"
 
     RUN_TIMEOUT=3 run start.sh
 
-    [ "$(cat "$FAKE_STATE/reward.args")" = "reward balance --priv-key-file $PRIV_KEY_FILE --endpoint http://127.0.0.1:1317" ]
+    [ "$(cat "$FAKE_STATE/start.args")" = "start --home $NODEDATA_FOLDER --priv-key-file $PRIV_KEY_FILE --laddr tcp://0.0.0.0:1317 --no-auto-update" ]
+}
+
+@test "checks the local node with aioz-io stats" {
+    make_fake_node "$BIN_DIR/$BINARY_NAME" "1.1.0"
+
+    RUN_TIMEOUT=3 run start.sh
+
+    [ "$(cat "$FAKE_STATE/stats.args")" = "stats --endpoint http://127.0.0.1:1317" ]
 }

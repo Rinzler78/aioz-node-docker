@@ -61,21 +61,21 @@ setup() {
     [ ! -e "$FAKE_STATE/withdraw.args" ]
 }
 
-@test "queries the balance on ENDPOINT" {
+@test "queries the balance of the configured wallet" {
     serve_balance 1
 
     run withdraw.reward.sh
 
-    [ "$(cat "$FAKE_STATE/balance.args")" = "--endpoint http://aioznode:1317" ]
+    [ "$status" -eq 0 ]
+    [ "$(cat "$FAKE_STATE/balance.args")" = "--priv-key-file $PRIV_KEY_FILE" ]
 }
 
-@test "withdraw mode watches the aioznode service by default, every CHECK_FREQ" {
-    unset ENDPOINT
+@test "withdraw mode checks the rewards every CHECK_FREQ" {
     serve_balance 1
 
     CHECK_FREQ=1 run timeout 5 start-watching-reward.sh
 
-    [ "$(cat "$FAKE_STATE/balance.args")" = "--endpoint http://aioznode:1317" ]
+    [ "$(cat "$FAKE_STATE/balance.args")" = "--priv-key-file $PRIV_KEY_FILE" ]
     [ "$(grep -c 'Node rewards status' <<< "$output")" -ge 2 ]
 }
 
@@ -116,19 +116,19 @@ setup() {
     run withdraw.reward.sh
 
     [[ "$output" == *"=> Balance : 7761729917265715262 attoaioz => 7.76172 aioz"* ]]
-    [[ "$output" == *"=> Storage : 810423534750216148 attoaioz => .81042 aioz"* ]]
-    [[ "$output" == *"=> Delivery : 7525653191257749557 attoaioz => 7.52565 aioz"* ]]
-    [[ "$output" == *"=> Withdraw : 1100000000000000000 attoaioz => 1.10000 aioz"* ]]
+    [[ "$output" == *"=> Storage : 1855515626269222258 attoaioz => 1.85551 aioz"* ]]
+    [[ "$output" == *"=> Delivery : 120108867395339672540 attoaioz => 120.10886 aioz"* ]]
+    [[ "$output" == *"=> Withdraw : 121726139527082329934 attoaioz => 121.72613 aioz"* ]]
+    [[ "$output" == *"=> Delivery count : 104515"* ]]
     [[ "$output" == *"=> Stored segment count : 0. Size : "* ]]
-    [[ "$output" == *"Try to withdraw... aioznode reward withdraw --endpoint http://aioznode:1317 --address $WITHDRAW_ADDRESS_HEX --amount 7761729917265715262attoaioz --priv-key-file $PRIV_KEY_FILE"* ]]
+    [[ "$output" == *"Try to withdraw... aioz-io reward withdraw --address $WITHDRAW_ADDRESS_HEX --amount 7761729917265715262attoaioz --priv-key-file $PRIV_KEY_FILE"* ]]
 }
 
-@test "standalone withdraw queries the aioznode service when ENDPOINT is unset" {
-    unset ENDPOINT
+@test "withdraws with the wallet key, without a node endpoint" {
     serve_balance 7761729917265715262
 
     run withdraw.reward.sh
 
-    [ "$(cat "$FAKE_STATE/balance.args")" = "--endpoint http://aioznode:1317" ]
-    [[ "$(cat "$FAKE_STATE/withdraw.args")" == "--endpoint http://aioznode:1317 "* ]]
+    [ "$status" -eq 0 ]
+    [ "$(cat "$FAKE_STATE/withdraw.args")" = "--address $WITHDRAW_ADDRESS_HEX --amount 7761729917265715262attoaioz --priv-key-file $PRIV_KEY_FILE" ]
 }

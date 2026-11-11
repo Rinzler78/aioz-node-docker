@@ -27,6 +27,7 @@ Official downloads and client installation: <https://aioz.network/aioz-node>
 * [Docker image creation](#docker-image-creation)
   * [Dockerfile](#dockerfile)
     * [Installed packages](#installed-packages)
+    * [Node binary](#node-binary)
   * [Build instructions](#build-instructions)
   * [Tests](#tests)
   * [Before running](#before-running)
@@ -85,7 +86,7 @@ and that sourcing it prints and runs nothing. The extension-less test doubles in
 they are only run through the `PATH`, so the rule does not apply to them.
 
 * `deploy.sh` — `deploy`: updates the system packages, installs or updates the
-  CLI, configures the wallet, cleans the packages
+  CLI and its `aioz-io`, configures the wallet, cleans the packages
 * `dist.sh` — `dist_update` / `dist_clean` (Alpine packages); standalone:
   `dist.sh update|clean`
 * `node.install.sh` — `node_install`: installs or updates the CLI from the
@@ -95,10 +96,15 @@ they are only run through the `PATH`, so the rule does not apply to them.
   `SHA256SUMS`. The update is skipped when the installed version is already the
   latest. If the update fails, the installed binary is kept and a `WARN` is
   logged; with no binary at all, the container exits with an error
+* `node.io.sh` — `node_io_sync`: makes `NODE_IO` the `aioz-io` of the
+  installed CLI. The CLI (a wrapper) extracts this binary when it runs, but
+  only if it is missing, so after a CLI update the stale copy is removed and
+  extracted again; fails when the CLI extracts nothing (see
+  [Node binary](#node-binary))
 * `wallet.configure.sh` — `wallet_configure`: creates the wallet
   (`PRIV_KEY_FILE`) when it does not exist
-* `node.health.sh` — Health check of the watchdog: the node answers `reward
-  balance` for the configured wallet
+* `node.health.sh` — Health check of the watchdog and of the image
+  `HEALTHCHECK`: the node answers `aioz-io stats`
 * `node.version.sh` / `node.remoteVersion.sh` — Installed and latest release
   versions (used by `quick_test.sh`)
 * `version.lib.sh` — Version parsing, sourced by the scripts above (the CLI
@@ -106,14 +112,16 @@ they are only run through the `PATH`, so the rule does not apply to them.
 * `git.releases.latest.sh` — Latest release JSON from the GitHub API
   (`GITHUB_TOKEN` when set), sourced by the scripts above; standalone:
   `git.releases.latest.sh <owner/repo>`
-* `start.sh` — Entrypoint script: runs deployment, starts the node, and stops it
+* `start.sh` — Entrypoint script: runs deployment, starts the node (`aioz-io
+  start --no-auto-update`: updates run at each container start), and stops it
   after 3 consecutive failed health checks (a check running past 30s fails) so
   that the restart policy restarts the container (and re-runs the update).
   Docker itself never restarts an unhealthy container
 * `start-watching-reward.sh` — Withdraw mode entrypoint: runs `deploy`, then
   every `CHECK_FREQ` seconds calls `withdraw_reward` (`withdraw.reward.sh`),
   which withdraws the whole balance to `WITHDRAW_ADDRESS_HEX` once it exceeds
-  `WITHDRAW_MIN_VALUE`
+  `WITHDRAW_MIN_VALUE`. `aioz-io` reads and withdraws the rewards of the
+  wallet `PRIV_KEY_FILE` from the network: no node endpoint is involved
 
 #### Environment variables
 
@@ -122,14 +130,12 @@ they are only run through the `PATH`, so the rule does not apply to them.
 * `RUN_TIMEOUT` (default: `86400`) — Seconds before the node is stopped, so the
   container restarts and updates
 * `HEALTH_START_PERIOD` / `HEALTH_INTERVAL` / `HEALTH_TIMEOUT` /
-  `HEALTH_RETRIES` (defaults: `300` / `60` / `30` / `3`) — Watchdog timings. The
-  image `HEALTHCHECK` still runs the former check (`reward balance`, 1s
-  interval); it will be aligned once the v1.2.6 CLI interface is confirmed,
-  since its `start` is broken upstream
-  ([aioz-depin-cli#10](https://github.com/AIOZNetwork/aioz-depin-cli/issues/10))
-* `ENDPOINT` (default: `http://127.0.0.1:1317` in node mode,
-  `http://aioznode:1317` in withdraw mode) — Node queried by `node.health.sh`
-  and the withdraw mode
+  `HEALTH_RETRIES` (defaults: `300` / `60` / `30` / `3`) — Watchdog timings,
+  also those of the image `HEALTHCHECK`
+* `ENDPOINT` (default: `http://127.0.0.1:1317`) — Node queried by
+  `node.health.sh`
+* `NODE_IO` (default: `$HOME/.cache/aioz-depin-cli/bin/aioz-io`) — Where the
+  CLI extracts `aioz-io`
 * `WITHDRAW_ADDRESS_HEX` (**required** in withdraw mode) — `0x` address (40 hex
   digits) that receives the whole balance at each withdraw. The withdraw mode
   refuses to start without a valid one
@@ -155,19 +161,21 @@ launches it with the correct configuration.
 
 The same image runs the withdraw mode when started with the command
 `start-watching-reward.sh` (see `docker-compose.yml`, which runs both, with the
-node health check aligned on the watchdog and the node data mounted read-only in
-the withdraw container). With a plain `docker run`, disable the image health
-check for this mode (`--no-healthcheck`): it targets a local node.
+node data mounted read-only in the withdraw container). With a plain `docker
+run`, disable the image health check for this mode (`--no-healthcheck`): it
+targets a local node.
 
-**Known limitation:** the withdraw mode queries the node with `reward balance
---endpoint` / `reward withdraw --endpoint`. The v1.2.6 CLI wrapper has no
-`--endpoint` (only `--priv-key-file`) and its `start` is broken upstream
-([aioz-depin-cli#10](https://github.com/AIOZNetwork/aioz-depin-cli/issues/10)),
-so this mode cannot work until the upstream CLI is fixed; the scripts are kept
-as they ran with the previous CLI. For the same reason, in `docker-compose.yml`
-the node never becomes healthy (its health check passes `--endpoint`), so the
-withdraw service does not start; a failed balance query is logged as an `ERROR`
-and nothing is withdrawn.
+#### Node binary
+
+The CLI of the release (`aioznode`, v1.2.6) is a wrapper around two embedded
+binaries, `aioz-io` (the node) and `aioz-ai` (AI computing), which it extracts
+to `$HOME/.cache/aioz-depin-cli/bin`. Its `start` fails: it calls `aioz-io
+keytool encrypt --password`, a flag `aioz-io` does not have (upstream
+[aioz-depin-cli#10](https://github.com/AIOZNetwork/aioz-depin-cli/issues/10)).
+The scripts therefore run `aioz-io` directly, for the node, its health check
+and the rewards; the wrapper is still used to install, extract and create the
+wallet. **AI computing does not run** (`aioz-ai` is not started): the scripts
+go back to the wrapper `start` once the upstream bug is fixed.
 
 ---
 
