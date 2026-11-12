@@ -1,0 +1,44 @@
+---
+name: Tests
+
+# The bats suite of the image scripts (tests/run.sh, in Docker): on a pull
+# request that touches a script, the image or the tests (tests/scripts.bats
+# checks every *.sh of the repository); after a merge into develop or master,
+# always (the full pass). The CI scripts have their own tests, run by
+# upstream-watch.yml.
+on:
+  pull_request:
+    paths:
+      - '**.sh'
+      - 'tools/**'
+      - 'tests/**'
+      - 'Dockerfile'
+      - '.github/workflows/tests.yml'
+  push:
+    branches:
+      - develop
+      - master
+
+permissions:
+  contents: read  # checkout
+
+# One run per pull request or branch; a newer push to a pull request cancels
+# the older run. A run on develop or master is never cut short, but of several
+# merges queued behind it only the last one runs: it tests the latest state.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  tests:
+    name: Test the image scripts
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      # actions/checkout v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Unit tests
+        run: tests/run.sh

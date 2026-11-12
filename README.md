@@ -82,7 +82,8 @@ runners `tests/run.sh` and `.github/scripts/tests/run.sh`) has its functions
 first, then an entry point guarded by `[[ "${BASH_SOURCE[0]}" == "$0" ]]`.
 `tests/scripts.bats` checks every `*.sh` file of the repository for the guard,
 and that sourcing it prints and runs nothing. The extension-less test doubles in
-`.github/scripts/tests/fakes` stand in for external commands (`gh`, `curl`):
+`.github/scripts/tests/fakes` stand in for external commands (`gh`, `curl`,
+`git`, `pre-commit`, `docker`):
 they are only run through the `PATH`, so the rule does not apply to them.
 
 * `deploy.sh` — `deploy`: updates the system packages, installs or updates the
@@ -215,6 +216,11 @@ tests/run.sh      # bats tests in an Alpine container against a fake GitHub
                   # checks the installed version is the latest release
 ```
 
+CI runs `tests/run.sh` (`.github/workflows/tests.yml`) on a pull request that
+touches a `*.sh` file, `tools/`, `tests/`, the `Dockerfile` or the workflow
+itself, and after every merge into `develop` or `master`. `quick_test.sh` needs
+the AIOZ network and runs only on release tags (see Public Docker image).
+
 ---
 
 ### Before running
@@ -268,8 +274,20 @@ WITHDRAW_ADDRESS_HEX=0xYourAddress \
 
 ### Public Docker image
 
-A public image may be available in the future. For now, build locally as
-described above.
+`rinzlerfr/aioznode` is public on Docker Hub. Pushing a `v*` tag runs
+`.github/workflows/docker-image.yml`: it builds the image, runs `tests/run.sh`
+and `quick_test.sh`, pushes `rinzlerfr/aioznode:<tag>`, then creates the GitHub
+release. `.github/scripts/push-latest.sh` moves `:latest` to the tag only when
+it is the highest `vX.Y.Z` tag of the repository (compared as numbers, read with
+`git ls-remote` at push time): a hotfix pushed on an older line or a `v2-beta`
+tag leaves `:latest`, and so Watchtower, on the newest release. The highest
+tag counts even when its build failed: `:latest` then stays on the previous
+image until that tag is built again or a higher one ships. Only the release job
+gets a write token: the build and the tests, which run the AIOZ binary, keep a
+read-only one. The Docker Hub secrets (`DOCKER_USER`, `DOCKER_PASSWORD`) live
+in the `dockerhub` environment, which only `v*` tags can use. A tag is released
+once: if its GitHub release already exists, the release job fails. Tests of
+`push-latest.sh`: `.github/scripts/tests/run.sh` (Docker).
 
 ---
 
@@ -367,6 +385,22 @@ they source, see `.shellcheckrc`):
 * Linters and format — shellcheck, shfmt (style in `.editorconfig`), hadolint,
   yamllint (`.yamllint.yaml`), actionlint, markdownlint: shell scripts, bats
   tests, Dockerfiles, YAML, workflows, Markdown
+* Workflow security — zizmor: GitHub workflows. Actions are pinned to a commit
+  SHA, with their version in a comment on the line above; every permission is
+  commented; only the release job (`contents`) and the upstream watch job
+  (`issues`) may write
+* Dependencies up to date (blocking) — `.github/scripts/deps-freshness.sh`, run
+  only when `.pre-commit-config.yaml`, a workflow, the script or the
+  `release.lib.sh` it sources changes. It
+  fails when `pre-commit autoupdate` (run on a copy, the config is never
+  rewritten) would update a hook. In the workflows (`*.yml`, `*.yaml`), every
+  `uses:` but local (`./`) and Docker (`docker://`) actions must be pinned to a
+  commit SHA, with `# <action> vX.Y.Z` on the line above (a `uses` key in
+  another form, such as a flow mapping, fails); it fails when the SHA
+  is not the commit of that version, or that version is not the highest
+  `vX.Y.Z` tag of the action's repository. Fix: `pre-commit autoupdate`, or pin
+  the new release's SHA and comment. Needs the network (`git ls-remote`, no
+  token); tests: `.github/scripts/tests/run.sh` (Docker)
 * Spelling (English) — cspell, words in `cspell.json`: every text file
 * Misconfigurations — trivy config: Dockerfiles, run only when `Dockerfile`,
   `tests/Dockerfile` or `.trivyignore.yaml` changes
@@ -389,6 +423,12 @@ scan; the other tools are installed by pre-commit:
 brew install trivy hadolint
 ```
 
+The same hooks run in CI (`.github/workflows/pre-commit.yml`): on a pull
+request, on the files it changes (`--from-ref` its base); after a merge into
+`develop` or `master`, on every file. CI installs the latest trivy
+(`aquasecurity/setup-trivy`) and hadolint (release binary, checked against its
+`checksums.sha256`), like the rolling `alpine:latest` base.
+
 Accepted findings are kept with their reason, next to the line they concern
 when the format allows comments:
 
@@ -396,6 +436,9 @@ when the format allows comments:
   instruction (hadolint and trivy both read only the comment right above an
   instruction);
 * in `.trivyignore.yaml`, the findings about a whole file (root user);
+* in `.github/workflows/pre-commit.yml`, `# zizmor: ignore[unpinned-tools]` on
+  the trivy `version: latest` line: CI tools follow their latest release, like
+  the image base;
 * in `cspell.json`, the words of the GitHub API fixtures that are not English
   and cannot be changed: GitHub node IDs and AIOZ wallet addresses (two
   patterns), and the names and logins of upstream users (`ignoreWords`).

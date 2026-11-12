@@ -6,17 +6,33 @@ on:
     tags:
       - 'v*'  # Pushed tags starting with 'v' (e.g., v1.0.0)
 
+# Read-only by default: build and quick_test run code from the repository and
+# the AIOZ binary (which receives GITHUB_TOKEN). Only the release job, which
+# runs neither, may write.
+permissions:
+  contents: read  # checkout; the release job asks for more
+
+# One run per tag: a tag pushed again waits for its previous run. A group per
+# tag, not per workflow: GitHub keeps one pending run per group, so a shared
+# group would cancel a tag queued behind two others.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
 
   build:
-
+    name: Build, test and push the image
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # The Docker Hub secrets live in this environment, open to v* tags only.
+    environment: dockerhub
 
     steps:
-      - uses: actions/checkout@v4
-      - name: Extract tag name
-        id: extract_tag
-        run: echo "tag_name=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+      # actions/checkout v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
 
       - name: docker login
         env:
@@ -27,13 +43,10 @@ jobs:
             docker login -u "$DOCKER_USER" --password-stdin
 
       - name: docker build
-        env:
-          TAG: ${{ steps.extract_tag.outputs.tag_name }}
         run: |
           docker build -t aioznode . \
           --tag rinzlerfr/aioznode:quicktest \
-          --tag rinzlerfr/aioznode:latest \
-          --tag "rinzlerfr/aioznode:$TAG"
+          --tag "rinzlerfr/aioznode:$GITHUB_REF_NAME"
 
       - name: Unit tests
         run: tests/run.sh
@@ -44,19 +57,27 @@ jobs:
         run: |
           ./quick_test.sh rinzlerfr/aioznode:quicktest
 
+      # latest only moves to the highest vX.Y.Z release: an older or
+      # non-release tag (v1.0.0 pushed after v1.2.0, v2-beta) leaves it alone.
       - name: docker push
-        env:
-          TAG: ${{ steps.extract_tag.outputs.tag_name }}
         run: |
-          docker push "rinzlerfr/aioznode:$TAG"
-          docker push rinzlerfr/aioznode:latest
+          docker push "rinzlerfr/aioznode:$GITHUB_REF_NAME"
+          .github/scripts/push-latest.sh rinzlerfr/aioznode "$GITHUB_REF_NAME"
 
+  release:
+    name: Create the GitHub release
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write  # gh release create
+
+    steps:
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.extract_tag.outputs.tag_name }}
-          name: Release ${{ steps.extract_tag.outputs.tag_name }}
-          body: |
-            Automated release for ${{ steps.extract_tag.outputs.tag_name }}.
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" --verify-tag \
+            --title "Release $GITHUB_REF_NAME" \
+            --notes "Automated release for $GITHUB_REF_NAME."
