@@ -25,6 +25,8 @@ jobs:
     name: Build, test and push the image
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # The Docker Hub secrets live in this environment, open to v* tags only.
+    environment: dockerhub
 
     steps:
       # actions/checkout v7.0.1

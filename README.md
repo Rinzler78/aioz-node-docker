@@ -284,9 +284,10 @@ tag leaves `:latest`, and so Watchtower, on the newest release. The highest
 tag counts even when its build failed: `:latest` then stays on the previous
 image until that tag is built again or a higher one ships. Only the release job
 gets a write token: the build and the tests, which run the AIOZ binary, keep a
-read-only one. A tag is released once: if its GitHub release already exists,
-the release job fails. Tests of `push-latest.sh`: `.github/scripts/tests/run.sh`
-(Docker).
+read-only one. The Docker Hub secrets (`DOCKER_USER`, `DOCKER_PASSWORD`) live
+in the `dockerhub` environment, which only `v*` tags can use. A tag is released
+once: if its GitHub release already exists, the release job fails. Tests of
+`push-latest.sh`: `.github/scripts/tests/run.sh` (Docker).
 
 ---
 
