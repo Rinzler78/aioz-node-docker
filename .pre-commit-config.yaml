@@ -26,11 +26,17 @@ repos:
       - id: shfmt  # style from .editorconfig
         args: [-w]
 
-  # Linters: Dockerfiles, YAML, GitHub workflows and Markdown.
+  # Linters: Dockerfiles, Makefile, YAML, GitHub workflows and Markdown.
   - repo: https://github.com/hadolint/hadolint
     rev: v2.15.1
     hooks:
       - id: hadolint
+  # Settings in checkmake.ini. v0.3.0 is the latest tag of the default branch,
+  # the one pre-commit autoupdate (and so deps-freshness) picks.
+  - repo: https://github.com/checkmake/checkmake
+    rev: v0.3.0
+    hooks:
+      - id: checkmake
   - repo: https://github.com/rhysd/actionlint
     rev: v1.7.12
     hooks:

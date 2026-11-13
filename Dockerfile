@@ -3,7 +3,7 @@
 # hadolint ignore=DL3007 #trivy:ignore:DS-0001
 FROM alpine:latest
 
-# Project label: helper.docker.clean.sh removes only the images that carry it.
+# Project label: scripts/helper.docker.clean.sh removes only the images that carry it.
 LABEL org.opencontainers.image.source=https://github.com/Rinzler78/aioz-node-docker
 
 ENV HOME=/root

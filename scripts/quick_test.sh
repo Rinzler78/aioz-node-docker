@@ -1,7 +1,8 @@
 #!/bin/bash
 # Build the image, run it and check that it becomes healthy with the latest
 # CLI release. Usage: quick_test.sh --help
-# Folder of this script: the image is built from it, wherever it is run from.
+# Folder of this script: the image is built from its parent, the repository
+# root, wherever it is run from.
 QUICK_TEST_DIR="${BASH_SOURCE[0]%/*}"
 [ "$QUICK_TEST_DIR" != "${BASH_SOURCE[0]}" ] || QUICK_TEST_DIR=.
 
@@ -100,7 +101,9 @@ quick_test_delete() {
 # --------------------
 quick_test_build() {
     echo "[INFO] Building Docker image '$1'..."
-    if ! docker build "$QUICK_TEST_DIR" --tag "$1"; then
+    local context
+    context=$(cd "$QUICK_TEST_DIR/.." && pwd) || return 10
+    if ! docker build "$context" --tag "$1"; then
         echo "[ERROR] Docker build failed."
         return 10
     fi

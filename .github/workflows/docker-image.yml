@@ -55,7 +55,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          ./quick_test.sh rinzlerfr/aioznode:quicktest
+          scripts/quick_test.sh rinzlerfr/aioznode:quicktest
 
       # latest only moves to the highest vX.Y.Z release: an older or
       # non-release tag (v1.0.0 pushed after v1.2.0, v2-beta) leaves it alone.

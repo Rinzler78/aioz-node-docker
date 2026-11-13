@@ -21,7 +21,7 @@ EOF
 }
 
 @test "clean removes the project container, image and unused project images only" {
-    run bash "$REPO_ROOT/helper.docker.clean.sh"
+    run bash "$REPO_ROOT/scripts/helper.docker.clean.sh"
     [ "$status" -eq 0 ]
 
     [ "$(cat "$DOCKER_LOG")" = "rm --force aioznode
@@ -30,7 +30,7 @@ image prune --all --force --filter label=$PROJECT_LABEL" ]
 }
 
 @test "start stops, cleans the project images only, rebuilds and runs" {
-    run bash "$REPO_ROOT/helper.docker.start.sh" -v /data:/nodedata
+    run bash "$REPO_ROOT/scripts/helper.docker.start.sh" -v /data:/nodedata
     [ "$status" -eq 0 ]
 
     [ "$(cat "$DOCKER_LOG")" = "stop aioznode
@@ -60,8 +60,16 @@ dockerfiles() {
     done
 }
 
+@test "quick_test builds the image from the repository root" {
+    source "$REPO_ROOT/scripts/quick_test.sh"
+    run quick_test_build aioznode:quicktest
+    [ "$status" -eq 0 ]
+
+    [ "$(cat "$DOCKER_LOG")" = "build $REPO_ROOT --tag aioznode:quicktest" ]
+}
+
 # Lines of the repository shell scripts that prune Docker objects without the
-# project label filter of helper.docker.lib.sh (its value is checked above).
+# project label filter of scripts/helper.docker.lib.sh (its value is checked above).
 # Limits: one line is one command; a prune split over continuation lines, or
 # two commands on one line, are not seen.
 unscoped_prunes() {

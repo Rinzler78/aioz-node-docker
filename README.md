@@ -78,8 +78,9 @@ one shell process (plus the CLI and system tools); every script still runs
 standalone. `tests/scripts.bats` enforces it: the only script run as its own
 process is `node.health.sh`, because the watchdog bounds it with `timeout`.
 
-Every script of the repository (`tools/*.sh`, `helper.docker.*.sh`, which share
-`helper.docker.lib.sh`, `quick_test.sh`, `.github/scripts/*.sh` and the test
+Every script of the repository (`tools/*.sh`, `scripts/helper.docker.*.sh`,
+which share `scripts/helper.docker.lib.sh`, `scripts/quick_test.sh`,
+`.github/scripts/*.sh` and the test
 runners `tests/run.sh` and `.github/scripts/tests/run.sh`) has its functions
 first, then an entry point guarded by `[[ "${BASH_SOURCE[0]}" == "$0" ]]`.
 `tests/scripts.bats` checks every `*.sh` file of the repository for the guard,
@@ -117,7 +118,7 @@ they are only run through the `PATH`, so the rule does not apply to them.
   runs again):
   a node whose wallet cannot be used is reported, not hidden
 * `node.version.sh` / `node.remoteVersion.sh` — Installed and latest release
-  versions (used by `quick_test.sh`)
+  versions (used by `scripts/quick_test.sh`)
 * `version.lib.sh` — Version parsing, sourced by the scripts above (the CLI
   prints its version as JSON)
 * `number.lib.sh` — `require_whole_number <name> <value> [minimum]`: a whole
@@ -210,9 +211,20 @@ with a balance.
 docker build -t aioznode .
 ```
 
-The `helper.docker.*.sh` scripts build, run, stop and clean a local container
-named after `helper.docker.name.txt` (`aioznode`). `helper.docker.start.sh`
-chains stop, clean, build and run. The clean step removes the container and
+The `Makefile` is the entry point of the repository commands: `make` lists the
+targets, each of which runs one script.
+
+```sh
+make                 # list the targets
+make check           # tests, CI script tests and every pre-commit hook
+make docker-start ARGS='-v ~/MyDockers/aioznode/nodedata:/nodedata'
+```
+
+The `scripts/helper.docker.*.sh` scripts (`make docker-build`, `docker-run`,
+`docker-stop`, `docker-start`, `docker-clean`) build, run, stop and clean a
+local container named after `scripts/helper.docker.name.txt` (`aioznode`),
+from the repository root as build context. `docker-start` chains stop, clean,
+build and run. The clean step removes the container and
 image named `aioznode`, whatever started them, so do not run it on a host whose
 node uses that name. It then removes the unused images of this project only:
 every `Dockerfile` of the repository labels its image with
@@ -225,14 +237,15 @@ alone.
 ### Tests
 
 ```sh
-tests/run.sh      # bats tests in an Alpine container against a fake GitHub
-./quick_test.sh   # builds the image, waits for healthy,
-                  # checks the installed version is the latest release
+tests/run.sh             # bats tests in an Alpine container against a fake GitHub
+scripts/quick_test.sh    # builds the image, waits for healthy,
+                         # checks the installed version is the latest release
 ```
 
 CI runs `tests/run.sh` (`.github/workflows/tests.yml`) on every pull request
 and after every merge into `develop` or `master`: its fitness tests read the
-whole repository, so any renamed file can break them. `quick_test.sh` needs the
+whole repository, so any renamed file can break them. `scripts/quick_test.sh`
+needs the
 AIOZ network and runs only on release tags (see Public Docker image).
 
 ---
@@ -290,18 +303,18 @@ WITHDRAW_ADDRESS_HEX=0xYourAddress \
 
 `rinzlerfr/aioznode` is public on Docker Hub. Pushing a `v*` tag runs
 `.github/workflows/docker-image.yml`: it builds the image, runs `tests/run.sh`
-and `quick_test.sh`, pushes `rinzlerfr/aioznode:<tag>`, then creates the GitHub
-release. `.github/scripts/push-latest.sh` moves `:latest` to the tag only when
-it is the highest `vX.Y.Z` tag of the repository (compared as numbers, read with
-`git ls-remote` at push time): a hotfix pushed on an older line or a `v2-beta`
-tag leaves `:latest`, and so Watchtower, on the newest release. The highest
-tag counts even when its build failed: `:latest` then stays on the previous
-image until that tag is built again or a higher one ships. Only the release job
-gets a write token: the build and the tests, which run the AIOZ binary, keep a
-read-only one. The Docker Hub secrets (`DOCKER_USER`, `DOCKER_PASSWORD`) live
-in the `dockerhub` environment, which only `v*` tags can use. A tag is released
-once: if its GitHub release already exists, the release job fails. Tests of
-`push-latest.sh`: `.github/scripts/tests/run.sh` (Docker).
+and `scripts/quick_test.sh`, pushes `rinzlerfr/aioznode:<tag>`, then creates the
+GitHub release. `.github/scripts/push-latest.sh` moves `:latest` to the tag only
+when it is the highest `vX.Y.Z` tag of the repository (compared as numbers, read
+with `git ls-remote` at push time): a hotfix pushed on an older line or a
+`v2-beta` tag leaves `:latest`, and so Watchtower, on the newest release. The
+highest tag counts even when its build failed: `:latest` then stays on the
+previous image until that tag is built again or a higher one ships. Only the
+release job gets a write token: the build and the tests, which run the AIOZ
+binary, keep a read-only one. The Docker Hub secrets (`DOCKER_USER`,
+`DOCKER_PASSWORD`) live in the `dockerhub` environment, which only `v*` tags can
+use. A tag is released once: if its GitHub release already exists, the release
+job fails. Tests of `push-latest.sh`: `.github/scripts/tests/run.sh` (Docker).
 
 ---
 
