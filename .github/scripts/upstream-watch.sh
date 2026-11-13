@@ -1,9 +1,12 @@
 #!/bin/bash
 # Watch the AIOZ upstream while the DePIN hub is down and CLI v1.2.6 is broken.
-# Reports a change (hub answering again, new release, activity on the upstream
-# issue or repository) as a comment on a tracking issue of this repository.
-# Silent when nothing changed. Fails (exit 1, nothing posted) when the GitHub
-# API errors, so a broken watch shows as a red run instead of a false alert.
+# Reports a change (hub state, new release, activity on the upstream issue or
+# repository) as a comment on a tracking issue of this repository. A change is
+# measured against the last report on that issue, so a lasting state is
+# reported once; without a report, against the outage (hubs down, KNOWN_TAG,
+# issue open). Silent when nothing changed. Fails (exit 1, nothing posted) when
+# the GitHub API errors, so a broken watch shows as a red run instead of a
+# false alert.
 # DRY_RUN=1 prints the comment instead of posting it.
 
 UPSTREAM_REPO="${UPSTREAM_REPO:-AIOZNetwork/aioz-depin-cli}"
@@ -23,10 +26,25 @@ answers() {
     [[ "$1" =~ ^[234][0-9][0-9]$ ]]
 }
 
-# A hub changed when its origin is back: any answer but 000 (none at all) and
-# Cloudflare 52x (origin down).
-hub_back() {
-    [ "$1" != "000" ] && [[ ! "$1" =~ ^52[0-9]$ ]]
+# State of a hub from its HTTP code: down (000, no answer; Cloudflare 52x,
+# origin down), up (2xx, 3xx) or error (the origin answers with an error). Codes
+# of one state are equivalent: main-hub answers 404 or 415 to the same request.
+hub_state() {
+    case "$1" in
+        000 | 52[0-9]) echo down ;;
+        [23][0-9][0-9]) echo up ;;
+        *) echo error ;;
+    esac
+}
+
+# Value of a line of the last report: "- `<url>`: <code>" with prefix
+# "- `<url>`: ", "### Latest release: <tag> ..." with "### Latest release: ".
+# First word after the prefix; empty when the report has no such line.
+reported() {
+    local line
+    line=$(grep -F -m 1 -- "$1" <<< "$2") || return 0
+    line="${line#"$1"}"
+    echo "${line%% *}"
 }
 
 # gh api; on error, logs it and returns 1. Callers must `|| return 1`: an API
@@ -42,7 +60,7 @@ api() {
 
 upstream_watch() {
     local since changes=() report="" control hub_lines="" url code release tag
-    local state comments commits body issue
+    local state comments commits body issue last previous
     # GNU date (runner), BSD date (local macOS run). An empty window would report
     # the whole history as new, so stop instead.
     since=$(date -u -d "$WINDOW_HOURS hours ago" +%Y-%m-%dT%H:%M:%SZ 2> /dev/null ||
@@ -52,12 +70,19 @@ upstream_watch() {
         return 1
     fi
 
+    # 0. Last report: the open tracking issue's last comment, or its body.
+    issue=$(gh issue list --state open --search "\"$TRACKING_TITLE\" in:title" --json number --jq '.[0].number') || return 1
+    if [ -n "$issue" ]; then
+        last=$(gh issue view "$issue" --json body,comments --jq '[.body] + [.comments[].body] | last') || return 1
+    fi
+
     # 1. Hub. Only trusted when the control URL answers (our network is fine).
     control=$(http_code "$CONTROL_URL")
     for url in $HUB_URLS; do
         code=$(http_code "$url")
         hub_lines+="- \`$url\`: $code"$'\n'
-        if answers "$control" && hub_back "$code"; then
+        previous=$(reported "- \`$url\`: " "$last")
+        if answers "$control" && [ "$(hub_state "$code")" != "$(hub_state "${previous:-000}")" ]; then
             changes+=("hub")
         fi
     done
@@ -68,7 +93,8 @@ upstream_watch() {
     release=$(api "repos/$UPSTREAM_REPO/releases/latest" --jq '"\(.tag_name) \(.html_url)"') || return 1
     tag="${release%% *}"
     report+=$'\n'"### Latest release: $tag (known: $KNOWN_TAG)"$'\n'
-    if [ "$tag" != "$KNOWN_TAG" ]; then
+    previous=$(reported "### Latest release: " "$last")
+    if [ "$tag" != "${previous:-$KNOWN_TAG}" ]; then
         changes+=("release")
         report+="${release#* }"$'\n'
     fi
@@ -84,7 +110,8 @@ upstream_watch() {
 
     report+=$'\n'"### Issue $UPSTREAM_REPO#$WATCH_ISSUE: $state"$'\n'
     [ -n "$comments" ] && report+="New comments since $since:"$'\n'"$comments"$'\n'
-    [ "$state" != "open" ] && changes+=("issue-state")
+    previous=$(reported "### Issue $UPSTREAM_REPO#$WATCH_ISSUE: " "$last")
+    [ "$state" != "${previous:-open}" ] && changes+=("issue-state")
     [ -n "$comments" ] && changes+=("issue-comments")
 
     report+=$'\n'"### Commits since $since"$'\n'"${commits:-none}"$'\n'
@@ -101,7 +128,6 @@ upstream_watch() {
 
     [ "${DRY_RUN:-0}" = "1" ] && return 0
 
-    issue=$(gh issue list --state open --search "\"$TRACKING_TITLE\" in:title" --json number --jq '.[0].number') || return 1
     if [ -z "$issue" ]; then
         gh issue create --title "$TRACKING_TITLE" --body "$body"
     else

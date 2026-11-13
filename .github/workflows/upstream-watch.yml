@@ -2,7 +2,8 @@
 name: AIOZ upstream watch
 
 # Daily check of the AIOZ DePIN hub and CLI repository while the hub is down
-# and v1.2.6 is broken. Comments on the "AIOZ upstream watch" issue on change.
+# and v1.2.6 is broken. Comments on the "AIOZ upstream watch" issue when the
+# state differs from its last report.
 # The tests of the CI scripts (this watch, the dependency check and the latest
 # push) run on every pull request that touches them.
 on:
