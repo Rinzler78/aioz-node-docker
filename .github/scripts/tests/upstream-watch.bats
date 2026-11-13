@@ -284,3 +284,23 @@ comment_by() {
 
     [[ "$output" == *"change detected: hub"* ]]
 }
+
+@test "ignores a tracking issue opened by someone else" {
+    printf 200 > "$FAKE_HTTP_DIR/main-hub.aioz.network"
+    echo 9 > "$FAKE_GH_DIR/tracking-issue"
+    echo someone > "$FAKE_GH_DIR/tracking-issue-author"
+
+    run "$SCRIPT"
+
+    [ "$(posted)" = "create" ]
+}
+
+@test "ignores a report in an issue body written by someone else" {
+    last_report
+    jq '.author.login = "someone" | .body = .comments[-1].body | .comments = []' \
+        "$FIXTURES/tracking-issue-5.json" > "$FAKE_GH_DIR/tracking-view.json"
+
+    run "$SCRIPT"
+
+    [[ "$output" == *"change detected: hub"* ]]
+}

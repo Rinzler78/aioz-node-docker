@@ -347,9 +347,10 @@ open. What counts as a change:
 * upstream commits in the last 25 hours.
 
 On change, the script comments on the open issue titled **AIOZ upstream watch**
-of this repository (and creates it if missing). Mentions in quoted comments are
-neutralized so their authors are not notified. Nothing is posted when nothing
-changed.
+that the workflow opened in this repository (and creates it if missing); an
+issue of the same title opened by someone else is ignored. Mentions in quoted
+comments are neutralized so their authors are not notified. Nothing is posted
+when nothing changed.
 
 A GitHub API error (rate limit, bad token, outage) fails the run (red in
 Actions) and posts nothing, so a broken watch never looks like an upstream
