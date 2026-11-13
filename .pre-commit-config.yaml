@@ -52,7 +52,7 @@ repos:
 
   # Spelling: English only, every text file.
   - repo: https://github.com/streetsidesoftware/cspell-cli
-    rev: v10.4.0
+    rev: v10.4.1
     hooks:
       - id: cspell
         # The hook's own args plus --show-context; --files must stay last.
