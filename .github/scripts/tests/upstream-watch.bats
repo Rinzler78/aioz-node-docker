@@ -278,7 +278,7 @@ comment_by() {
 @test "reads a reported value only at the start of a line" {
     last_report
     local hub="\`https://main-hub.aioz.network/\`"
-    edit_last_report "s|^- $hub: 404\$|- 2026-11-12 quoted - $hub: 200|"
+    edit_last_report "s|^- $hub: 404\$|- 2026-11-12 quoted - $hub: 404|"
 
     run "$SCRIPT"
 

@@ -74,9 +74,10 @@ upstream_watch() {
     fi
 
     # 0. Last report on the open tracking issue opened by this workflow: its
-    # last comment, or its body, written by this workflow. Anyone can comment on a public issue: a comment
-    # of someone else must neither hide a change nor reset the baseline.
-    # An issue of the same title opened by someone else would take the reports.
+    # last comment, or its body, written by this workflow. Anyone can comment
+    # on a public issue: a comment of someone else must neither hide a change
+    # nor reset the baseline, and an issue of the same title opened by someone
+    # else must not take the reports.
     issue=$(gh issue list --state open --author app/github-actions \
         --search "\"$TRACKING_TITLE\" in:title" --json number --jq '.[0].number') || return 1
     if [ -n "$issue" ]; then
