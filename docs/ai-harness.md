@@ -21,31 +21,40 @@ another file get a pointer, never a copy:
 
 A rule written twice drifts: the copies diverge, and an agent follows a rule
 that no longer holds. `tests/harness.bats` keeps the single source true. It
-fails when a pointer file carries anything but the import, when the Gemini
-setting no longer names AGENTS.md, and when AGENTS.md or this page cites a file
-or folder that does not exist (a renamed script leaves no stale command).
+fails when:
+
+* `CLAUDE.md` holds anything but a title and the import, comments and headings
+  included;
+* `.gemini/settings.json` holds anything but `context.fileName` set to
+  AGENTS.md;
+* AGENTS.md or this page names, in its code or its links, a file or folder that
+  does not exist: a renamed script leaves no stale command. A code word with a
+  slash must be a repository path, so branch names are written with a
+  placeholder (`feature/<name>`) and GitHub repositories as links.
 
 ## Checks, not promises
 
 An instruction is a request; a check is a guarantee. Every rule that a program
-can decide is a check, run on every commit by pre-commit and again in CI, the
-same for an agent and a person:
+can decide is a check, the same for an agent and a person:
 
-* Linters and formatters (shellcheck, shfmt, hadolint, actionlint, yamllint,
-  markdownlint), English spelling (cspell), workflow security (zizmor),
-  misconfigurations and image vulnerabilities (trivy), dependencies up to date.
-  The list and the reasons for each accepted finding are in the README,
-  Pre-commit hooks.
-* Fitness tests that turn repository rules into tests: `tests/scripts.bats`
-  (every script sources its dependencies and runs nothing when sourced),
-  `tests/image.bats` (the image health check matches the start watchdog),
-  `tests/harness.bats` (this harness).
-* Tests of every script, in Docker, with the external world replaced by fakes
-  (`.github/scripts/tests/fakes/`) and real captures
-  (`tests/fixtures/`, `.github/scripts/tests/fixtures/`).
+* On every commit (pre-commit) and again in CI: linters and formatters
+  (shellcheck, shfmt, hadolint, actionlint, yamllint, markdownlint), English
+  spelling (cspell), workflow security (zizmor), misconfigurations and image
+  vulnerabilities (trivy), dependencies up to date. The list and the reasons
+  for each accepted finding are in the README, Pre-commit hooks.
+* On every pull request in CI, and locally with `tests/run.sh`: fitness tests
+  that turn repository rules into tests. `tests/scripts.bats` checks that every
+  script sources its dependencies and runs nothing when sourced,
+  `tests/image.bats` that the image health check matches the start watchdog,
+  `tests/harness.bats` this harness.
+* In CI, and locally with `tests/run.sh` and `.github/scripts/tests/run.sh`:
+  the tests of the image, CI and NAS scripts, in Docker. The external world is
+  replaced by fakes (`.github/scripts/tests/fakes/`, a local GitHub and fake
+  node binaries in `tests/helpers.bash`) and real captures (`tests/fixtures/`,
+  `.github/scripts/tests/fixtures/`).
 
-AGENTS.md keeps only what needs judgement: when to write a test, how to review,
-what an agent must never do alone.
+AGENTS.md adds what needs judgement: when to write a test, how to review, what
+an agent must never do alone.
 
 ## The working loop
 
@@ -57,8 +66,9 @@ what an agent must never do alone.
    production NAS), so a test cannot pass against a format the world does not
    produce.
 3. **Fakes before anything destructive.** Scripts that call `docker`, `gh`,
-   `git` or `curl` run against fakes, and the agent checks that the fake is the
-   command that resolves before running them.
+   `git`, `curl` or `pre-commit` run against fakes, and each test asserts that
+   the fake is the command that resolves: a fake missing from the `PATH` would
+   run the real command, a real `docker image prune` among them.
 4. **Review in a loop.** Each pull request is reviewed on several axes
    (standards, specification, security, tests, documentation) by reviewers that
    did not write it, and the loop runs again on the updated diff until no major
@@ -82,6 +92,11 @@ pass missed:
   crafted state file could run code through bash arithmetic, and that a
   leading zero was read as octal: every number is now validated first, and the
   tests carry the injection payloads.
+* [#22](https://github.com/Rinzler78/aioz-node-docker/pull/22), this harness.
+  The review found that `tests/harness.bats` did not read the fenced command
+  blocks of AGENTS.md (a renamed script stayed green), that a rule written as a
+  comment passed in `CLAUDE.md`, and that the wallet key folder could reach the
+  Docker build context: each case is now a test.
 
 ## Boundaries
 

@@ -54,6 +54,8 @@
     "rhysd",
     "rinzler",
     "rinzlerfr",
+    "RLENGTH",
+    "RSTART",
     "shellcheck",
     "shfmt",
     "shopt",

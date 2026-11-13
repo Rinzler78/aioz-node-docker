@@ -1,0 +1,7 @@
+# Keep the wallet key and local folders out of the build context, which may be
+# sent to a remote Docker host. The images copy only tools/.
+nodedata/
+**/privkey*.json
+.env
+.git
+.worktrees/
