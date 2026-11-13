@@ -210,6 +210,15 @@ with a balance.
 docker build -t aioznode .
 ```
 
+The `helper.docker.*.sh` scripts build, run, stop and clean a local container
+named after `helper.docker.name.txt`. `helper.docker.start.sh` chains stop,
+clean, build and run. The clean step removes that container and image, then
+the unused images of this project only: every `Dockerfile` of the repository
+labels its image with
+`org.opencontainers.image.source=https://github.com/Rinzler78/aioz-node-docker`,
+and the prune filters on that label, so the other images of the Docker host
+are left alone.
+
 ### Tests
 
 ```sh
