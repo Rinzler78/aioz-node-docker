@@ -18,8 +18,8 @@ HARNESS_PAGES=(AGENTS.md docs/ai-harness.md)
 # brackets).
 # Limits: a code word with a slash must name a repository path, so branch
 # names are written with a placeholder (feature/<name>) and GitHub repositories
-# as links; ~~~ fences and indented code blocks are not read (markdownlint
-# keeps ``` fences only); a quoted path in a command is not checked.
+# as links; ~~~ fences and indented code blocks are not read, and
+# .markdownlint.yaml rejects both; a quoted path in a command is not checked.
 cited_code_paths() {
     local code_words
     code_words=$(

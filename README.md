@@ -449,8 +449,9 @@ Each hook checks the changed files only (shellcheck still follows the scripts
 they source, see `.shellcheckrc`):
 
 * Linters and format — shellcheck, shfmt (style in `.editorconfig`), hadolint,
-  yamllint (`.yamllint.yaml`), actionlint, markdownlint: shell scripts, bats
-  tests, Dockerfiles, YAML, workflows, Markdown
+  yamllint (`.yamllint.yaml`), actionlint, markdownlint (`.markdownlint.yaml`:
+  code blocks as backtick fences only): shell scripts, bats tests, Dockerfiles,
+  YAML, workflows, Markdown
 * Workflow security — zizmor: GitHub workflows. Actions are pinned to a commit
   SHA, with their version in a comment on the line above; every permission is
   commented; only the release job (`contents`) and the upstream watch job

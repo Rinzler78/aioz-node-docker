@@ -30,14 +30,16 @@ fails when:
 * AGENTS.md or this page names, in its code or its links, a file or folder that
   does not exist: a renamed script leaves no stale command. A code word with a
   slash must be a repository path, so branch names are written with a
-  placeholder (`feature/<name>`) and GitHub repositories as links.
+  placeholder (`feature/<name>`) and GitHub repositories as links. The other
+  limits of this check are listed in the test file.
 
 ## Checks, not promises
 
 An instruction is a request; a check is a guarantee. Every rule that a program
 can decide is a check, the same for an agent and a person:
 
-* On every commit (pre-commit) and again in CI, on the files that changed:
+* On every commit (pre-commit) and on every pull request in CI, on the files
+  that changed, then on every file after a merge:
   linters and formatters (shellcheck, shfmt, hadolint, actionlint, yamllint,
   markdownlint), English spelling (cspell), workflow security (zizmor); and
   when their inputs change, misconfigurations and image vulnerabilities
@@ -66,10 +68,13 @@ an agent must never do alone.
    system (GitHub API responses, AIOZ CLI output, container logs from the
    production NAS), so a test cannot pass against a format the world does not
    produce.
-3. **Fakes before anything destructive.** Scripts that call `docker`, `gh`,
-   `git`, `curl` or `pre-commit` run against fakes, and each test asserts that
-   the fake is the command that resolves: a fake missing from the `PATH` would
-   run the real command, a real `docker image prune` among them.
+3. **Fakes before anything destructive.** No test reaches the network or runs
+   the real `docker`, `gh`, `git` or `pre-commit`. The CI script tests put
+   fakes first on the `PATH` and assert that each one is the command that
+   resolves: a fake missing from the `PATH` would run the real command, a real
+   `docker image prune` among them. The image script tests serve GitHub from
+   local files, and a command taken from a setting (`DOCKER`) gets its fake
+   through that setting.
 4. **Review in a loop.** Each pull request is reviewed on several axes
    (standards, specification, security, tests, documentation) by reviewers that
    did not write it, and the loop runs again on the updated diff until no major
