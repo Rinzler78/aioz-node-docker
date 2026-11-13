@@ -1,19 +1,13 @@
 ---
 name: Tests
 
-# The bats suite of the image scripts (tests/run.sh, in Docker): on a pull
-# request that touches a script, the image or the tests (tests/scripts.bats
-# checks every *.sh of the repository); after a merge into develop or master,
-# always (the full pass). The CI scripts have their own tests, run by
-# upstream-watch.yml.
+# The bats suite of the image scripts (tests/run.sh, in Docker), on every pull
+# request and after every merge into develop or master. No path filter: the
+# fitness tests read the whole repository (tests/scripts.bats every *.sh,
+# tests/harness.bats every path AGENTS.md cites), so renaming any file can
+# break them. The CI scripts have their own tests, run by upstream-watch.yml.
 on:
   pull_request:
-    paths:
-      - '**.sh'
-      - 'tools/**'
-      - 'tests/**'
-      - 'Dockerfile'
-      - '.github/workflows/tests.yml'
   push:
     branches:
       - develop

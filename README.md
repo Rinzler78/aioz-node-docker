@@ -42,6 +42,7 @@ Official downloads and client installation: <https://aioz.network/aioz-node>
 * [Upstream watch](#upstream-watch)
 * [Support](#support)
 * [Contribution](#contribution)
+  * [AI harness](#ai-harness)
   * [Pre-commit hooks](#pre-commit-hooks)
 
 ---
@@ -217,10 +218,10 @@ tests/run.sh      # bats tests in an Alpine container against a fake GitHub
                   # checks the installed version is the latest release
 ```
 
-CI runs `tests/run.sh` (`.github/workflows/tests.yml`) on a pull request that
-touches a `*.sh` file, `tools/`, `tests/`, the `Dockerfile` or the workflow
-itself, and after every merge into `develop` or `master`. `quick_test.sh` needs
-the AIOZ network and runs only on release tags (see Public Docker image).
+CI runs `tests/run.sh` (`.github/workflows/tests.yml`) on every pull request
+and after every merge into `develop` or `master`: its fitness tests read the
+whole repository, so any renamed file can break them. `quick_test.sh` needs the
+AIOZ network and runs only on release tags (see Public Docker image).
 
 ---
 
@@ -428,6 +429,15 @@ If you find this project useful, please consider donating:
 
 Feel free to open issues or submit pull requests for improvements or bug fixes.
 
+### AI harness
+
+The repository is developed with coding agents, model and tool agnostic.
+[AGENTS.md](AGENTS.md) is the single source of their instructions (commands,
+conventions, safety rules, definition of done); `CLAUDE.md` and
+`.gemini/settings.json` only point to it, and `tests/harness.bats` fails if
+they drift. The method, the checks and the review loop are described in
+[docs/ai-harness.md](docs/ai-harness.md).
+
 ### Pre-commit hooks
 
 ```sh
@@ -439,8 +449,9 @@ Each hook checks the changed files only (shellcheck still follows the scripts
 they source, see `.shellcheckrc`):
 
 * Linters and format — shellcheck, shfmt (style in `.editorconfig`), hadolint,
-  yamllint (`.yamllint.yaml`), actionlint, markdownlint: shell scripts, bats
-  tests, Dockerfiles, YAML, workflows, Markdown
+  yamllint (`.yamllint.yaml`), actionlint, markdownlint (`.markdownlint.yaml`:
+  code blocks as backtick fences only): shell scripts, bats tests, Dockerfiles,
+  YAML, workflows, Markdown
 * Workflow security — zizmor: GitHub workflows. Actions are pinned to a commit
   SHA, with their version in a comment on the line above; every permission is
   commented; only the release job (`contents`) and the upstream watch job

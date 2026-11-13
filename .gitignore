@@ -1,0 +1,7 @@
+# Node data of docker-compose.yml: holds the wallet private key.
+/nodedata/
+# A wallet key or a compose environment file, wherever it is copied.
+privkey*.json
+.env
+# Worktrees of the branches being worked on.
+/.worktrees/
