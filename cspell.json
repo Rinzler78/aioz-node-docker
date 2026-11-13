@@ -50,6 +50,7 @@
     "laddr",
     "minphony",
     "nodedata",
+    "NOTPARALLEL",
     "nullglob",
     "opencontainers",
     "pipefail",

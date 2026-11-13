@@ -57,10 +57,16 @@ EOF
     [ "$output" = "scripts/helper.docker.start.sh -v /data:/nodedata" ]
 }
 
-# Rule names of the Makefile: any name before a colon that is not a variable
-# assignment (:=) nor a special target (.PHONY), whatever its characters.
+# Make's own database (-p, -q runs no recipe): the rules make reads from the
+# Makefile, whatever their spelling, without the special (.PHONY) and the
+# "Not a target" entries.
+make_database() {
+    make --no-print-directory -pRrq -C "$REPO_ROOT" help 2> /dev/null || true
+}
 makefile_rules() {
-    sed -n 's/^\([^.#[:space:]][^:=[:space:]]*\):\([^=].*\)\{0,1\}$/\1/p' "$REPO_ROOT/Makefile" | sort
+    make_database | awk '/^# Not a target/ { skip = 1; next }
+        /^[^.#%[:space:]][^=]*:/ && !/^[^:]*:=/ && !skip { sub(/:.*/, ""); if ($0 != "") print }
+        { skip = 0 }' | sort -u
 }
 # Target names that make help prints.
 help_targets() {
@@ -73,4 +79,9 @@ help_targets() {
     [ -n "$rules" ]
     run help_targets
     [ "$output" = "$rules" ]
+}
+
+@test "check runs its steps one after the other, even with make -j" {
+    run make_database
+    [[ $'\n'"$output"$'\n' == *$'\n.NOTPARALLEL:\n'* ]]
 }
