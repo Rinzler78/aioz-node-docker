@@ -42,6 +42,7 @@ Official downloads and client installation: <https://aioz.network/aioz-node>
 * [Upstream watch](#upstream-watch)
 * [Support](#support)
 * [Contribution](#contribution)
+  * [AI harness](#ai-harness)
   * [Pre-commit hooks](#pre-commit-hooks)
 
 ---
@@ -218,9 +219,10 @@ tests/run.sh      # bats tests in an Alpine container against a fake GitHub
 ```
 
 CI runs `tests/run.sh` (`.github/workflows/tests.yml`) on a pull request that
-touches a `*.sh` file, `tools/`, `tests/`, the `Dockerfile` or the workflow
-itself, and after every merge into `develop` or `master`. `quick_test.sh` needs
-the AIOZ network and runs only on release tags (see Public Docker image).
+touches a `*.sh` file, `tools/`, `tests/`, the `Dockerfile`, the workflow
+itself or the AI harness files, and after every merge into `develop` or
+`master`. `quick_test.sh` needs the AIOZ network and runs only on release tags
+(see Public Docker image).
 
 ---
 
@@ -427,6 +429,15 @@ If you find this project useful, please consider donating:
 ## Contribution
 
 Feel free to open issues or submit pull requests for improvements or bug fixes.
+
+### AI harness
+
+The repository is developed with coding agents, model and tool agnostic.
+[AGENTS.md](AGENTS.md) is the single source of their instructions (commands,
+conventions, safety rules, definition of done); `CLAUDE.md` and
+`.gemini/settings.json` only point to it, and `tests/harness.bats` fails if
+they drift. The method, the checks and the review loop are described in
+[docs/ai-harness.md](docs/ai-harness.md).
 
 ### Pre-commit hooks
 
