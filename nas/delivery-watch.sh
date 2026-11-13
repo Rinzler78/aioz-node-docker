@@ -4,10 +4,12 @@
 # delivery count the reward container logs at every check (withdraw.reward.sh).
 # Only that container can read it: the hub serves it to the wallet key alone.
 #
-# Exit 1 means "something to report": a stall (count unchanged for STALL_HOURS),
-# a resume after a reported stall, or no count in the logs. DSM mails the run
-# details when a task ends abnormally, so each event is notified once.
-# State: STATE_FILE holds "<count> <epoch of its last change> <ok|stalled>".
+# Exit 1 means "something to report", once per event: a stall (count unchanged
+# for STALL_HOURS), a resume after a reported stall, a count going down (counter
+# reset, or 0 when the hub omits it) and an invalid state; both restart the
+# watch. No count in the logs, or a state that cannot be written, exit 1 on
+# every run until fixed. DSM notifies a task that ends abnormally, with its
+# output. State: STATE_FILE holds "<count> <epoch of its last change> <ok|stalled>".
 WITHDRAW_CONTAINER="${WITHDRAW_CONTAINER:-aioz-compose-aioznode-auto-withdraw-reward-1}"
 STATE_FILE="${STATE_FILE:-/volume1/docker/aioznode/delivery-watch.state}"
 STALL_HOURS="${STALL_HOURS:-48}"
@@ -22,7 +24,16 @@ delivery_count() {
 
 # Replaces the state in one step: a run killed midway leaves the old one.
 save_state() {
-    echo "$*" > "$STATE_FILE.new" && mv "$STATE_FILE.new" "$STATE_FILE"
+    if ! { echo "$*" > "$STATE_FILE.new" && mv "$STATE_FILE.new" "$STATE_FILE"; } 2> /dev/null; then
+        echo "ERROR: cannot write $STATE_FILE" >&2
+        return 1
+    fi
+}
+
+# A state is "<digits> <digits> <ok|stalled>". Checked before any arithmetic:
+# bash evaluates a variable in $(( )) as an expression, commands included.
+valid_state() {
+    [[ "$1" =~ ^[0-9]+$ && "$2" =~ ^[0-9]+$ && "$3" =~ ^(ok|stalled)$ ]]
 }
 
 when() {
@@ -39,10 +50,22 @@ delivery_watch() {
     fi
     [ -f "$STATE_FILE" ] && read -r last since status < "$STATE_FILE"
 
-    if [ -z "$last" ]; then
+    if [ ! -s "$STATE_FILE" ]; then
         save_state "$count $now ok" || return 1
         echo "Delivery count $count: watch started."
         return 0
+    fi
+
+    if ! valid_state "$last" "$since" "$status"; then
+        save_state "$count $now ok" || return 1
+        echo "AIOZ node: invalid state in $STATE_FILE, watch restarted at count $count."
+        return 1
+    fi
+
+    if [ "$count" -lt "$last" ]; then
+        save_state "$count $now ok" || return 1
+        echo "AIOZ node: delivery count went down, $last -> $count; watch restarted."
+        return 1
     fi
 
     if [ "$count" != "$last" ]; then

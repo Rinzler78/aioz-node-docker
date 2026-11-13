@@ -329,15 +329,23 @@ verifying their storage but may get no delivery task
 It runs on the NAS host, not in the image. The delivery count is served by the
 hub to the wallet key only, so it reads the count the reward container logs at
 every check. It keeps `<count> <epoch of its last change> <ok|stalled>` in
-`STATE_FILE` and exits 1 when there is something to report:
+`STATE_FILE` and exits 1 when there is something to report. Once per event:
 
-* deliveries stalled: the count has not changed for `STALL_HOURS` (48);
+* deliveries stalled: the count has not changed for `STALL_HOURS` (48). A
+  stopped reward container logs no new count, so it shows up as a stall too;
 * deliveries resumed after a reported stall;
-* no count in the logs (reward container stopped or renamed).
+* the count went down (counter reset, or 0 when the hub omits it): the watch
+  restarts from the new count;
+* the state file is invalid: the watch restarts from the current count. The
+  state is checked before any arithmetic, as bash would run commands hidden in
+  it.
 
-Each event exits 1 once; the following runs exit 0. DSM notifies an abnormal
-end of a task, which carries the message. `synodsmnotify` cannot: on DSM 7 it
-only accepts translation keys as title and message.
+On every run until fixed: no count in the logs (reward container removed or
+renamed), or a state file that cannot be written.
+
+DSM notifies a task that ends abnormally, with its output. `synodsmnotify`
+cannot carry the message: on DSM 7 it only accepts translation keys as title
+and message.
 
 Install it once:
 
@@ -345,7 +353,8 @@ Install it once:
 2. Control Panel > Task Scheduler > Create > Scheduled Task > User-defined
    script. User: `root` (Container Manager needs it). Schedule: daily.
 3. Task Settings: tick **Send run details by email** and **Send run details
-   only when the script terminates abnormally**. Run command:
+   only when the script terminates abnormally** (needs e-mail notifications set
+   up in Control Panel > Notification > Email). Run command:
    `bash /volume1/docker/aioznode/delivery-watch.sh`
 4. Run it once: it records the current count (`watch started`).
 

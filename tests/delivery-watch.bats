@@ -11,10 +11,11 @@ setup() {
     export FAKE_LOGS="$BATS_TEST_TMPDIR/logs"
     export DOCKER="$BATS_TEST_TMPDIR/docker"
     cp "$LOGS" "$FAKE_LOGS"
-    # Fake docker: only `logs` is answered; anything else fails the test.
+    # Fake docker: only the expected `logs` call is answered.
     cat > "$DOCKER" << 'EOF'
 #!/bin/bash
-[ "$1" = "logs" ] || { echo "unexpected docker $*" >&2; exit 99; }
+[ "$*" = "logs --tail 200 aioz-compose-aioznode-auto-withdraw-reward-1" ] ||
+    { echo "unexpected docker $*" >&2; exit 99; }
 cat "$FAKE_LOGS" 2> /dev/null || { echo "Error: No such container" >&2; exit 1; }
 EOF
     chmod +x "$DOCKER"
@@ -112,4 +113,54 @@ state() {
     [ "$status" -eq 1 ]
     [[ "$output" == *"ERROR"* ]]
     [ "$(state)" = "104515 $((NOW - DAY)) ok" ]
+}
+
+@test "restarts the watch on an invalid state" {
+    # An array index in $(( )) runs its command substitution.
+    local payload="a[\$(touch\${IFS}$BATS_TEST_TMPDIR/pwned)]"
+    for bad in "104515" "104515 abc ok" "104515 1794000000x ok" "104515 1 maybe" \
+        "$payload 1 ok" "104515 $payload ok"; do
+        echo "$bad" > "$STATE_FILE"
+
+        run "$SCRIPT"
+
+        [ "$status" -eq 1 ]
+        [[ "$output" == *"invalid state"* ]]
+        [ "$(state)" = "104515 $NOW ok" ]
+    done
+    [ ! -e "$BATS_TEST_TMPDIR/pwned" ]
+}
+
+@test "reports a count going down and restarts from it" {
+    echo "104600 $((NOW - DAY)) ok" > "$STATE_FILE"
+
+    run "$SCRIPT"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"went down"*"104600"*"104515"* ]]
+    [ "$(state)" = "104515 $NOW ok" ]
+}
+
+@test "does not take a count of 0 after a stall as a resume" {
+    echo "104515 $((NOW - 4 * DAY)) stalled" > "$STATE_FILE"
+    logs_with_count 0
+
+    run "$SCRIPT"
+
+    [[ "$output" != *"resumed"* ]]
+    [[ "$output" == *"went down"* ]]
+}
+
+@test "fails clearly when the state folder is missing" {
+    STATE_FILE="$BATS_TEST_TMPDIR/missing/state" run "$SCRIPT"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"ERROR: cannot write"* ]]
+}
+
+@test "reads the logs of WITHDRAW_CONTAINER" {
+    WITHDRAW_CONTAINER=other run "$SCRIPT"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"no delivery count"*"other"* ]]
 }
