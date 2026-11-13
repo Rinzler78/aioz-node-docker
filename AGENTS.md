@@ -98,10 +98,12 @@ pre-commit run --all-files      # every hook, every file (builds the image, netw
   * a script that takes a command from a setting gets its fake through that
     setting (`DOCKER` in `tests/delivery-watch.bats`).
 * `helper.docker.clean.sh`, and `helper.docker.start.sh` that calls it, remove
-  the local container and image, then the unused images of this project: those
-  labelled with `docker_project_label` of `helper.docker.lib.sh`, which every
-  `Dockerfile` sets. Run them only when the user asks for it. A Docker prune in
-  a script always carries that label filter (`tests/helper.docker.bats`).
+  the container and image named `aioznode` (a node started under that name
+  included), then the unused images of this project: those labelled with
+  `docker_project_label` of `helper.docker.lib.sh`, which every `Dockerfile`
+  sets. Run them only when the user asks for it, never on the NAS. A Docker
+  prune in a `*.sh` script always carries that label filter
+  (`tests/helper.docker.bats`).
 * No destructive command (`rm -rf`, `docker rm`, `docker rmi`,
   `docker image prune`, `docker system prune`, `git reset --hard`,
   `git push --force`) on the user's machine or the NAS without an explicit

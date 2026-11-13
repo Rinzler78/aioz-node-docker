@@ -211,13 +211,15 @@ docker build -t aioznode .
 ```
 
 The `helper.docker.*.sh` scripts build, run, stop and clean a local container
-named after `helper.docker.name.txt`. `helper.docker.start.sh` chains stop,
-clean, build and run. The clean step removes that container and image, then
-the unused images of this project only: every `Dockerfile` of the repository
-labels its image with
+named after `helper.docker.name.txt` (`aioznode`). `helper.docker.start.sh`
+chains stop, clean, build and run. The clean step removes the container and
+image named `aioznode`, whatever started them, so do not run it on a host whose
+node uses that name. It then removes the unused images of this project only:
+every `Dockerfile` of the repository labels its image with
 `org.opencontainers.image.source=https://github.com/Rinzler78/aioz-node-docker`,
-and the prune filters on that label, so the other images of the Docker host
-are left alone.
+and the prune filters on that label. The published `rinzlerfr/aioznode` images,
+and images built `FROM` them that keep the label, count as images of this
+project; the other images of the Docker host are left alone.
 
 ### Tests
 

@@ -42,22 +42,31 @@ stop aioznode
 run -p 1317:1317/tcp -P -v /data:/nodedata --restart=always --name aioznode -it aioznode" ]
 }
 
+# Dockerfiles of the repository, by any of their usual names.
+dockerfiles() {
+    (cd "$REPO_ROOT" && find . \( -path ./.git -o -path ./.worktrees \) -prune -o \
+        -type f \( -name 'Dockerfile*' -o -name '*.Dockerfile' -o -name Containerfile \) -print)
+}
+
 @test "every Dockerfile labels its image as part of the project" {
-    local dockerfiles=("$REPO_ROOT/Dockerfile" "$REPO_ROOT/tests/Dockerfile")
-    [ "$(cd "$REPO_ROOT" && find . -name Dockerfile -not -path './.git/*' -not -path './.worktrees/*' | wc -l)" -eq "${#dockerfiles[@]}" ]
+    run dockerfiles
+    [ "$status" -eq 0 ]
+    [[ $'\n'"$output"$'\n' == *$'\n./Dockerfile\n'* ]]
 
     local dockerfile
-    for dockerfile in "${dockerfiles[@]}"; do
-        grep -Fxq "LABEL $PROJECT_LABEL" "$dockerfile"
+    for dockerfile in "${lines[@]}"; do
+        grep -Fxq "LABEL $PROJECT_LABEL" "$REPO_ROOT/$dockerfile"
     done
 }
 
 # Lines of the repository shell scripts that prune Docker objects without the
 # project label filter of helper.docker.lib.sh (its value is checked above).
+# Limits: one line is one command; a prune split over continuation lines, or
+# two commands on one line, are not seen.
 unscoped_prunes() {
     (cd "$REPO_ROOT" && find . \( -path ./.git -o -path ./.worktrees \) -prune -o -name '*.sh' -print) |
         while read -r script; do
-            grep -nHE '(image|container|volume|network|builder|system) prune' "$REPO_ROOT/$script" |
+            grep -nHE '(image|container|volume|network|builder|buildx|system) prune' "$REPO_ROOT/$script" |
                 grep -vF -- "--filter \"label=\$(docker_project_label)\"" || true
         done
 }
