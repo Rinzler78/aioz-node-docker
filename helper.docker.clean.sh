@@ -1,5 +1,7 @@
 #!/bin/bash
-# Remove the local container and image, then prune images. Usage: helper.docker.clean.sh
+# Remove the container and image named by docker_name, whatever started them,
+# then the unused images of this project only (those labelled with
+# docker_project_label). Usage: helper.docker.clean.sh
 # Folder of this script, also when run by bare name (bash helper.docker.x.sh).
 HELPER_DIR="${BASH_SOURCE[0]%/*}"
 [ "$HELPER_DIR" != "${BASH_SOURCE[0]}" ] || HELPER_DIR=.
@@ -15,9 +17,8 @@ docker_clean() {
     echo "Remove docker image : $name"
     docker rmi --force "$name"
 
-    echo "Clean images"
-    docker image prune -f
-    docker image prune -a -f
+    echo "Remove unused project images"
+    docker image prune --all --force --filter "label=$(docker_project_label)"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then docker_clean; fi
