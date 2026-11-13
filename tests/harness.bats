@@ -139,7 +139,7 @@ EOF
 @test "repository_path accepts files, ignore patterns, matching globs and ignored folders only" {
     repository_path tests/run.sh
     repository_path 'privkey*.json'
-    repository_path 'helper.docker.*.sh'
+    repository_path 'scripts/helper.docker.*.sh'
     repository_path nodedata
     repository_path .worktrees/
     # Anything under an ignored folder: its content is local, never checked.

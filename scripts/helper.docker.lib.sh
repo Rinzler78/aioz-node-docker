@@ -5,6 +5,11 @@
 HELPER_DIR="${BASH_SOURCE[0]%/*}"
 [ "$HELPER_DIR" != "${BASH_SOURCE[0]}" ] || HELPER_DIR=.
 
+# Repository root: the Docker build context.
+docker_context() {
+    (cd "$HELPER_DIR/.." && pwd)
+}
+
 docker_name() {
     cat "$HELPER_DIR/helper.docker.name.txt"
 }

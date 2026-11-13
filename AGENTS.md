@@ -20,17 +20,22 @@ health, and withdraws the rewards. It runs in production on a Synology NAS.
 | `nas/` | scripts run on the NAS host, outside the image |
 | `.github/workflows/` | CI: lint, tests, release, upstream watch |
 | `.github/scripts/` | the CI scripts and their tests, run against fakes |
-| `helper.docker.*.sh` | local build, run and clean helpers |
+| `scripts/` | local build, run and clean helpers, `scripts/quick_test.sh` |
+| `Makefile` | entry point: `make` lists the targets, one script each |
 
 ## Commands
 
 ```sh
-tests/run.sh                    # image script tests (bats, in Docker)
+make                            # lists the targets (make <target>)
+tests/run.sh                    # test: image script tests (bats, in Docker)
 tests/run.sh tests/start.bats   # one test file
-.github/scripts/tests/run.sh    # CI script tests (bats, in Docker)
-pre-commit run --all-files      # every hook, every file (builds the image, network)
-./quick_test.sh                 # builds the image and waits for healthy (network)
+.github/scripts/tests/run.sh    # test-ci: CI script tests (bats, in Docker)
+pre-commit run --all-files      # lint: every hook, every file (network)
+scripts/quick_test.sh           # quick-test: build, wait for healthy (network)
 ```
+
+`make check` runs `test`, `test-ci` and `lint`: points 2 and 3 of the
+definition of done.
 
 ## Conventions
 
@@ -97,13 +102,14 @@ pre-commit run --all-files      # every hook, every file (builds the image, netw
     binaries (`tests/helpers.bash`);
   * a script that takes a command from a setting gets its fake through that
     setting (`DOCKER` in `tests/delivery-watch.bats`).
-* `helper.docker.clean.sh`, and `helper.docker.start.sh` that calls it, remove
+* `scripts/helper.docker.clean.sh` (`make docker-clean`), and
+  `scripts/helper.docker.start.sh` (`make docker-start`) that calls it, remove
   the container and image named `aioznode` (a node started under that name
   included), then the unused images of this project: those labelled with
-  `docker_project_label` of `helper.docker.lib.sh`, which every `Dockerfile`
-  sets. Run them only when the user asks for it, never on the NAS. A Docker
-  prune in a `*.sh` script always carries that label filter
-  (`tests/helper.docker.bats`).
+  `docker_project_label` of `scripts/helper.docker.lib.sh`, which every
+  `Dockerfile` sets. Run them only when the user asks for it, never on the
+  NAS. A Docker prune in a shell script of the repository always carries that
+  label filter (`tests/helper.docker.bats`).
 * No destructive command (`rm -rf`, `docker rm`, `docker rmi`,
   `docker image prune`, `docker system prune`, `git reset --hard`,
   `git push --force`) on the user's machine or the NAS without an explicit
