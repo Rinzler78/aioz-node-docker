@@ -1,6 +1,7 @@
 #!/bin/bash
-# Remove the local container and image, then the unused images of this project
-# only (those labelled with docker_project_label). Usage: helper.docker.clean.sh
+# Remove the container and image named by docker_name, whatever started them,
+# then the unused images of this project only (those labelled with
+# docker_project_label). Usage: helper.docker.clean.sh
 # Folder of this script, also when run by bare name (bash helper.docker.x.sh).
 HELPER_DIR="${BASH_SOURCE[0]%/*}"
 [ "$HELPER_DIR" != "${BASH_SOURCE[0]}" ] || HELPER_DIR=.

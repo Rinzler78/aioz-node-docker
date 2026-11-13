@@ -45,7 +45,8 @@ run -p 1317:1317/tcp -P -v /data:/nodedata --restart=always --name aioznode -it 
 # Dockerfiles of the repository, by any of their usual names.
 dockerfiles() {
     (cd "$REPO_ROOT" && find . \( -path ./.git -o -path ./.worktrees \) -prune -o \
-        -type f \( -name 'Dockerfile*' -o -name '*.Dockerfile' -o -name Containerfile \) -print)
+        -type f \( -name 'Dockerfile*' -o -name '*.Dockerfile' -o -name Containerfile \) \
+        -not -name '*.dockerignore' -print)
 }
 
 @test "every Dockerfile labels its image as part of the project" {
@@ -64,7 +65,7 @@ dockerfiles() {
 # Limits: one line is one command; a prune split over continuation lines, or
 # two commands on one line, are not seen.
 unscoped_prunes() {
-    (cd "$REPO_ROOT" && find . \( -path ./.git -o -path ./.worktrees \) -prune -o -name '*.sh' -print) |
+    (cd "$REPO_ROOT" && find . \( -path ./.git -o -path ./.worktrees \) -prune -o -type f -name '*.sh' -print) |
         while read -r script; do
             grep -nHE '(image|container|volume|network|builder|buildx|system) prune' "$REPO_ROOT/$script" |
                 grep -vF -- "--filter \"label=\$(docker_project_label)\"" || true

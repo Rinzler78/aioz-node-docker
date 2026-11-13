@@ -217,9 +217,10 @@ image named `aioznode`, whatever started them, so do not run it on a host whose
 node uses that name. It then removes the unused images of this project only:
 every `Dockerfile` of the repository labels its image with
 `org.opencontainers.image.source=https://github.com/Rinzler78/aioz-node-docker`,
-and the prune filters on that label. The published `rinzlerfr/aioznode` images,
-and images built `FROM` them that keep the label, count as images of this
-project; the other images of the Docker host are left alone.
+and the prune filters on that label. The published `rinzlerfr/aioznode` images
+built from this version on, and images built `FROM` them that keep the label,
+count as images of this project; the other images of the Docker host are left
+alone.
 
 ### Tests
 
