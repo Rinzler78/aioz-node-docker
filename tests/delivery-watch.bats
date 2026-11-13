@@ -119,7 +119,7 @@ state() {
     # An array index in $(( )) runs its command substitution.
     local payload="a[\$(touch\${IFS}$BATS_TEST_TMPDIR/pwned)]"
     for bad in "104515" "104515 abc ok" "104515 1794000000x ok" "104515 1 maybe" \
-        "$payload 1 ok" "104515 $payload ok"; do
+        "104515 0999 ok" "0104515 1 ok" "$payload 1 ok" "104515 $payload ok"; do
         echo "$bad" > "$STATE_FILE"
 
         run "$SCRIPT"
@@ -147,8 +147,10 @@ state() {
 
     run "$SCRIPT"
 
+    [ "$status" -eq 1 ]
     [[ "$output" != *"resumed"* ]]
     [[ "$output" == *"went down"* ]]
+    [ "$(state)" = "0 $NOW ok" ]
 }
 
 @test "fails clearly when the state folder is missing" {
@@ -156,6 +158,7 @@ state() {
 
     [ "$status" -eq 1 ]
     [[ "$output" == *"ERROR: cannot write"* ]]
+    [ "${#lines[@]}" -eq 1 ]
 }
 
 @test "reads the logs of WITHDRAW_CONTAINER" {
@@ -163,4 +166,21 @@ state() {
 
     [ "$status" -eq 1 ]
     [[ "$output" == *"no delivery count"*"other"* ]]
+}
+
+@test "refuses a STALL_HOURS or NOW that is not a number" {
+    local payload="a[\$(touch\${IFS}$BATS_TEST_TMPDIR/pwned)]"
+    echo "104515 $((NOW - DAY)) ok" > "$STATE_FILE"
+    for bad in 48h 0 "$payload"; do
+        STALL_HOURS="$bad" run "$SCRIPT"
+
+        [ "$status" -eq 1 ]
+        [[ "$output" == "ERROR: STALL_HOURS"* ]]
+    done
+    NOW="$payload" run "$SCRIPT"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == "ERROR: NOW"* ]]
+    [ ! -e "$BATS_TEST_TMPDIR/pwned" ]
+    [ "$(state)" = "104515 $((NOW - DAY)) ok" ]
 }

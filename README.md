@@ -336,12 +336,14 @@ every check. It keeps `<count> <epoch of its last change> <ok|stalled>` in
 * deliveries resumed after a reported stall;
 * the count went down (counter reset, or 0 when the hub omits it): the watch
   restarts from the new count;
-* the state file is invalid: the watch restarts from the current count. The
-  state is checked before any arithmetic, as bash would run commands hidden in
-  it.
+* the state file is invalid (not two decimal numbers without leading zero and
+  `ok` or `stalled`): the watch restarts from the current count. Every value is
+  checked before any arithmetic, as bash would run commands hidden in it and
+  read a leading 0 as octal.
 
 On every run until fixed: no count in the logs (reward container removed or
-renamed), or a state file that cannot be written.
+renamed), a state file that cannot be written, or a `STALL_HOURS` that is not a
+number above 0.
 
 DSM notifies a task that ends abnormally, with its output. `synodsmnotify`
 cannot carry the message: on DSM 7 it only accepts translation keys as title

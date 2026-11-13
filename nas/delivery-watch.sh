@@ -30,10 +30,16 @@ save_state() {
     fi
 }
 
-# A state is "<digits> <digits> <ok|stalled>". Checked before any arithmetic:
-# bash evaluates a variable in $(( )) as an expression, commands included.
+# Decimal number without leading zero. Every value is checked before any
+# arithmetic: bash evaluates a variable in $(( )) as an expression, commands
+# included, and reads a leading 0 as octal (0999 fails, 0177 is 127).
+is_number() {
+    [[ "$1" =~ ^(0|[1-9][0-9]*)$ ]]
+}
+
+# A state is "<count> <epoch> <ok|stalled>".
 valid_state() {
-    [[ "$1" =~ ^[0-9]+$ && "$2" =~ ^[0-9]+$ && "$3" =~ ^(ok|stalled)$ ]]
+    is_number "$1" && is_number "$2" && [[ "$3" =~ ^(ok|stalled)$ ]]
 }
 
 when() {
@@ -43,6 +49,14 @@ when() {
 delivery_watch() {
     local now count last since status
     now="${NOW:-$(date +%s)}"
+    if ! is_number "$now"; then
+        echo "ERROR: NOW must be an epoch in seconds" >&2
+        return 1
+    fi
+    if ! is_number "$STALL_HOURS" || [ "$STALL_HOURS" = 0 ]; then
+        echo "ERROR: STALL_HOURS must be a number of hours above 0" >&2
+        return 1
+    fi
     count=$(delivery_count)
     if [ -z "$count" ]; then
         echo "ERROR: no delivery count in the logs of $WITHDRAW_CONTAINER" >&2
