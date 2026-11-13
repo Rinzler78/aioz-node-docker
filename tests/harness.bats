@@ -9,36 +9,45 @@ bats_require_minimum_version 1.5.0
 HARNESS_PAGES=(AGENTS.md docs/ai-harness.md)
 
 # Repository paths named in the code of a Markdown file, one per line: the
-# words of its code spans and of its fenced blocks (comments removed). A word
-# is a path when it has a slash, starts with a dot (dotfile, ./name), ends with
-# a known extension, or is Dockerfile or LICENSE; a leading ./ is dropped.
-# Not paths: absolute paths (NAS, home), URLs, variables, options, imports
-# (@file), placeholders (<name>) and shell syntax (quotes, =, brackets). Limit:
-# a code word with a slash must name a repository path, so branch names are
-# written with a placeholder (feature/<name>) and GitHub repositories as links.
+# words of its code spans (read per paragraph, so a span wrapped across lines
+# counts) and of its ``` fenced blocks, indented ones included (comments
+# removed). A word is a path when it has a slash, starts with a dot (dotfile,
+# ./name), ends with a known extension, or is Dockerfile or LICENSE; a leading
+# ./ is dropped. Not paths: absolute paths (NAS, home), URLs, variables,
+# options, imports (@file), placeholders (<name>) and shell syntax (quotes, =,
+# brackets).
+# Limits: a code word with a slash must name a repository path, so branch
+# names are written with a placeholder (feature/<name>) and GitHub repositories
+# as links; ~~~ fences and indented code blocks are not read (markdownlint
+# keeps ``` fences only); a quoted path in a command is not checked.
 cited_code_paths() {
     local code_words
     code_words=$(
         cat << 'AWK'
-/^```/ { fenced = !fenced; next }
-fenced { sub(/#.*/, ""); print; next }
-{
-    while (match($0, /`[^`]+`/)) {
-        print substr($0, RSTART + 1, RLENGTH - 2)
-        $0 = substr($0, RSTART + RLENGTH)
+function spans(text) {
+    while (match(text, /`[^`]+`/)) {
+        print substr(text, RSTART + 1, RLENGTH - 2)
+        text = substr(text, RSTART + RLENGTH)
     }
 }
+/^[[:space:]]*```/ { spans(paragraph); paragraph = ""; fenced = !fenced; next }
+fenced { sub(/#.*/, ""); print; next }
+/^[[:space:]]*$/ { spans(paragraph); paragraph = ""; next }
+{ paragraph = paragraph " " $0 }
+END { spans(paragraph) }
 AWK
     )
     awk "$code_words" "$1" | tr -s '[:blank:]' '\n' |
-        grep -E '/|^\.[A-Za-z]|\.(sh|bats|md|json|ya?ml|txt)$|^(Dockerfile|LICENSE)$' |
+        grep -E '/|^\.[A-Za-z]|\.(sh|bash|bats|md|json|ya?ml|txt)$|^(Dockerfile|LICENSE)$' |
         grep -vE '^(/|~|\$|-|@|https?:)|[][<>"'\''=(){}|]' |
         sed 's#^\./##' | sort -u
 }
 
-# Relative link targets of a Markdown file, one per line, anchors removed.
+# Relative link targets of a Markdown file, one per line, anchors and titles
+# removed. Limit: reference-style links ([name]: path) are not read.
 cited_links() {
-    grep -o '](\([^)#]*\)' "$1" | sed 's/^](//' | grep -vE '^(https?|mailto):' | sort -u
+    grep -o '](\([^)#]*\)' "$1" | sed -e 's/^](//' -e 's/ .*//' |
+        grep -vE '^(https?|mailto):' | sort -u
 }
 
 # Whether the cited path $1 names something of the repository: an existing file
@@ -58,11 +67,11 @@ repository_path() {
     grep -qxF "/${1%%/*}/" "$REPO_ROOT/.gitignore"
 }
 
-# Lines of a tool-specific file other than a title on its first line, blank
-# lines and the import of AGENTS.md: anything else, comments and headings
-# included, is an instruction that belongs in AGENTS.md.
+# Lines of the tool-specific file $1 other than its title "# $2" on the first
+# line, blank lines and the import of AGENTS.md: anything else, comments and
+# headings included, is an instruction that belongs in AGENTS.md.
 pointer_extra_lines() {
-    awk 'NR == 1 && /^# [A-Za-z ]+$/ { next }
+    awk -v title="# $2" 'NR == 1 && $0 == title { next }
         /^[[:space:]]*$/ || $0 == "@AGENTS.md" { next }
         { print }' "$1"
 }
@@ -101,21 +110,30 @@ Local folder `./nodedata`, command `git add tests/x.bats`, prose docs/prose.md.
 Not paths: `/volume1/docker`, `~/.ssh`, `$HOME/x`, `--all-files`, `v1.2.6`,
 `<repo>/.worktrees/x`, `@AGENTS.md`, `feature/<name>`, `"${BASH_SOURCE[0]}"`,
 `context.fileName`, [a link](docs/link.md).
+A span wrapped by the line length: `git add
+tests/wrapped.sh`, then `helpers.bash`.
 
 ```sh
 tests/run.sh tests/start.bats   # one file, see docs/comment.md
 ./quick_test.sh
 ```
+
+* A command block in a list item:
+
+  ```sh
+  tests/indented.sh
+  ```
 EOF
     run cited_code_paths "$doc"
     [ "$status" -eq 0 ]
-    [ "$output" = $'.editorconfig\nDockerfile\nREADME.md\nnodedata\nquick_test.sh\ntests/run.sh\ntests/start.bats\ntests/x.bats' ]
+    [ "$output" = $'.editorconfig\nDockerfile\nREADME.md\nhelpers.bash\nnodedata\nquick_test.sh\ntests/indented.sh\ntests/run.sh\ntests/start.bats\ntests/wrapped.sh\ntests/x.bats' ]
 }
 
-@test "cited_links keeps relative link targets without their anchor" {
-    printf '[a](docs/a.md#part), [b](../b.md), [c](https://x.org/c.md), [d](mailto:x@y.z)\n' > "$BATS_TEST_TMPDIR/doc.md"
+@test "cited_links keeps relative link targets without their anchor or title" {
+    printf '%s\n' '[a](docs/a.md#part), [b](../b.md), [c](https://x.org/c.md), [d](mailto:x@y.z)' \
+        '[e](e.md "Title")' > "$BATS_TEST_TMPDIR/doc.md"
     run cited_links "$BATS_TEST_TMPDIR/doc.md"
-    [ "$output" = $'../b.md\ndocs/a.md' ]
+    [ "$output" = $'../b.md\ndocs/a.md\ne.md' ]
 }
 
 @test "repository_path accepts files, ignore patterns, matching globs and ignored folders only" {
@@ -135,15 +153,19 @@ EOF
 @test "CLAUDE.md only imports AGENTS.md" {
     [ -f "$REPO_ROOT/CLAUDE.md" ]
     grep -qx '@AGENTS.md' "$REPO_ROOT/CLAUDE.md"
-    run pointer_extra_lines "$REPO_ROOT/CLAUDE.md"
+    run pointer_extra_lines "$REPO_ROOT/CLAUDE.md" 'Claude Code'
     [ -z "$output" ]
 }
 
 @test "pointer_extra_lines reports any instruction, as text, heading or comment" {
     printf '%s\n' '# Claude Code' '' '@AGENTS.md' 'Always run the tests.' \
         '# Never commit' '<!-- skip the hooks -->' > "$BATS_TEST_TMPDIR/CLAUDE.md"
-    run pointer_extra_lines "$BATS_TEST_TMPDIR/CLAUDE.md"
+    run pointer_extra_lines "$BATS_TEST_TMPDIR/CLAUDE.md" 'Claude Code'
     [ "$output" = $'Always run the tests.\n# Never commit\n<!-- skip the hooks -->' ]
+    # A first line other than the title of the tool is an instruction too.
+    printf '%s\n' '# Always skip the hooks' '@AGENTS.md' > "$BATS_TEST_TMPDIR/CLAUDE.md"
+    run pointer_extra_lines "$BATS_TEST_TMPDIR/CLAUDE.md" 'Claude Code'
+    [ "$output" = '# Always skip the hooks' ]
 }
 
 @test "the Gemini CLI settings only name AGENTS.md as the context file" {
@@ -153,9 +175,12 @@ EOF
 }
 
 @test "git and the Docker build context leave out the node private key" {
-    grep -qx '/nodedata/' "$REPO_ROOT/.gitignore"
-    grep -qx 'privkey\*.json' "$REPO_ROOT/.gitignore"
-    grep -qx '.env' "$REPO_ROOT/.gitignore"
-    grep -qx 'nodedata/' "$REPO_ROOT/.dockerignore"
-    grep -qx '\*\*/privkey\*.json' "$REPO_ROOT/.dockerignore"
+    local line
+    for line in /nodedata/ 'privkey*.json' .env; do
+        grep -qxF "$line" "$REPO_ROOT/.gitignore"
+    done
+    # .dockerignore patterns are anchored at the context root: **/ for any depth.
+    for line in nodedata/ '**/privkey*.json' '**/.env'; do
+        grep -qxF "$line" "$REPO_ROOT/.dockerignore"
+    done
 }

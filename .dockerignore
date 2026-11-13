@@ -1,7 +1,8 @@
 # Keep the wallet key and local folders out of the build context, which may be
-# sent to a remote Docker host. The images copy only tools/.
+# sent to a remote Docker host. The images copy only tools/. Patterns are
+# anchored at the context root: **/ matches at any depth.
 nodedata/
 **/privkey*.json
-.env
+**/.env
 .git
 .worktrees/

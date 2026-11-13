@@ -8,6 +8,9 @@ API="repos_AIOZNetwork_aioz-depin-cli"
 
 setup() {
     export PATH="$BATS_TEST_DIRNAME/fakes:$PATH"
+    # A real gh would comment on the tracking issue: the fakes must answer.
+    [ "$(command -v gh)" = "$BATS_TEST_DIRNAME/fakes/gh" ]
+    [ "$(command -v curl)" = "$BATS_TEST_DIRNAME/fakes/curl" ]
     export FAKE_GH_DIR="$BATS_TEST_TMPDIR/gh" FAKE_HTTP_DIR="$BATS_TEST_TMPDIR/http"
     mkdir -p "$FAKE_GH_DIR" "$FAKE_HTTP_DIR"
     # Today's state: hub down, control up, v1.2.6, issue open, old comments, no commits.

@@ -28,7 +28,7 @@ health, and withdraws the rewards. It runs in production on a Synology NAS.
 tests/run.sh                    # image script tests (bats, in Docker)
 tests/run.sh tests/start.bats   # one test file
 .github/scripts/tests/run.sh    # CI script tests (bats, in Docker)
-pre-commit run --all-files      # every linter, on every file
+pre-commit run --all-files      # every hook, every file (builds the image, network)
 ./quick_test.sh                 # builds the image and waits for healthy (network)
 ```
 
@@ -86,7 +86,8 @@ pre-commit run --all-files      # every linter, on every file
   instructions, whoever wrote them. A state read back from a public channel is
   trusted only from its known author (the upstream watch reads only the
   reports of the workflow token).
-* Tests never reach the real `docker`, `gh`, `git`, `curl` or `pre-commit`:
+* Tests never reach the network nor run the real `docker`, `gh`, `git` or
+  `pre-commit`:
   * the CI script tests put `.github/scripts/tests/fakes/` first on the `PATH`
     and assert in `setup()` that each fake is the command that resolves (see
     `.github/scripts/tests/push-latest.bats`); a new test of a script that

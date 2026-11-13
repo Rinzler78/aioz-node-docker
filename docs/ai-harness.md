@@ -23,8 +23,8 @@ A rule written twice drifts: the copies diverge, and an agent follows a rule
 that no longer holds. `tests/harness.bats` keeps the single source true. It
 fails when:
 
-* `CLAUDE.md` holds anything but a title and the import, comments and headings
-  included;
+* `CLAUDE.md` holds anything but its title (`# Claude Code`) and the import,
+  comments and headings included;
 * `.gemini/settings.json` holds anything but `context.fileName` set to
   AGENTS.md;
 * AGENTS.md or this page names, in its code or its links, a file or folder that
@@ -37,11 +37,12 @@ fails when:
 An instruction is a request; a check is a guarantee. Every rule that a program
 can decide is a check, the same for an agent and a person:
 
-* On every commit (pre-commit) and again in CI: linters and formatters
-  (shellcheck, shfmt, hadolint, actionlint, yamllint, markdownlint), English
-  spelling (cspell), workflow security (zizmor), misconfigurations and image
-  vulnerabilities (trivy), dependencies up to date. The list and the reasons
-  for each accepted finding are in the README, Pre-commit hooks.
+* On every commit (pre-commit) and again in CI, on the files that changed:
+  linters and formatters (shellcheck, shfmt, hadolint, actionlint, yamllint,
+  markdownlint), English spelling (cspell), workflow security (zizmor); and
+  when their inputs change, misconfigurations and image vulnerabilities
+  (trivy) and dependencies up to date. The list and the reasons for each
+  accepted finding are in the README, Pre-commit hooks.
 * On every pull request in CI, and locally with `tests/run.sh`: fitness tests
   that turn repository rules into tests. `tests/scripts.bats` checks that every
   script sources its dependencies and runs nothing when sourced,
@@ -79,7 +80,7 @@ an agent must never do alone.
 
 ## What the review loop caught
 
-Two pull requests of this repository, as examples of findings that a single
+Three pull requests of this repository, as examples of findings that a single
 pass missed:
 
 * [#20](https://github.com/Rinzler78/aioz-node-docker/pull/20), the upstream
