@@ -322,27 +322,35 @@ directory. Example: `docker/aioznode/nodedata`
 
 ## Upstream watch
 
-The AIOZ DePIN hub is down (Cloudflare 521) and the CLI v1.2.6 `start` is broken
-upstream
+The AIOZ DePIN hub went down (Cloudflare 521) on 2026-11-07 and the CLI v1.2.6
+`start` is broken upstream
 ([AIOZNetwork/aioz-depin-cli#10](https://github.com/AIOZNetwork/aioz-depin-cli/issues/10)).
 The workflow `.github/workflows/upstream-watch.yml` runs
 `.github/scripts/upstream-watch.sh` every day at 08:00 UTC (and on demand from
-the Actions tab) to tell when the node can be tried again.
+the Actions tab) to report what changed upstream.
 
-What counts as a change:
+Each check is measured against the last report the workflow posted on the
+tracking issue (its last comment, or its body), so a lasting state is reported
+once, not every day. Comments of anyone else are ignored: on a public issue
+they could otherwise hide a change or reset the baseline. Without a report,
+the baseline is the outage: hubs down, release `KNOWN_TAG` (`v1.2.6`), issue
+open. What counts as a change:
 
-* a hub URL no longer returns Cloudflare 52x (origin down) nor 000 (no answer),
-  while the control URL `https://wallet.aioz.network/` answers 2xx-4xx; when the
-  control URL does not answer, the hub result is ignored;
-* the latest upstream release is not `KNOWN_TAG` (`v1.2.6`);
-* the upstream issue #10 is no longer open, or got comments in the last 25
-  hours;
+* a hub URL changes state, while the control URL `https://wallet.aioz.network/`
+  answers 2xx-4xx. When it does not, the codes measured now are ignored and the
+  report keeps the reported ones, so the next run compares with them. The
+  states are *down* (000, no answer, or Cloudflare 52x, origin down), *up*
+  (2xx, 3xx) and *error* (any other code). Codes of one state are equivalent:
+  the main hub answers 404 or 415 to the same request;
+* the latest upstream release differs from the reported one;
+* the upstream issue #10 changes state, or got comments in the last 25 hours;
 * upstream commits in the last 25 hours.
 
 On change, the script comments on the open issue titled **AIOZ upstream watch**
-of this repository (and creates it if missing). Mentions in quoted comments are
-neutralized so their authors are not notified. Nothing is posted when nothing
-changed.
+that the workflow opened in this repository (and creates it if missing); an
+issue of the same title opened by someone else is ignored. Mentions in quoted
+comments are neutralized so their authors are not notified. Nothing is posted
+when nothing changed.
 
 A GitHub API error (rate limit, bad token, outage) fails the run (red in
 Actions) and posts nothing, so a broken watch never looks like an upstream
@@ -350,7 +358,8 @@ change.
 
 Maintenance:
 
-* after moving to a new upstream release, update `KNOWN_TAG` in the script;
+* `KNOWN_TAG` is only the baseline of a first report: update it when moving to
+  a new upstream release;
 * GitHub disables scheduled workflows of a public repository after 60 days
   without activity: re-enable it from the Actions tab (**AIOZ upstream watch** >
   **Enable workflow**);
