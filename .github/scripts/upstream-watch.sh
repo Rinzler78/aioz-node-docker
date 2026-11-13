@@ -16,6 +16,9 @@ WINDOW_HOURS="${WINDOW_HOURS:-25}"
 HUB_URLS="${HUB_URLS:-https://main-hub.aioz.network/ https://delivery-main-hub.aioz.network/worker/version https://hub.aioz.network/}"
 CONTROL_URL="${CONTROL_URL:-https://wallet.aioz.network/}"
 TRACKING_TITLE="${TRACKING_TITLE:-AIOZ upstream watch}"
+# Last report of the tracking issue posted by the workflow token: GitHub shows
+# its author as app/github-actions on the issue body, github-actions on comments.
+REPORTS_JQ='[(select(.author.login == "app/github-actions") | .body), (.comments[] | select(.author.login == "github-actions") | .body)] | last // ""'
 
 http_code() {
     curl -s -o /dev/null -m 20 -w '%{http_code}' "$1"
@@ -39,12 +42,12 @@ hub_state() {
 
 # Value of a line of the last report: "- `<url>`: <code>" with prefix
 # "- `<url>`: ", "### Latest release: <tag> ..." with "### Latest release: ".
-# First word after the prefix; empty when the report has no such line.
+# First word after the prefix, on the first line starting with it; empty when
+# the report has no such line.
 reported() {
-    local line
-    line=$(grep -F -m 1 -- "$1" <<< "$2") || return 0
-    line="${line#"$1"}"
-    echo "${line%% *}"
+    awk -v prefix="$1" 'index($0, prefix) == 1 {
+        value = substr($0, length(prefix) + 1); sub(/ .*/, "", value); print value; exit
+    }' <<< "$2"
 }
 
 # gh api; on error, logs it and returns 1. Callers must `|| return 1`: an API
@@ -70,24 +73,31 @@ upstream_watch() {
         return 1
     fi
 
-    # 0. Last report: the open tracking issue's last comment, or its body.
+    # 0. Last report on the open tracking issue: its last comment, or its body,
+    # written by this workflow. Anyone can comment on a public issue: a comment
+    # of someone else must neither hide a change nor reset the baseline.
     issue=$(gh issue list --state open --search "\"$TRACKING_TITLE\" in:title" --json number --jq '.[0].number') || return 1
     if [ -n "$issue" ]; then
-        last=$(gh issue view "$issue" --json body,comments --jq '[.body] + [.comments[].body] | last') || return 1
+        last=$(gh issue view "$issue" --json author,body,comments --jq "$REPORTS_JQ") || return 1
     fi
 
-    # 1. Hub. Only trusted when the control URL answers (our network is fine).
+    # 1. Hub. Only trusted when the control URL answers (our network is fine);
+    # otherwise the report keeps the reported codes, the baseline of the next run.
     control=$(http_code "$CONTROL_URL")
     for url in $HUB_URLS; do
         code=$(http_code "$url")
-        hub_lines+="- \`$url\`: $code"$'\n'
         previous=$(reported "- \`$url\`: " "$last")
-        if answers "$control" && [ "$(hub_state "$code")" != "$(hub_state "${previous:-000}")" ]; then
+        if ! answers "$control"; then
+            hub_lines+="- \`$url\`: ${previous:-000} (kept, measured $code)"$'\n'
+            continue
+        fi
+        hub_lines+="- \`$url\`: $code"$'\n'
+        if [ "$(hub_state "$code")" != "$(hub_state "${previous:-000}")" ]; then
             changes+=("hub")
         fi
     done
     report+="### Hub (control \`$CONTROL_URL\`: $control)"$'\n'"$hub_lines"
-    answers "$control" || report+="Control URL not answering: hub result ignored."$'\n'
+    answers "$control" || report+="Control URL not answering: hub codes measured now ignored."$'\n'
 
     # 2. Latest release (one call: tag and page).
     release=$(api "repos/$UPSTREAM_REPO/releases/latest" --jq '"\(.tag_name) \(.html_url)"') || return 1

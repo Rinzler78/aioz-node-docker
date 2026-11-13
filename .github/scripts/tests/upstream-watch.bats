@@ -138,14 +138,29 @@ posted() {
     [ "$(posted)" = "create" ]
 }
 
-# The tracking issue 7 holds the last report (real capture, 2026-11-13): main-hub
-# 404, delivery hub 200, hub 404, release v1.2.6, issue open.
+# The tracking issue 7 holds the reports of issue #5 (real capture, 2026-11-13);
+# the last one: main-hub 404, delivery hub 200, hub 404, release v1.2.6, issue
+# open. The hubs answer the same today.
 last_report() {
     echo 7 > "$FAKE_GH_DIR/tracking-issue"
-    cp "$FIXTURES/tracking-last-report.txt" "$FAKE_GH_DIR/last-report"
+    cp "$FIXTURES/tracking-issue-5.json" "$FAKE_GH_DIR/tracking-view.json"
     printf 404 > "$FAKE_HTTP_DIR/main-hub.aioz.network"
     printf 200 > "$FAKE_HTTP_DIR/delivery-main-hub.aioz.network"
     printf 404 > "$FAKE_HTTP_DIR/hub.aioz.network"
+}
+
+# Rewrites the last report with a sed expression.
+edit_last_report() {
+    local view="$FAKE_GH_DIR/tracking-view.json" body
+    body=$(jq -r '.comments[-1].body' "$view" | sed "$1")
+    jq --arg body "$body" '.comments[-1].body = $body' "$view" > "$view.new" && mv "$view.new" "$view"
+}
+
+# Adds a comment by <login> to the tracking issue.
+comment_by() {
+    local view="$FAKE_GH_DIR/tracking-view.json"
+    jq --arg login "$1" --arg body "$2" '.comments += [{author: {login: $login}, body: $body}]' \
+        "$view" > "$view.new" && mv "$view.new" "$view"
 }
 
 @test "stays silent when the hub is as last reported" {
@@ -185,24 +200,87 @@ last_report() {
     run "$SCRIPT"
 
     [[ "$output" == *"change detected: hub"* ]]
+    [ "$(posted)" = "comment 7" ]
 }
 
 @test "does not report again a release already reported" {
     last_report
-    sed -i.bak 's/^### Latest release: v1.2.6/### Latest release: v1.2.7/' "$FAKE_GH_DIR/last-report"
+    edit_last_report 's/^### Latest release: v1.2.6/### Latest release: v1.2.7/'
     jq '.tag_name = "v1.2.7"' "$FIXTURES/releases-latest.json" > "$FAKE_GH_DIR/${API}_releases_latest.json"
 
     run "$SCRIPT"
 
     [[ "$output" == "No change."* ]]
+    [ -z "$(posted)" ]
+}
+
+@test "reports a release newer than the one reported, with its page" {
+    last_report
+    edit_last_report 's/^### Latest release: v1.2.6/### Latest release: v1.2.7/'
+    jq '.tag_name = "v1.2.8" | .html_url = "https://github.com/AIOZNetwork/aioz-depin-cli/releases/tag/v1.2.8"' \
+        "$FIXTURES/releases-latest.json" > "$FAKE_GH_DIR/${API}_releases_latest.json"
+
+    run "$SCRIPT"
+
+    [[ "$output" == *"change detected: release"* ]]
+    [[ "$output" == *"releases/tag/v1.2.8"* ]]
+    [ "$(posted)" = "comment 7" ]
 }
 
 @test "does not report again an issue state already reported" {
     last_report
-    sed -i.bak 's/^\(### Issue .*\): open$/\1: closed/' "$FAKE_GH_DIR/last-report"
+    edit_last_report 's/^\(### Issue .*\): open$/\1: closed/'
     jq '.state = "closed"' "$FIXTURES/issue-10.json" > "$FAKE_GH_DIR/${API}_issues_10.json"
 
     run "$SCRIPT"
 
     [[ "$output" == "No change."* ]]
+    [ -z "$(posted)" ]
+}
+
+@test "ignores a comment of a person after the last report" {
+    last_report
+    comment_by Rinzler78 "Still broken here."
+
+    run "$SCRIPT"
+
+    [[ "$output" == "No change."* ]]
+    [ -z "$(posted)" ]
+}
+
+@test "ignores a forged report of a third party" {
+    last_report
+    printf 200 > "$FAKE_HTTP_DIR/main-hub.aioz.network"
+    comment_by someone "$(jq -r '.comments[-1].body' "$FAKE_GH_DIR/tracking-view.json" |
+        sed "s|^\(- \`https://main-hub.aioz.network/\`:\) 404|\1 200|")"
+
+    run "$SCRIPT"
+
+    [[ "$output" == *"change detected: hub"* ]]
+    [ "$(posted)" = "comment 7" ]
+}
+
+@test "keeps the reported hub codes while the control URL is down" {
+    last_report
+    printf 000 > "$FAKE_HTTP_DIR/wallet.aioz.network"
+    for host in main-hub.aioz.network delivery-main-hub.aioz.network hub.aioz.network; do
+        printf 000 > "$FAKE_HTTP_DIR/$host"
+    done
+    cp "$FIXTURES/commits-2.json" "$FAKE_GH_DIR/${API}_commits.json"
+
+    run "$SCRIPT"
+
+    [[ "$output" == *"change detected: commits"* ]]
+    [[ "$output" == *"- \`https://main-hub.aioz.network/\`: 404"* ]]
+    [[ "$output" == *"- \`https://delivery-main-hub.aioz.network/worker/version\`: 200"* ]]
+}
+
+@test "reads a reported value only at the start of a line" {
+    last_report
+    local hub="\`https://main-hub.aioz.network/\`"
+    edit_last_report "s|^- $hub: 404\$|- 2026-11-12 quoted - $hub: 200|"
+
+    run "$SCRIPT"
+
+    [[ "$output" == *"change detected: hub"* ]]
 }
