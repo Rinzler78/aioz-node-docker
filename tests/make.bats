@@ -59,12 +59,16 @@ EOF
 
 # Make's own database (-p, -q runs no recipe): the rules make reads from the
 # Makefile, whatever their spelling, without the special (.PHONY) and the
-# "Not a target" entries.
+# "Not a target" entries. Only its Files section is read: the variables
+# section may hold free text (multi-line values). Limit: a rule whose name
+# starts with a dot is special to make, and left out like in help.
 make_database() {
     make --no-print-directory -pRrq -C "$REPO_ROOT" help 2> /dev/null || true
 }
 makefile_rules() {
-    make_database | awk '/^# Not a target/ { skip = 1; next }
+    make_database | awk '/^# Files/ { files = 1 } /^# files hash-table stats/ { files = 0 }
+        !files { next }
+        /^# Not a target/ { skip = 1; next }
         /^[^.#%[:space:]][^=]*:/ && !/^[^:]*:=/ && !skip { sub(/:.*/, ""); if ($0 != "") print }
         { skip = 0 }' | sort -u
 }
