@@ -50,17 +50,21 @@ EOF
 
 @test "docker-run and docker-start pass ARGS to docker run" {
     run make --no-print-directory -n -C "$REPO_ROOT" docker-run ARGS='-v /data:/nodedata'
+    [ "$status" -eq 0 ]
     [ "$output" = "scripts/helper.docker.run.sh -v /data:/nodedata" ]
     run make --no-print-directory -n -C "$REPO_ROOT" docker-start ARGS='-v /data:/nodedata'
+    [ "$status" -eq 0 ]
     [ "$output" = "scripts/helper.docker.start.sh -v /data:/nodedata" ]
 }
 
-# Rule names of the Makefile, and target names that make help prints.
+# Rule names of the Makefile: any name before a colon that is not a variable
+# assignment (:=) nor a special target (.PHONY), whatever its characters.
 makefile_rules() {
-    sed -n 's/^\([a-z][a-z-]*\):.*/\1/p' "$REPO_ROOT/Makefile" | sort
+    sed -n 's/^\([^.#[:space:]][^:=[:space:]]*\):\([^=].*\)\{0,1\}$/\1/p' "$REPO_ROOT/Makefile" | sort
 }
+# Target names that make help prints.
 help_targets() {
-    make --no-print-directory -C "$REPO_ROOT" help | sed -n 's/^  \([a-z][a-z-]*\) .*/\1/p' | sort
+    make --no-print-directory -C "$REPO_ROOT" help | sed -n 's/^  \([^ ]*\) .*/\1/p' | sort
 }
 
 @test "every rule of the Makefile is listed by help" {

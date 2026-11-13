@@ -1,9 +1,14 @@
-# Entry point of the repository commands: each target runs one script.
+# Entry point of the repository commands: each target runs one script, by a
+# path from the repository root (run make there, or make -C <root>).
 # make (or make help) lists the targets. ARGS are passed to docker run.
 
 .DEFAULT_GOAL := help
 # Appended to docker-run and docker-start, with its leading space only when set.
 ARGS ?=
+
+# check runs its prerequisites one after the other, even with make -j: each
+# of them builds Docker images.
+.NOTPARALLEL:
 
 .PHONY: help test test-ci lint check quick-test
 .PHONY: docker-build docker-run docker-stop docker-start docker-clean
@@ -11,7 +16,7 @@ ARGS ?=
 help: ## List the targets (default)
 	@echo "Usage: make <target> [ARGS='docker run arguments']"
 	@echo
-	@awk 'BEGIN { FS = ":.*## " } /^[a-z][a-z-]*:.*## / { printf "  %-14s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
+	@awk '/^[A-Za-z0-9_-]+:.*## / { printf "  %-14s %s\n", substr($$0, 1, index($$0, ":") - 1), substr($$0, index($$0, "## ") + 3) }' $(MAKEFILE_LIST)
 
 test: ## Image script tests (bats, in Docker)
 	tests/run.sh

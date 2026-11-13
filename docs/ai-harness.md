@@ -40,11 +40,11 @@ can decide is a check, the same for an agent and a person:
 
 * On every commit (pre-commit) and on every pull request in CI, on the files
   that changed, then on every file after a merge:
-  linters and formatters (shellcheck, shfmt, hadolint, actionlint, yamllint,
-  markdownlint), English spelling (cspell), workflow security (zizmor); and
-  when their inputs change, misconfigurations and image vulnerabilities
-  (trivy) and dependencies up to date. The list and the reasons for each
-  accepted finding are in the README, Pre-commit hooks.
+  linters and formatters (shellcheck, shfmt, hadolint, checkmake, actionlint,
+  yamllint, markdownlint), English spelling (cspell), workflow security
+  (zizmor); and when their inputs change, misconfigurations and image
+  vulnerabilities (trivy) and dependencies up to date. The list and the
+  reasons for each accepted finding are in the README, Pre-commit hooks.
 * On every pull request in CI, and locally with `tests/run.sh`: fitness tests
   that turn repository rules into tests. `tests/scripts.bats` checks that every
   script sources its dependencies and runs nothing when sourced,

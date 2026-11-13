@@ -237,9 +237,10 @@ alone.
 ### Tests
 
 ```sh
-tests/run.sh             # bats tests in an Alpine container against a fake GitHub
-scripts/quick_test.sh    # builds the image, waits for healthy,
-                         # checks the installed version is the latest release
+tests/run.sh             # make test: bats tests in Alpine, fake GitHub
+scripts/quick_test.sh    # make quick-test: builds the image, waits for
+                         # healthy, checks the installed version is the latest
+                         # release
 ```
 
 CI runs `tests/run.sh` (`.github/workflows/tests.yml`) on every pull request
@@ -474,9 +475,11 @@ Each hook checks the changed files only (shellcheck still follows the scripts
 they source, see `.shellcheckrc`):
 
 * Linters and format — shellcheck, shfmt (style in `.editorconfig`), hadolint,
-  yamllint (`.yamllint.yaml`), actionlint, markdownlint (`.markdownlint.yaml`:
-  code blocks as backtick fences only): shell scripts, bats tests, Dockerfiles,
-  YAML, workflows, Markdown
+  checkmake (`checkmake.ini`: the required targets are `help`, `test` and
+  `check`; no `all` nor `clean`, so that a cleanup of Docker objects is never
+  run by a habitual `make clean`), yamllint (`.yamllint.yaml`), actionlint,
+  markdownlint (`.markdownlint.yaml`: code blocks as backtick fences only):
+  shell scripts, bats tests, Dockerfiles, Makefile, YAML, workflows, Markdown
 * Workflow security — zizmor: GitHub workflows. Actions are pinned to a commit
   SHA, with their version in a comment on the line above; every permission is
   commented; only the release job (`contents`) and the upstream watch job
