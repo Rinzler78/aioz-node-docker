@@ -1,7 +1,7 @@
 # AIOZ DePIN node in Docker
 
-[![Tests](https://github.com/Rinzler78/aioz-node-docker/actions/workflows/tests.yml/badge.svg?branch=develop)](https://github.com/Rinzler78/aioz-node-docker/actions/workflows/tests.yml)
-[![pre-commit](https://github.com/Rinzler78/aioz-node-docker/actions/workflows/pre-commit.yml/badge.svg?branch=develop)](https://github.com/Rinzler78/aioz-node-docker/actions/workflows/pre-commit.yml)
+[![Tests](https://github.com/Rinzler78/aioz-node-docker/actions/workflows/tests.yml/badge.svg)](https://github.com/Rinzler78/aioz-node-docker/actions/workflows/tests.yml)
+[![pre-commit](https://github.com/Rinzler78/aioz-node-docker/actions/workflows/pre-commit.yml/badge.svg)](https://github.com/Rinzler78/aioz-node-docker/actions/workflows/pre-commit.yml)
 [![Release](https://img.shields.io/github/v/release/Rinzler78/aioz-node-docker)](https://github.com/Rinzler78/aioz-node-docker/releases)
 [![Docker Pulls](https://img.shields.io/docker/pulls/rinzlerfr/aioznode)](https://hub.docker.com/r/rinzlerfr/aioznode)
 [![Docker Image Size](https://img.shields.io/docker/image-size/rinzlerfr/aioznode)](https://hub.docker.com/r/rinzlerfr/aioznode)
