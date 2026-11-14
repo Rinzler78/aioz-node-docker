@@ -2,7 +2,8 @@
 # The documentation covers the repository: docs/architecture.md names every
 # `*.sh` script, workflow and Dockerfile, the compose file and the Makefile, so
 # a new one cannot stay off the map; the decision records of docs/adr/ keep
-# their format, their numbering and their index.
+# their format, their numbering and their index; CHANGELOG.md keeps the Keep a
+# Changelog format.
 
 load helpers
 
@@ -134,8 +135,10 @@ STATUS='^Status: (Proposed|Accepted|Deprecated|Superseded by \[([0-9]{4})\]\(([0
 # CHANGELOG.md follows Keep a Changelog (https://keepachangelog.com/en/1.1.0/):
 # an Unreleased section, then the releases from the newest down, each with its
 # date; each version heading links to its changes on GitHub.
-# Limit: the releases are compared with each other, not with the git tags,
-# which a shallow CI checkout does not fetch.
+# Limits: the releases are compared with each other, not with the git tags,
+# which a shallow CI checkout does not fetch; a heading inside a code block
+# counts; a yanked release (`[YANKED]` after the date) is refused, as the
+# repository has none.
 CHANGELOG_URL=https://github.com/Rinzler78/aioz-node-docker
 
 @test "CHANGELOG.md lists Unreleased, then the releases from the newest, each dated and linked" {
@@ -147,7 +150,7 @@ CHANGELOG_URL=https://github.com/Rinzler78/aioz-node-docker
         echo "first section: $(head -n 1 <<< "$headings")"
         false
     }
-    while read -r line; do
+    while IFS= read -r line; do
         [[ "$line" =~ ^##\ \[([0-9]+\.[0-9]+\.[0-9]+)\]\ -\ ([0-9]{4}-[0-9]{2}-[0-9]{2})$ ]] || {
             echo "release heading: $line"
             false
@@ -178,13 +181,22 @@ CHANGELOG_URL=https://github.com/Rinzler78/aioz-node-docker
     }
 }
 
-@test "CHANGELOG.md groups the changes under the Keep a Changelog types only" {
-    local page="$REPO_ROOT/CHANGELOG.md" other
+@test "each release of CHANGELOG.md groups its changes under the Keep a Changelog types only" {
+    local page="$REPO_ROOT/CHANGELOG.md" other empty
     [ -f "$page" ]
     [ "$(head -n 1 "$page")" = '# Changelog' ]
     other=$(tail -n +2 "$page" | grep -E '^#' | grep -vE '^## |^### (Added|Changed|Deprecated|Removed|Fixed|Security)$') || true
     [ -z "$other" ] || {
         printf 'headings outside the types:\n%s\n' "$other"
+        false
+    }
+    # A release lists at least one change; Unreleased may be empty.
+    empty=$(awk '/^## / { if (release && !changes) print release
+            release = ($0 ~ /^## \[Unreleased\]/) ? "" : $0; changes = 0; next }
+        /^### / { changes = 1 }
+        END { if (release && !changes) print release }' "$page")
+    [ -z "$empty" ] || {
+        printf 'releases with no change:\n%s\n' "$empty"
         false
     }
 }

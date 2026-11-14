@@ -39,7 +39,8 @@ make                 # lists the targets
    check points at a cause to fix.
 5. Commit with a [Conventional Commits](https://www.conventionalcommits.org/)
    message (`feat(nas): …`, `fix(watch): …`), staging files by explicit path.
-6. Open a pull request against `develop`. Keep it short, about 400 lines and
+6. Open a pull request against `develop` (a hotfix against `master`, which is
+   then merged back into `develop`). Keep it short, about 400 lines and
    10 files; split a larger change into several pull requests.
 
 ## Review
@@ -52,9 +53,11 @@ checks.
 
 ## Release
 
-1. A `release/vX.Y.Z` branch from `develop` gets its `CHANGELOG.md` section:
-   the `Unreleased` entries move under `## [X.Y.Z] - <date>`, and the links at
-   the bottom of the file follow.
+1. A `release/vX.Y.Z` branch from `develop` gets one commit, its
+   `CHANGELOG.md` section: the `Unreleased` entries move under
+   `## [X.Y.Z] - <date>`, and the links at the bottom of the file follow
+   (since this changelog; the release branches of v0.0.2 and v0.0.3 had no
+   commit of their own).
 2. Its pull request is merged into `master`, and `vX.Y.Z` is tagged there.
 3. The tag runs the `Docker Image CI` workflow: it builds the image, runs the
    tests and `scripts/quick_test.sh`, pushes `rinzlerfr/aioznode:vX.Y.Z`, moves

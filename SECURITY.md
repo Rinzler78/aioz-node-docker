@@ -42,12 +42,13 @@ Out of scope, to report upstream:
   release before install.
 * The numbers that the node start, its health check and the delivery watch
   read from settings, files or commands are checked before shell arithmetic,
-  which would otherwise evaluate them as code (the withdraw mode settings are
-  not, yet).
+  which would otherwise evaluate them as code. In the withdraw mode, the
+  settings and the balance read from the node are not all checked yet.
 * Workflows run read-only by default; their actions are pinned to a commit;
   zizmor checks them; the Docker Hub secrets are open to release tags only.
-* Every change runs the pre-commit hooks, among them a trivy scan of the
-  configuration and of the built image, which fails on HIGH or CRITICAL
+* The pre-commit hooks run trivy when their inputs change: a configuration
+  scan of the Dockerfiles, and a scan of the built image, when the
+  `Dockerfile` or `tools/` change, that fails on HIGH or CRITICAL
   vulnerabilities.
 
 The details, and what is not checked yet, are in

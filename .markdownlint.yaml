@@ -3,7 +3,3 @@ MD046:
   style: fenced
 MD048:
   style: backtick
-# A heading may repeat under different parents: each release of CHANGELOG.md
-# has its own Added, Changed and Fixed sections (Keep a Changelog).
-MD024:
-  siblings_only: true
