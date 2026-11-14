@@ -22,6 +22,7 @@ health, and withdraws the rewards. It runs in production on a Synology NAS.
 | `.github/scripts/` | the CI scripts and their tests, run against fakes |
 | `scripts/` | local build, run and clean helpers, `scripts/quick_test.sh` |
 | `Makefile` | entry point: `make` lists the targets, one script each |
+| `docs/` | `docs/architecture.md` (the map), `docs/ai-harness.md` |
 
 ## Commands
 

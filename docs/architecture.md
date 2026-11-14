@@ -3,8 +3,8 @@
 One Docker image runs an AIOZ DePIN node and, started with another command,
 withdraws its rewards. The image installs the latest upstream CLI at every
 start, so a release of this repository changes the scripts around the node, not
-the node itself. `tests/docs.bats` checks that this page names every script,
-workflow and build file of the repository.
+the node itself. `tests/docs.bats` checks that this page names every shell
+script, workflow and Dockerfile of the repository.
 
 ## Runtime
 
@@ -19,7 +19,7 @@ flowchart LR
             start["start.sh: deploy, then aioz-io start"]
             watchdog["watchdog: node.health.sh"]
         end
-        subgraph withdraw["container auto-withdraw-reward"]
+        subgraph withdraw["container aioznode-auto-withdraw-reward"]
             loop["start-watching-reward.sh: withdraw loop"]
         end
         watch["delivery-watch.sh, DSM task, daily"]
@@ -32,7 +32,8 @@ flowchart LR
     data -- "read-only" --> withdraw
     releases -- "latest CLI, checked against SHA256SUMS" --> start
     start <--> network
-    watchdog -- "stats, reward balance" --> start
+    watchdog -- "stats" --> start
+    watchdog -- "reward balance" --> network
     loop -- "reward balance, withdraw" --> network
     watch -- "docker logs: delivery count" --> withdraw
     watch -- "exit 1: stall or resume" --> owner
@@ -42,13 +43,14 @@ flowchart LR
 
 `tools/start.sh` is the entry point (`CMD` of the `Dockerfile`):
 
-1. It refuses a timing setting that is not a whole number (`tools/number.lib.sh`).
+1. It refuses a timing setting that is not a whole number
+   (`tools/number.lib.sh`).
 2. `deploy` (`tools/deploy.sh`) updates the Alpine packages (`tools/dist.sh`),
    installs or updates the CLI from the latest upstream release after checking
    its checksum (`tools/node.install.sh`, which reads the release with
    `tools/git.releases.latest.sh` and compares versions with
-   `tools/version.lib.sh`), extracts the matching `aioz-io` (`tools/node.io.sh`),
-   creates the wallet when the data folder has none
+   `tools/version.lib.sh`), extracts the matching `aioz-io`
+   (`tools/node.io.sh`), creates the wallet when the data folder has none
    (`tools/wallet.configure.sh`), then cleans the package cache.
 3. It runs `aioz-io start` for `RUN_TIMEOUT` seconds (24 hours by default),
    with upstream auto-update off: updates run at each start instead.
@@ -81,8 +83,10 @@ mounted read-only, so this container can never create a wallet of its own.
 `nas/delivery-watch.sh` runs on the NAS host, not in the image: the hub serves
 the delivery count to the wallet key only, so the watch reads the count that
 the withdraw container logs. It exits 1 once per event (deliveries stalled for
-`STALL_HOURS`, then resumed), and the DSM task scheduler emails the output of
-a task that ends abnormally.
+`STALL_HOURS`, resumed after a stall, a count going down, an invalid state
+file), and on every run while the logs hold no count or the state cannot be
+written. The DSM task scheduler emails the output of a task that ends
+abnormally.
 
 ## Delivery
 
@@ -106,15 +110,17 @@ The workflows:
 * `.github/workflows/pre-commit.yml`, on a pull request and after a merge into
   `develop` or `master`: every hook of `.pre-commit-config.yaml`, on the
   changed files, then on every file after a merge;
-* `.github/workflows/tests.yml`, on a pull request and after a merge:
+* `.github/workflows/tests.yml`, on a pull request and after a merge into
+  `develop` or `master`:
   `tests/run.sh`, the bats tests of the image scripts;
-* `.github/workflows/upstream-watch.yml`, daily, on demand and on a pull
-  request: `.github/scripts/upstream-watch.sh`, and the tests of the CI
-  scripts;
+* `.github/workflows/upstream-watch.yml`, daily and on demand:
+  `.github/scripts/upstream-watch.sh`; on a pull request that changes
+  `.github/scripts/` or this workflow, only the tests of the CI scripts;
 * `.github/workflows/docker-image.yml`, on a `v*` tag: build, `tests/run.sh`,
   `scripts/quick_test.sh`, push, GitHub release.
 
-The CI scripts, each tested against fakes by `.github/scripts/tests/run.sh`:
+The CI scripts; the first three are tested against fakes by
+`.github/scripts/tests/run.sh`:
 
 * `.github/scripts/push-latest.sh` moves `:latest` only to the highest
   `vX.Y.Z` tag, read at push time: a fix on an older line never sends the
@@ -126,7 +132,8 @@ The CI scripts, each tested against fakes by `.github/scripts/tests/run.sh`:
 * `.github/scripts/deps-freshness.sh` fails the commit when a hook or a
   workflow action is not on its latest release.
 * `.github/scripts/image-vuln-scan.sh` builds the image and fails on a HIGH or
-  CRITICAL vulnerability.
+  CRITICAL vulnerability. It has no test of its own: it runs trivy on a real
+  build, as a pre-commit hook.
 
 Only the release job of `.github/workflows/docker-image.yml` gets a write
 token, and the Docker Hub credentials are restricted to `v*` tags.
@@ -144,7 +151,8 @@ The `Makefile` lists the commands; each target runs one script:
   (`tools/node.version.sh`) is the latest release
   (`tools/node.remoteVersion.sh`) (network);
 * `tests/run.sh` and `.github/scripts/tests/run.sh` run the bats suites in
-  Docker, against fakes and real captures.
+  Docker (the first in the image of `tests/Dockerfile`, with bats and make),
+  against fakes and real captures.
 
 ## Script structure
 
@@ -163,7 +171,7 @@ the system tools. The only script run as a child process is
 * Upstream binaries are checked against the `SHA256SUMS` of their release
   before they replace the installed CLI; a failed update keeps the installed
   one.
-* Data read from outside (GitHub API, issue comments, CLI output, container
-  logs, the state file of the delivery watch) is validated before use: numbers
-  are checked before bash arithmetic, and the upstream watch trusts only its
-  own reports.
+* Data read from outside is validated before use: the timing settings, the
+  health check timeout and the numbers of the delivery watch (state file,
+  container logs) are checked before bash arithmetic, and the upstream watch
+  trusts only its own reports on a public issue.
