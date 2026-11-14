@@ -35,7 +35,7 @@ jobs:
 
       # Trivy and hadolint are system hooks: pre-commit does not install them.
       # Latest releases on purpose, like the rolling alpine:latest base of the
-      # image (see README): the tool is not pinned, the action is.
+      # image (see docs/ci.md): the tool is not pinned, the action is.
       # aquasecurity/setup-trivy v0.3.1
       - uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567
         with:

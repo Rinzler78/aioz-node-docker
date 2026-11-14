@@ -3,7 +3,7 @@
 # `*.sh` script, workflow and Dockerfile, the compose file and the Makefile, so
 # a new one cannot stay off the map; the decision records of docs/adr/ keep
 # their format, their numbering and their index; CHANGELOG.md keeps the Keep a
-# Changelog format.
+# Changelog format; README.md links every page of docs/.
 
 load helpers
 
@@ -204,6 +204,26 @@ CHANGELOG_URL=https://github.com/Rinzler78/aioz-node-docker
         END { close_type(); if (release && !changes) print release }' "$page")
     [ -z "$empty" ] || {
         printf 'releases or types with no change:\n%s\n' "$empty"
+        false
+    }
+}
+
+# The pages of docs/ that README.md must link, one per line: every page but the
+# decision records, which their index (docs/adr/README.md) links.
+docs_pages() {
+    (cd "$REPO_ROOT" && find docs -name '*.md' ! -path 'docs/adr/[0-9]*' | sort)
+}
+
+@test "README.md links every page of docs/" {
+    local pages page missing=""
+    pages=$(docs_pages)
+    grep -qxF docs/architecture.md <<< "$pages"
+    grep -qxF docs/adr/README.md <<< "$pages"
+    for page in $pages; do
+        grep -qF "]($page" "$REPO_ROOT/README.md" || missing+="$page"$'\n'
+    done
+    [ -z "$missing" ] || {
+        printf 'not linked from README.md:\n%s' "$missing"
         false
     }
 }
