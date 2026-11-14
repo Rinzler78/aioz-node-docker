@@ -121,8 +121,13 @@ rule does not apply to them.
 
 ### Volumes
 
-A persistent data directory is created at `/nodedata` and must be mounted to a
-directory on your Docker host.
+The node data, the wallet key `privkey.json` and the node state, is kept in
+`/nodedata`, a `VOLUME` of the image. Mount a named volume there
+(`-v aioznode-data:/nodedata`), which works on any Docker context, local or
+remote, or a folder of the Docker host. Without a mount, Docker creates an
+anonymous volume, and a new container starts a new wallet. A key is copied into
+a volume with `docker cp`, before the first start (see the
+[quick start](../README.md#quick-start)).
 
 ### Ports
 
@@ -172,7 +177,7 @@ targets, each of which runs one script.
 ```sh
 make                 # list the targets
 make check           # tests, CI script tests and every pre-commit hook
-make docker-start ARGS='-v ~/MyDockers/aioznode/nodedata:/nodedata'
+make docker-start ARGS='-v aioznode-dev-data:/nodedata'
 ```
 
 The `scripts/helper.docker.*.sh` scripts (`make docker-build`, `docker-run`,

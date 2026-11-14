@@ -10,13 +10,15 @@ file and the `Makefile`. The reasons behind the main choices are recorded in
 
 ## Runtime
 
-In production the two containers run from `docker-compose.yml` on a Synology
-NAS, next to a host script that watches the delivery rewards.
+The two containers run from `docker-compose.yml` on any Docker host, local or
+remote, and share the node data, a named volume or a folder of the host. The
+owner's deployment, a Synology NAS in the diagram, keeps it in a folder and
+adds a host script that watches the delivery rewards.
 
 ```mermaid
 flowchart LR
-    subgraph host["Docker host (Synology NAS)"]
-        data[("node data folder: privkey.json, node state")]
+    subgraph host["Docker host (here a Synology NAS)"]
+        data[("node data, volume or folder: privkey.json, node state")]
         subgraph node["container aioznode"]
             start["start.sh: deploy, then aioz-io start"]
             watchdog["watchdog: node.health.sh"]
@@ -54,7 +56,7 @@ flowchart LR
    `tools/git.releases.latest.sh` and skips the update when the installed
    version, read with `tools/version.lib.sh`, is already the latest), extracts
    the matching `aioz-io` (`tools/node.io.sh`), creates the wallet when the
-   data folder has none (`tools/wallet.configure.sh`), then removes the
+   node data has none (`tools/wallet.configure.sh`), then removes the
    packages of other kernels and the package cache.
 3. It runs `aioz-io start` for `RUN_TIMEOUT` seconds (24 hours by default),
    with upstream auto-update off: updates run at each start instead.
