@@ -62,8 +62,9 @@ cited_links() {
 # The name of the Docker image $1, as written in a compose file or a command:
 # without its quotes, a trailing comment or blanks, and its tag, the colon of
 # the last path segment (a registry port such as host:5000/app is kept, and a
-# colon followed by a path is not a tag). Limit: a digest (@sha256:...) is read
-# as a tag.
+# colon followed by a path is not a tag). Limit: a digest is not handled, only
+# its :<hex> is dropped, so an image pinned by digest (name@sha256:...) matches
+# no citation.
 image_name() {
     local name=$1
     name=${name%%[[:space:]]#*}
