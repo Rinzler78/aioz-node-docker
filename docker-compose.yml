@@ -3,7 +3,7 @@
 # Required: WITHDRAW_ADDRESS_HEX (address that receives the rewards).
 # Optional: NODEDATA_PATH, a folder of the Docker host for the node data
 # (privkey.json and the node state). By default the node data is the named
-# volume nodedata, which works on any Docker context, local or remote.
+# volume aioznode-data, which works on any Docker context, local or remote.
 services:
   aioznode:
     image: rinzlerfr/aioznode
@@ -32,3 +32,6 @@ services:
 
 volumes:
   nodedata:
+    # A fixed name, the one of the README quick start: without it, Docker
+    # names the volume after the compose project, the folder of the clone.
+    name: aioznode-data

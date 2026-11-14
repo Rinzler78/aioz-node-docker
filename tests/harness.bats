@@ -76,8 +76,9 @@ image_name() {
 }
 
 # The extended regular expression of the .gitignore glob $1, anchored: * and ?
-# match within a name, any other character is literal. Limit: bracket classes
-# ([abc]) are read as literal characters.
+# match within a name, any other character is literal. Limit: the bracket
+# classes ([abc]) and backslash escapes of .gitignore are read as literal
+# characters; the patterns of this repository use neither.
 glob_regex() {
     local glob=$1 regex='' char i
     for ((i = 0; i < ${#glob}; i++)); do
@@ -95,10 +96,10 @@ glob_regex() {
 
 # Whether the cited path $1 names something of the repository: an existing file
 # or folder, a pattern of .gitignore or a file name one of its patterns without
-# a slash ignores at any level (privkey*.json), a glob matching at least one file, a path
-# under a local folder git ignores (/name/ in .gitignore), such as the node
-# data or the worktrees, or a Docker image of docker-compose.yml (its `image:`
-# value, either side with or without a tag), such as the published one.
+# a slash ignores at any level (privkey*.json), a glob matching at least one
+# file, a path under a local folder git ignores (/name/ in .gitignore), such as
+# the node data or the worktrees, or a Docker image of docker-compose.yml (its
+# `image:` value, either side with or without a tag), such as the published one.
 repository_path() {
     local matches image pattern
     [ -e "$REPO_ROOT/$1" ] && return
@@ -208,7 +209,7 @@ EOF
     run ! repository_path docs/missing.md
 }
 
-@test "glob_regex matches a name as the .gitignore glob does" {
+@test "glob_regex matches * and ? within a name, any other character literally" {
     [[ privkey.json =~ $(glob_regex 'privkey*.json') ]]
     [[ privkey-old.json =~ $(glob_regex 'privkey*.json') ]]
     [[ ! privkey_json =~ $(glob_regex 'privkey*.json') ]]
@@ -216,8 +217,8 @@ EOF
     [[ ! old-privkey.json =~ $(glob_regex 'privkey*.json') ]]
     [[ key1.pem =~ $(glob_regex 'key?.pem') ]]
     [[ ! key12.pem =~ $(glob_regex 'key?.pem') ]]
-    [[ 'a+b^c.d\e]f' =~ $(glob_regex 'a+b^c.d\e]f') ]]
-    [[ ! a+b^cXd\\e]f =~ $(glob_regex 'a+b^c.d\e]f') ]]
+    [[ 'a+b^c.d]f' =~ $(glob_regex 'a+b^c.d]f') ]]
+    [[ ! 'a+b^cXd]f' =~ $(glob_regex 'a+b^c.d]f') ]]
     [[ ! aab =~ $(glob_regex 'a+b') ]]
 }
 

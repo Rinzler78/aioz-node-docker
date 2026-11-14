@@ -11,15 +11,13 @@ tag. The numbers in parentheses are the pull requests.
 
 ### Changed
 
-* `docker-compose.yml` keeps the node data in the named volume `nodedata` by
-  default, so that it runs on any Docker context, remote ones included;
-  `NODEDATA_PATH` still selects a host folder. A deployment that relied on the
-  former default folder, `./nodedata`, sets `NODEDATA_PATH=./nodedata` to keep
-  its wallet. The documentation no longer presents the Synology NAS as the
-  place where the image runs, and describes how to copy a key into a volume.
-* `tests/harness.bats` reads a path in a container (`name:/path`) and a file
-  name that `.gitignore` ignores as cited on purpose, not as a missing
-  repository path.
+* `docker-compose.yml` keeps the node data in the named volume
+  `aioznode-data` by default, so that it runs on any Docker context, remote
+  ones included; `NODEDATA_PATH` still selects a host folder. A deployment
+  that relied on the former default folder, `./nodedata`, sets
+  `NODEDATA_PATH=./nodedata` to keep its wallet. The documentation no longer
+  presents the Synology NAS as the place where the image runs, and describes
+  how to copy a key into a volume and back it up (#33).
 
 ## [0.0.4] - 2026-11-14
 

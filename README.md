@@ -63,10 +63,19 @@ docker run -d --name aioznode --restart=always -p 1317:1317 \
   -v aioznode-data:/nodedata rinzlerfr/aioznode
 ```
 
-At its first start the node creates a new wallet. Keep a backup of its key, in
-a safe place: `docker cp aioznode:/nodedata/privkey.json privkey.json`. To run
-an existing wallet instead, copy its key into the volume before the first
-start:
+At its first start the node creates a new wallet, once it has installed the
+CLI: its log then reads `Wallet successfully configured`. Back the key up at
+that point, since the volume holds its only copy:
+
+```sh
+docker cp aioznode:/nodedata/privkey.json privkey.json
+chmod 600 privkey.json
+```
+
+`docker cp` writes the key on the machine that runs the command, which is not
+the Docker host on a remote context: move it to a safe place, out of any clone.
+To run an existing wallet instead, copy its key into the volume before the
+first start:
 
 ```sh
 docker create --name aioznode --restart=always -p 1317:1317 \
@@ -85,12 +94,20 @@ repository, with `docker-compose.yml`:
 WITHDRAW_ADDRESS_HEX=0xYourAddress docker compose up -d
 ```
 
-The node data is then the volume `nodedata` of the compose project. To import
-an existing key, run `docker compose create`, then
+The node data is then the same volume, `aioznode-data`: run the node either
+with `docker run` or with compose, not both. With `WITHDRAW_ADDRESS_HEX` set,
+`docker compose create`, then
 `docker compose cp privkey.json aioznode:/nodedata/privkey.json`, then
-`docker compose up -d`. `NODEDATA_PATH` replaces the volume with a host folder:
-give an absolute path of the Docker host, since compose expands `~` on the
-machine that runs the command.
+`docker compose up -d` imports an existing key;
+`docker compose cp aioznode:/nodedata/privkey.json privkey.json` backs it up.
+`docker compose down -v` deletes the volume when compose created it, and the
+key with it.
+
+`NODEDATA_PATH` replaces the volume with a host folder: give an absolute path
+of the Docker host, since compose expands `~` on the machine that runs the
+command. A deployment of this compose file from before the volume, whose wallet
+is in the `./nodedata` folder of the clone, sets `NODEDATA_PATH=./nodedata`:
+without it, the node starts a new wallet in the volume.
 
 To build the image yourself: `docker build -t aioznode .` in the clone; `make`
 lists the repository commands (build, run, tests, lint).

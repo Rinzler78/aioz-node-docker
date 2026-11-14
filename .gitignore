@@ -1,4 +1,5 @@
-# Node data of docker-compose.yml: holds the wallet private key.
+# Node data folder of docker-compose.yml (NODEDATA_PATH=./nodedata): holds the
+# wallet private key.
 /nodedata/
 # A wallet key or a compose environment file, wherever it is copied.
 privkey*.json

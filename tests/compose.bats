@@ -3,9 +3,19 @@
 
 load helpers
 
-# The sources of the /nodedata mounts of the services, one per line.
+# The sources of the /nodedata mounts of the services, one per line, in the
+# short syntax, quoted or not. Limit: the long syntax (source:, target:) is not read.
 nodedata_sources() {
-    sed -n 's/^ *- *\(.*\):\/nodedata\(:ro\)\{0,1\}$/\1/p' "$REPO_ROOT/docker-compose.yml"
+    sed -n 's/^ *- *["'\'']\{0,1\}\(.*\):\/nodedata\(:ro\)\{0,1\}["'\'']\{0,1\}$/\1/p' \
+        "$REPO_ROOT/docker-compose.yml"
+}
+
+# The name: of the top-level volume $1, the name Docker knows it by.
+volume_name() {
+    awk -v volume="  $1:" '/^[^ #]/ { top = ($0 == "volumes:") }
+        top && $0 == volume { found = 1; next }
+        found && /^    name:/ { sub(/^    name: */, ""); print; exit }
+        found && /^  [^ ]/ { exit }' "$REPO_ROOT/docker-compose.yml"
 }
 
 # The named volumes declared at the top level, one per line.
@@ -30,4 +40,10 @@ declared_volumes() {
     [[ "$default" != */* && "$default" != .* && "$default" != "~"* ]]
 
     declared_volumes | grep -qx "$default"
+}
+
+@test "the node data volume has a fixed name, whatever the compose project" {
+    # Without a name, Docker names it <project>_nodedata after the folder of
+    # the clone: another clone would start an empty volume, so a new wallet.
+    [ "$(volume_name nodedata)" = aioznode-data ]
 }

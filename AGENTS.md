@@ -82,10 +82,10 @@ definition of done.
 ## Safety rules
 
 * The node private key (`/nodedata/privkey.json` in the container, in the node
-  data volume or host folder) never leaves the host it runs on: never read,
-  print, copy or commit it. A `./nodedata` folder and any `privkey*.json` or
-  `.env` file are ignored by git (`.gitignore`) and left out of the Docker
-  build context (`.dockerignore`).
+  data volume or host folder) is the owner's: an agent never reads, prints,
+  copies or commits it, the owner's backup included. A `./nodedata` folder and
+  any `privkey*.json` or `.env` file are ignored by git (`.gitignore`) and left
+  out of the Docker build context (`.dockerignore`).
 * Never print a secret (tokens, credentials, keys) in a command output, a log, a
   test or a pull request. Secrets are set by the owner, in the GitHub settings
   or their own terminal: a command that prompts for a value (`gh secret set`)
