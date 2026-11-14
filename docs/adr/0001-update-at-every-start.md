@@ -11,8 +11,8 @@ The node must run the CLI of the latest upstream release
 ([AIOZNetwork/aioz-depin-cli](https://github.com/AIOZNetwork/aioz-depin-cli)).
 Upstream releases are few (v1.1.0 in December 2023, v1.2.5 in December 2025,
 v1.2.6 in March 2026), but a node must not wait for an image release of this
-repository to follow one. The first version of the image already reinstalled
-the CLI at every start.
+repository to follow one. The first version of the image already checked for
+a new upstream release at every start, and installed it.
 
 In November 2026, containers were found still running v1.1.0: upstream had
 renamed its repository and moved the downloads from the release body to its
@@ -29,8 +29,9 @@ all, the container fails. The node runs with upstream auto-update off and for
 `RUN_TIMEOUT` seconds (24 hours): the restart that follows runs the update
 again.
 
-The base image follows `alpine:latest` and its packages are not pinned: a
-pinned base would not stay pinned once the container upgrades itself.
+The base image follows `alpine:latest` (Alpine since 2023-12-30, Ubuntu
+before) and its packages are not pinned: a pinned base would not stay pinned
+once the container upgrades itself.
 
 ## Consequences
 

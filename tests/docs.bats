@@ -113,7 +113,7 @@ STATUS='^Status: (Proposed|Accepted|Deprecated|Superseded by \[([0-9]{4})\]\(([0
 
 # Limit: an entry inside an HTML comment of the index is read as listed.
 @test "the index of docs/adr lists every decision record by its title, in order, and nothing else" {
-    local index="$REPO_ROOT/docs/adr/README.md" listed entry file title
+    local index="$REPO_ROOT/docs/adr/README.md" listed file title
     [ -f "$index" ]
     listed=$(grep -oE '\]\([0-9]{4}-[a-z0-9-]+\.md\)' "$index" |
         sed -e 's/^](//' -e 's/)$//')
@@ -121,14 +121,12 @@ STATUS='^Status: (Proposed|Accepted|Deprecated|Superseded by \[([0-9]{4})\]\(([0
         printf 'index:\n%s\nfiles:\n%s\n' "$listed" "$(adr_files)"
         false
     }
-    # Each entry reads as the title of its record.
-    while IFS= read -r entry; do
-        file=${entry##*](}
-        file=${file%)}
+    # Each record is listed by its title, read from its first line.
+    for file in $listed; do
         title=$(head -n 1 "$REPO_ROOT/docs/adr/$file")
-        [ "[${title#\# }]($file)" = "$entry" ] || {
-            echo "index entry $entry, title $title"
+        grep -qF "[${title#\# }]($file)" "$index" || {
+            echo "no index entry [${title#\# }]($file)"
             false
         }
-    done < <(grep -oE '\[[^]]+\]\([0-9]{4}-[a-z0-9-]+\.md\)' "$index")
+    done
 }
