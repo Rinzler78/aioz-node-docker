@@ -5,7 +5,8 @@ withdraws its rewards. The image installs the latest upstream CLI at every
 start, so a release of this repository changes the scripts around the node, not
 the node itself. `tests/docs.bats` checks that this page names every
 `<name>.sh` script, workflow and Dockerfile of the repository, the compose
-file and the `Makefile`.
+file and the `Makefile`. The reasons behind the main choices are recorded in
+[docs/adr](adr/README.md).
 
 ## Runtime
 
