@@ -63,12 +63,14 @@ definition of done.
   then the code that makes it pass. Then break the fix on purpose and check that
   the test turns red again.
 * Git flow: `feature/<name>` from `develop`, `hotfix/<name>` from `master`,
-  release tags `vX.Y.Z` on `master`. One branch per change, in its own
+  `release/<version>` from `develop` (its changelog section only), release tags
+  `vX.Y.Z` on `master`. One branch per change, in its own
   worktree under `.worktrees/`.
 * Every change goes through a pull request, never a direct commit to `develop`
   or `master`. Keep a pull request short (about 400 lines, 10 files).
 * The documentation changes in the same pull request as the behavior: README,
-  workflow header comments, `docs/`.
+  workflow header comments, `docs/`, and the `Unreleased` section of
+  `CHANGELOG.md` (`CONTRIBUTING.md` describes the release steps).
 * Review before merging: standards, specification, security, tests and
   documentation, repeated on the updated diff until no major or minor finding
   is left; the verdict is posted as a pull request comment.

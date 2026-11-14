@@ -39,6 +39,7 @@
     "commitish",
     "compgen",
     "Containerfile",
+    "dcdn",
     "depin",
     "Dockerfiles",
     "esac",

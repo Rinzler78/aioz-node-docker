@@ -2,7 +2,8 @@
 # The documentation covers the repository: docs/architecture.md names every
 # `*.sh` script, workflow and Dockerfile, the compose file and the Makefile, so
 # a new one cannot stay off the map; the decision records of docs/adr/ keep
-# their format, their numbering and their index.
+# their format, their numbering and their index; CHANGELOG.md keeps the Keep a
+# Changelog format.
 
 load helpers
 
@@ -129,4 +130,80 @@ STATUS='^Status: (Proposed|Accepted|Deprecated|Superseded by \[([0-9]{4})\]\(([0
             false
         }
     done
+}
+
+# CHANGELOG.md follows Keep a Changelog (https://keepachangelog.com/en/1.1.0/):
+# an Unreleased section, then the releases from the newest down, each with its
+# date; each version heading links to its changes on GitHub.
+# Limits: the releases are compared with each other, not with the git tags,
+# which a shallow CI checkout does not fetch; a heading inside a code block
+# counts; a yanked release (`[YANKED]` after the date) is refused, as the
+# repository has none.
+CHANGELOG_URL=https://github.com/Rinzler78/aioz-node-docker
+
+@test "CHANGELOG.md lists Unreleased, then the releases from the newest, each dated and linked" {
+    local page="$REPO_ROOT/CHANGELOG.md" headings line version date
+    local previous="" previous_date="" links expected=""
+    [ -f "$page" ]
+    headings=$(grep '^## ' "$page")
+    [ "$(head -n 1 <<< "$headings")" = '## [Unreleased]' ] || {
+        echo "first section: $(head -n 1 <<< "$headings")"
+        false
+    }
+    while IFS= read -r line; do
+        [[ "$line" =~ ^##\ \[([0-9]+\.[0-9]+\.[0-9]+)\]\ -\ ([0-9]{4}-[0-9]{2}-[0-9]{2})$ ]] || {
+            echo "release heading: $line"
+            false
+        }
+        version=${BASH_REMATCH[1]}
+        date=${BASH_REMATCH[2]}
+        if [ -z "$previous" ]; then
+            expected="[Unreleased]: $CHANGELOG_URL/compare/v$version...develop"
+        else
+            # Strictly older than the release above it, and not dated after it.
+            [ "$(printf '%s\n%s\n' "$version" "$previous" | sort -V | head -n 1)" = "$version" ] &&
+                [ "$version" != "$previous" ] && [[ ! "$date" > "$previous_date" ]] || {
+                echo "$version ($date) listed under $previous ($previous_date)"
+                false
+            }
+            expected+=$'\n'"[$previous]: $CHANGELOG_URL/compare/v$version...v$previous"
+        fi
+        previous=$version
+        previous_date=$date
+    done < <(tail -n +2 <<< "$headings")
+    [ -n "$previous" ]
+    expected+=$'\n'"[$previous]: $CHANGELOG_URL/releases/tag/v$previous"
+    # The link definitions, in order, and nothing else.
+    links=$(grep -E '^\[[^]]+\]: ' "$page")
+    [ "$links" = "$expected" ] || {
+        printf 'links:\n%s\nexpected:\n%s\n' "$links" "$expected"
+        false
+    }
+}
+
+@test "each release of CHANGELOG.md groups its changes under the Keep a Changelog types only" {
+    local page="$REPO_ROOT/CHANGELOG.md" other empty
+    [ -f "$page" ]
+    [ "$(head -n 1 "$page")" = '# Changelog' ]
+    other=$(tail -n +2 "$page" | grep -E '^#' | grep -vE '^## |^### (Added|Changed|Deprecated|Removed|Fixed|Security)$') || true
+    [ -z "$other" ] || {
+        printf 'headings outside the types:\n%s\n' "$other"
+        false
+    }
+    # A release lists at least one change, and a type at least one entry
+    # (`* ` bullet); Unreleased may be empty. The link definitions and the
+    # comments at the end close the last section.
+    empty=$(awk '
+        function close_type() { if (type && !items) print section ": " type }
+        /^## / { close_type(); if (release && !changes) print release
+            section = $0; release = ($0 ~ /^## \[Unreleased\]/) ? "" : $0
+            changes = 0; type = ""; next }
+        /^### / { close_type(); type = $0; items = 0; next }
+        /^\* / { if (type) { items = 1; changes = 1 } }
+        /^<!--|^\[/ { close_type(); type = "" }
+        END { close_type(); if (release && !changes) print release }' "$page")
+    [ -z "$empty" ] || {
+        printf 'releases or types with no change:\n%s\n' "$empty"
+        false
+    }
 }
