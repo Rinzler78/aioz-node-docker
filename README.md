@@ -23,7 +23,8 @@ For more information about the AIOZ project, visit: <https://aioz.network/>
 Official downloads and client installation: <https://aioz.network/aioz-node>
 
 How the containers, the NAS watch and the release pipeline fit together:
-[docs/architecture.md](docs/architecture.md).
+[docs/architecture.md](docs/architecture.md). Why they are built that way: the
+decision records of [docs/adr](docs/adr/README.md).
 
 ## Table of contents
 
