@@ -32,6 +32,9 @@ tag. The numbers in parentheses are the pull requests.
 * The reference part of the README moved to `docs/image.md`, `docs/nas.md`
   and `docs/ci.md`; the README links every page of `docs/` but the decision
   records, checked by `tests/docs.bats` (#28).
+* The README is a landing page: what the image does, its highlights with their
+  decision records, a quick start, the main settings; `tests/harness.bats`
+  checks its paths and links like those of `AGENTS.md` and `docs/` (#29).
 
 ### Fixed
 

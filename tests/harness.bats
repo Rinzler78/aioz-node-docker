@@ -6,10 +6,12 @@ load helpers
 
 bats_require_minimum_version 1.5.0
 
-# The pages whose cited paths and links must exist: AGENTS.md and every page of
-# docs/ at any depth, one per line, relative to the repository root.
+# The pages whose cited paths and links must exist: AGENTS.md, README.md and
+# every page of docs/ at any depth, one per line, relative to the repository
+# root.
 doc_pages() {
     echo AGENTS.md
+    echo README.md
     (cd "$REPO_ROOT" && find docs -name '*.md' | sort)
 }
 
@@ -90,11 +92,13 @@ pointer_extra_lines() {
     grep -q '^## Definition of done$' "$REPO_ROOT/AGENTS.md"
 }
 
-@test "every path and link cited by AGENTS.md and the docs pages exists" {
+@test "every path and link cited by AGENTS.md, README.md and the docs pages exists" {
     local doc dir path pages missing=""
     pages=$(doc_pages)
-    # The harness page among them: an empty list would check nothing.
+    # The harness page and the README among them: an empty list would check
+    # nothing.
     grep -qxF docs/ai-harness.md <<< "$pages"
+    grep -qxF README.md <<< "$pages"
     for doc in $pages; do
         [ -f "$REPO_ROOT/$doc" ]
         dir=$(dirname "$doc")
