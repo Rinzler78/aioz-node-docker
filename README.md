@@ -39,7 +39,7 @@ checked by a test.
   the decision records, the changelog, the links of this page.
 * **Hardened delivery.** Workflows are read-only by default, their actions are
   pinned to a commit and checked by zizmor; trivy scans the configuration and
-  the image; outdated dependencies block the commit; `latest` only moves to
+  the image; outdated hooks and actions block the commit; `latest` only moves to
   the highest release ([CI and release](docs/ci.md)).
 * **Operated, not only built.** A watch on the NAS host emails through DSM when
   the node stops earning delivery rewards, then when it earns them again
@@ -56,14 +56,12 @@ a backup of it.
 
 ```sh
 mkdir -p ~/aioznode/nodedata
-docker build -t aioznode .
-docker run -d --name aioznode --restart=always \
-  -v ~/aioznode/nodedata:/nodedata aioznode
+docker run -d --name aioznode --restart=always -p 1317:1317 \
+  -v ~/aioznode/nodedata:/nodedata rinzlerfr/aioznode
 ```
 
-The node and the automatic reward withdrawal together, from the published
-image [rinzlerfr/aioznode](https://hub.docker.com/r/rinzlerfr/aioznode), with
-`docker-compose.yml`:
+The node and the automatic reward withdrawal together, from a clone of this
+repository, with `docker-compose.yml`:
 
 ```sh
 WITHDRAW_ADDRESS_HEX=0xYourAddress \
@@ -71,7 +69,8 @@ WITHDRAW_ADDRESS_HEX=0xYourAddress \
   docker compose up -d
 ```
 
-`make` lists the repository commands: build, run, tests, lint.
+To build the image yourself: `docker build -t aioznode .` in the clone; `make`
+lists the repository commands (build, run, tests, lint).
 
 ## Configuration
 

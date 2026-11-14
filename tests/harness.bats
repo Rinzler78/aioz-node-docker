@@ -24,8 +24,9 @@ doc_pages() {
 # options, imports (@file), placeholders (<name>) and shell syntax (quotes, =,
 # brackets).
 # Limits: a code word with a slash must name a repository path, so branch
-# names are written with a placeholder (feature/<name>) and GitHub repositories
-# as links; ~~~ fences and indented code blocks are not read, and
+# names are written with a placeholder (feature/<name>), and GitHub
+# repositories and Docker images other than those of docker-compose.yml as
+# links; a relative volume (./data:/data) reads as a path with its target; ~~~ fences and indented code blocks are not read, and
 # .markdownlint.yaml rejects both; a word with quotes, brackets, parentheses or
 # braces is not checked, so neither is a quoted path in a command nor a path in
 # a Mermaid label (["..."], -- "..." -->).
@@ -60,13 +61,16 @@ cited_links() {
 }
 
 # Whether the cited path $1 names something of the repository: an existing file
-# or folder, a pattern of .gitignore, a glob matching at least one file, or a
-# path under a local folder git ignores (/name/ in .gitignore), such as the node
-# data or the worktrees.
+# or folder, a pattern of .gitignore, a glob matching at least one file, a path
+# under a local folder git ignores (/name/ in .gitignore), such as the node
+# data or the worktrees, or a Docker image of docker-compose.yml (its `image:`
+# value, with or without a :tag), such as the published one.
 repository_path() {
     local matches
     [ -e "$REPO_ROOT/$1" ] && return
     grep -qxF "$1" "$REPO_ROOT/.gitignore" && return
+    sed -n 's/^[[:space:]]*image:[[:space:]]*//p' "$REPO_ROOT/docker-compose.yml" |
+        grep -qxF "${1%:*}" && return
     case "$1" in
         *'*'*)
             matches=$(compgen -G "$REPO_ROOT/$1") && [ -n "$matches" ]
@@ -162,6 +166,14 @@ EOF
     run ! repository_path 'helper.missing.*.sh'
     run ! repository_path 'secret*.json'
     run ! repository_path docs/missing.md
+}
+
+@test "repository_path accepts the images of docker-compose.yml, with or without a tag" {
+    repository_path rinzlerfr/aioznode
+    repository_path rinzlerfr/aioznode:latest
+    run ! repository_path rinzlerfr/other
+    run ! repository_path rinzlerfr/aioznode/extra
+    run ! repository_path docs/missing:/docs
 }
 
 @test "CLAUDE.md only imports AGENTS.md" {

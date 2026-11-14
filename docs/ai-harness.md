@@ -27,12 +27,12 @@ fails when:
   comments and headings included;
 * `.gemini/settings.json` holds anything but `context.fileName` set to
   AGENTS.md;
-* AGENTS.md, the README or a page of `docs/` names, in its code or its links,
-  a file or folder that does not exist: a renamed script leaves no stale
-  command. A code word with a slash must be a repository path, so branch names
-  are written with a placeholder (`feature/<name>`), and GitHub repositories
-  and Docker images as links. The other limits of this check are listed in the
-  test file.
+* AGENTS.md, the README or a page of `docs/` names, in its code or its links, a
+  file or folder that does not exist: a renamed script leaves no stale command.
+  A code word with a slash must be a repository path, so branch names are
+  written with a placeholder (`feature/<name>`), and GitHub repositories and
+  Docker images (but those of `docker-compose.yml`) as links. The other limits
+  of this check are listed in the test file.
 
 ## Checks, not promises
 

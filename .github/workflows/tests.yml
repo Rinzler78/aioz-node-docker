@@ -5,8 +5,9 @@ name: Tests
 # request and after every merge into develop or master. No path filter: the
 # fitness tests read the whole repository (tests/scripts.bats every *.sh,
 # tests/harness.bats every path AGENTS.md, README.md and docs/ cite,
-# tests/docs.bats every *.sh script, workflow and Dockerfile, CHANGELOG.md and
-# every page of docs/), so adding or renaming any file can break them.
+# tests/docs.bats every *.sh script, workflow and Dockerfile, CHANGELOG.md,
+# every page of docs/ and the workflows of the README badges), so adding or
+# renaming any file can break them.
 # The CI scripts have their own tests, run by upstream-watch.yml.
 on:
   pull_request:

@@ -34,7 +34,9 @@ tag. The numbers in parentheses are the pull requests.
   records, checked by `tests/docs.bats` (#28).
 * The README is a landing page: what the image does, its highlights with their
   decision records, a quick start, the main settings; `tests/harness.bats`
-  checks its paths and links like those of `AGENTS.md` and `docs/` (#29).
+  checks its paths and links like those of `AGENTS.md` and `docs/`, the images
+  of `docker-compose.yml` counting as paths, and `tests/docs.bats` that its
+  badges name existing workflows (#29).
 
 ### Fixed
 

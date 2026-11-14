@@ -233,3 +233,20 @@ docs_pages() {
         false
     }
 }
+
+# Limit: only the workflows of this repository are read, by their
+# actions/workflows/<file> path in a URL of README.md.
+@test "every workflow a URL of README.md names exists, such as a badge" {
+    local workflows workflow missing=""
+    workflows=$(grep -oE 'Rinzler78/aioz-node-docker/actions/workflows/[^/?)#]+' \
+        "$REPO_ROOT/README.md" | sed 's#.*/##' | sort -u)
+    # The badges are found: an empty list would check nothing.
+    grep -qxF tests.yml <<< "$workflows"
+    for workflow in $workflows; do
+        [ -f "$REPO_ROOT/.github/workflows/$workflow" ] || missing+="$workflow"$'\n'
+    done
+    [ -z "$missing" ] || {
+        printf 'workflows named by README.md and missing:\n%s' "$missing"
+        false
+    }
+}
