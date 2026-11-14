@@ -15,21 +15,20 @@ doc_pages() {
     (cd "$REPO_ROOT" && find docs -name '*.md' | sort)
 }
 
-# Repository paths named in the code of a Markdown file, one per line: the
-# words of its code spans (read per paragraph, so a span wrapped across lines
-# counts) and of its ``` fenced blocks, indented ones included (comments
-# removed). A word is a path when it has a slash, starts with a dot (dotfile,
-# ./name), ends with a known extension, or is Dockerfile or LICENSE; a leading
-# ./ is dropped. Not paths: absolute paths (NAS, home), URLs, variables,
-# options, imports (@file), placeholders (<name>) and shell syntax (quotes, =,
-# brackets).
-# Limits: a code word with a slash must name a repository path, so branch
-# names are written with a placeholder (feature/<name>), and GitHub
-# repositories and Docker images other than those of docker-compose.yml as
-# links; a relative volume (./data:/data) reads as a path with its target; ~~~ fences and indented code blocks are not read, and
-# .markdownlint.yaml rejects both; a word with quotes, brackets, parentheses or
-# braces is not checked, so neither is a quoted path in a command nor a path in
-# a Mermaid label (["..."], -- "..." -->).
+# Repository paths named in the code of a Markdown file, one per line: the words
+# of its code spans (read per paragraph, so a span wrapped across lines counts)
+# and of its ``` fenced blocks, indented ones included (comments removed). A
+# word is a path when it has a slash, starts with a dot (dotfile, ./name), ends
+# with a known extension, or is Dockerfile or LICENSE; a leading ./ is dropped.
+# Not paths: absolute paths (NAS, home), URLs, variables, options, imports
+# (@file), placeholders (<name>) and shell syntax (quotes, =, brackets). Limits:
+# a code word with a slash must name a repository path, so branch names are
+# written with a placeholder (feature/<name>), and GitHub repositories and
+# Docker images other than those of docker-compose.yml as links; a relative
+# volume (./data:/data) reads as a path with its target; ~~~ fences and indented
+# code blocks are not read, and .markdownlint.yaml rejects both; a word with
+# quotes, brackets, parentheses or braces is not checked, so neither is a quoted
+# path in a command nor a path in a Mermaid label (["..."], -- "..." -->).
 cited_code_paths() {
     local code_words
     code_words=$(
@@ -60,17 +59,31 @@ cited_links() {
         grep -vE '^(https?|mailto):' | sort -u
 }
 
+# The name of the Docker image $1, as written in a compose file or a command:
+# without its quotes, a trailing comment or blanks, and its tag, the colon of
+# the last path segment (a registry port such as host:5000/app is kept, and a
+# colon followed by a path is not a tag).
+image_name() {
+    local name=$1
+    name=${name%%[[:space:]]#*}
+    name=${name//[\"\']/}
+    name=${name%"${name##*[![:space:]]}"}
+    [[ "${name##*/}" == *:* ]] && name=${name%:*}
+    printf '%s\n' "$name"
+}
+
 # Whether the cited path $1 names something of the repository: an existing file
 # or folder, a pattern of .gitignore, a glob matching at least one file, a path
 # under a local folder git ignores (/name/ in .gitignore), such as the node
 # data or the worktrees, or a Docker image of docker-compose.yml (its `image:`
-# value, with or without a :tag), such as the published one.
+# value, either side with or without a tag), such as the published one.
 repository_path() {
-    local matches
+    local matches image
     [ -e "$REPO_ROOT/$1" ] && return
     grep -qxF "$1" "$REPO_ROOT/.gitignore" && return
-    sed -n 's/^[[:space:]]*image:[[:space:]]*//p' "$REPO_ROOT/docker-compose.yml" |
-        grep -qxF "${1%:*}" && return
+    while IFS= read -r image; do
+        [ "$(image_name "$image")" = "$(image_name "$1")" ] && return
+    done < <(sed -n 's/^[[:space:]]*image:[[:space:]]*//p' "$REPO_ROOT/docker-compose.yml")
     case "$1" in
         *'*'*)
             matches=$(compgen -G "$REPO_ROOT/$1") && [ -n "$matches" ]
@@ -173,7 +186,20 @@ EOF
     repository_path rinzlerfr/aioznode:latest
     run ! repository_path rinzlerfr/other
     run ! repository_path rinzlerfr/aioznode/extra
+    # A colon followed by a path is not a tag.
+    run ! repository_path rinzlerfr/aioznode:/stale/x
     run ! repository_path docs/missing:/docs
+}
+
+@test "image_name drops the tag of an image, never a registry port or a path" {
+    [ "$(image_name rinzlerfr/aioznode)" = rinzlerfr/aioznode ]
+    [ "$(image_name rinzlerfr/aioznode:1.2.6)" = rinzlerfr/aioznode ]
+    [ "$(image_name '"rinzlerfr/aioznode:1.2.6"  # pinned')" = rinzlerfr/aioznode ]
+    [ "$(image_name "'rinzlerfr/aioznode'")" = rinzlerfr/aioznode ]
+    [ "$(image_name 'rinzlerfr/aioznode  ')" = rinzlerfr/aioznode ]
+    [ "$(image_name host:5000/team/app)" = host:5000/team/app ]
+    [ "$(image_name host:5000/team/app:v2)" = host:5000/team/app ]
+    [ "$(image_name rinzlerfr/aioznode:/stale/x)" = rinzlerfr/aioznode:/stale/x ]
 }
 
 @test "CLAUDE.md only imports AGENTS.md" {
