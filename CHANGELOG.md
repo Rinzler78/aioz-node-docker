@@ -9,6 +9,8 @@ tag. The numbers in parentheses are the pull requests.
 
 ## [Unreleased]
 
+## [0.0.4] - 2026-11-14
+
 ### Added
 
 * NAS delivery watch: `nas/delivery-watch.sh`, run daily by the DSM Task
@@ -134,7 +136,8 @@ The image content is the same as in 0.0.2: only CI, tests and docs changed.
 * Build and push workflow for Docker Hub, local helper scripts and a quick
   test.
 
-[Unreleased]: https://github.com/Rinzler78/aioz-node-docker/compare/v0.0.3...develop
+[Unreleased]: https://github.com/Rinzler78/aioz-node-docker/compare/v0.0.4...develop
+[0.0.4]: https://github.com/Rinzler78/aioz-node-docker/compare/v0.0.3...v0.0.4
 [0.0.3]: https://github.com/Rinzler78/aioz-node-docker/compare/v0.0.2...v0.0.3
 [0.0.2]: https://github.com/Rinzler78/aioz-node-docker/compare/v0.0.1...v0.0.2
 [0.0.1]: https://github.com/Rinzler78/aioz-node-docker/releases/tag/v0.0.1
