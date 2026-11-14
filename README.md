@@ -64,8 +64,8 @@ docker run -d --name aioznode --restart=always -p 1317:1317 \
 ```
 
 At its first start the node creates a new wallet, once it has installed the
-CLI: its log then reads `Wallet successfully configured`. Back the key up at
-that point, since the volume holds its only copy:
+CLI: `docker logs aioznode` then shows `Wallet successfully configured`. Back
+the key up at that point, since the volume holds its only copy:
 
 ```sh
 docker cp aioznode:/nodedata/privkey.json privkey.json
@@ -74,8 +74,8 @@ chmod 600 privkey.json
 
 `docker cp` writes the key on the machine that runs the command, which is not
 the Docker host on a remote context: move it to a safe place, out of any clone.
-To run an existing wallet instead, copy its key into the volume before the
-first start:
+To run an existing wallet, instead of the `docker run` above, copy its key into
+the volume before the first start:
 
 ```sh
 docker create --name aioznode --restart=always -p 1317:1317 \
@@ -95,7 +95,8 @@ WITHDRAW_ADDRESS_HEX=0xYourAddress docker compose up -d
 ```
 
 The node data is then the same volume, `aioznode-data`: run the node either
-with `docker run` or with compose, not both. With `WITHDRAW_ADDRESS_HEX` set,
+with `docker run` or with compose, not both. Every compose command reads the
+whole file, so `WITHDRAW_ADDRESS_HEX` must be set for each of them.
 `docker compose create`, then
 `docker compose cp privkey.json aioznode:/nodedata/privkey.json`, then
 `docker compose up -d` imports an existing key;
