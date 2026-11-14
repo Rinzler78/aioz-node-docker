@@ -4,7 +4,8 @@ One Docker image runs an AIOZ DePIN node and, started with another command,
 withdraws its rewards. The image installs the latest upstream CLI at every
 start, so a release of this repository changes the scripts around the node, not
 the node itself. `tests/docs.bats` checks that this page names every
-`<name>.sh` script, workflow and Dockerfile of the repository.
+`<name>.sh` script, workflow and Dockerfile of the repository, the compose
+file and the `Makefile`.
 
 ## Runtime
 
@@ -31,7 +32,7 @@ flowchart LR
     data -- "read-write" --> node
     data -- "read-only" --> withdraw
     releases -- "latest CLI, checked against SHA256SUMS" --> start
-    releases -- "latest CLI" --> loop
+    releases -- "latest CLI, checked against SHA256SUMS" --> loop
     start <--> network
     watchdog -- "stats" --> start
     watchdog -- "reward balance" --> network
@@ -139,8 +140,10 @@ The CI scripts; the first three are tested against fakes by
   CRITICAL vulnerability. It has no test of its own: it runs trivy on a real
   build, as a pre-commit hook.
 
-Only the release job of `.github/workflows/docker-image.yml` gets a write
-token, and the Docker Hub credentials are restricted to `v*` tags.
+Two jobs get a write token, each for one thing: the release job of
+`.github/workflows/docker-image.yml` (`contents`, to create the release) and
+the watch job of `.github/workflows/upstream-watch.yml` (`issues`, to comment
+on the tracking issue). The Docker Hub credentials are restricted to `v*` tags.
 
 ## Local development
 
@@ -178,7 +181,8 @@ of the repository, with these two exceptions.
 * Upstream binaries are checked against the `SHA256SUMS` of their release
   before they replace the installed CLI; a failed update keeps the installed
   one.
-* Data read from outside is validated before use: the timing settings, the
-  health check timeout and the numbers of the delivery watch (state file,
-  container logs) are checked as whole numbers first, and the upstream watch
-  trusts only its own reports on a public issue.
+* The timing settings, the health check timeout and the numbers of the
+  delivery watch (state file, container logs) are checked as whole numbers
+  before use, and the upstream watch trusts only its own reports on a public
+  issue. Not checked yet: the balance that `aioz-io reward balance` returns
+  goes to `bc` and to the withdraw command as read.

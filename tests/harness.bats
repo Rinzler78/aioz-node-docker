@@ -24,8 +24,9 @@ doc_pages() {
 # Limits: a code word with a slash must name a repository path, so branch
 # names are written with a placeholder (feature/<name>) and GitHub repositories
 # as links; ~~~ fences and indented code blocks are not read, and
-# .markdownlint.yaml rejects both; a quoted path in a command or in a Mermaid
-# label (["..."]) is not checked.
+# .markdownlint.yaml rejects both; a word with quotes, brackets, parentheses or
+# braces is not checked, so neither is a quoted path in a command nor a path in
+# a Mermaid label (["..."], -- "..." -->).
 cited_code_paths() {
     local code_words
     code_words=$(

@@ -1,21 +1,28 @@
 #!/usr/bin/env bats
 # The documentation covers the repository: docs/architecture.md names every
-# `*.sh` script, workflow and Dockerfile, so a new one cannot stay off the map.
+# `*.sh` script, workflow and Dockerfile, the compose file and the Makefile, so
+# a new one cannot stay off the map.
 
 load helpers
 
 # The files the architecture page must name, one per line, listed from the
-# file system (never from the page): every `*.sh` script, workflow and
-# Dockerfile at any depth (a link counts as a file), plus the compose file and
-# the Makefile. Left out: git, the worktrees and the node data folder, which are
-# not the repository, and the Docker ignore files (`*.dockerignore`). The test
-# doubles of .github/scripts/tests/fakes/ have no extension: the page names
-# their folder.
+# file system (never from the page), a link counting as a file:
+# - every `*.sh` script, at any depth;
+# - every Dockerfile, at any depth: `Dockerfile*`, `*.Dockerfile` and
+#   `Containerfile`, as in tests/helper.docker.bats, but no `*.dockerignore`;
+# - every workflow GitHub runs, directly in .github/workflows/;
+# - the compose file and the Makefile.
+# Left out: git, the worktrees and the node data folder, which are not the
+# repository. The test doubles of .github/scripts/tests/fakes/ have no
+# extension: the page names their folder.
 architecture_files() {
+    local workflows=./.github/workflows
     (cd "$REPO_ROOT" && find . \( -path ./.git -o -path ./.worktrees \
         -o -path ./nodedata \) -prune -o \( -type f -o -type l \) \
-        \( -name '*.sh' -o -path './.github/workflows/*.y*ml' \
-        -o -name 'Dockerfile*' ! -name '*.dockerignore' \) -print |
+        \( -name '*.sh' \
+        -o -path "$workflows/*.y*ml" ! -path "$workflows/*/*" \
+        -o \( -name 'Dockerfile*' -o -name '*.Dockerfile' \
+        -o -name Containerfile \) ! -name '*.dockerignore' \) -print |
         sed 's#^\./##' && printf '%s\n' docker-compose.yml Makefile) | sort
 }
 
