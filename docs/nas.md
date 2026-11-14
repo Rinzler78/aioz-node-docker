@@ -24,8 +24,9 @@ directory. Example: `/volume1/docker/aioznode/nodedata`
 3. (Optional) Enable resource limits: set CPU priority to high, memory limit to
    1024 MB.
 4. Go to Advanced Settings and enable auto-restart.
-5. In Volumes, add the directory you created (e.g., `/volume1/docker/aioznode/nodedata`)
-   and mount it to `/nodedata` inside the container.
+5. In Volumes, add the directory you created (e.g.,
+   `/volume1/docker/aioznode/nodedata`) and mount it to `/nodedata` inside the
+   container.
 6. Validate and launch the container.
 
 ## Delivery watch

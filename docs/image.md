@@ -30,18 +30,19 @@ All logic is handled by scripts in the `tools/` directory. A script that needs
 another one **sources** it and calls its function, so a container start runs as
 one shell process (plus the CLI and system tools); every script still runs
 standalone. `tests/scripts.bats` enforces it: the only script run as its own
-process is `tools/node.health.sh`, because the watchdog bounds it with `timeout`.
+process is `tools/node.health.sh`, because the watchdog bounds it with
+`timeout`.
 
 Every script of the repository (`tools/*.sh`, `scripts/helper.docker.*.sh`,
 which share `scripts/helper.docker.lib.sh`, `scripts/quick_test.sh`,
-`.github/scripts/*.sh` and the test
-runners `tests/run.sh` and `.github/scripts/tests/run.sh`) has its functions
-first, then an entry point guarded by `[[ "${BASH_SOURCE[0]}" == "$0" ]]`.
-`tests/scripts.bats` checks every `<name>.sh` file of the repository for the guard,
-and that sourcing it prints and runs nothing. The extension-less test doubles in
+`.github/scripts/*.sh` and the test runners `tests/run.sh` and
+`.github/scripts/tests/run.sh`) has its functions first, then an entry point
+guarded by `[[ "${BASH_SOURCE[0]}" == "$0" ]]`. `tests/scripts.bats` checks
+every `<name>.sh` file of the repository for the guard, and that sourcing it
+prints and runs nothing. The extension-less test doubles in
 `.github/scripts/tests/fakes` stand in for external commands (`gh`, `curl`,
-`git`, `pre-commit`, `docker`):
-they are only run through the `PATH`, so the rule does not apply to them.
+`git`, `pre-commit`, `docker`): they are only run through the `PATH`, so the
+rule does not apply to them.
 
 * `tools/deploy.sh` — `deploy`: updates the system packages, installs or
   updates the CLI and its `aioz-io`, configures the wallet, cleans the packages
@@ -64,36 +65,36 @@ they are only run through the `PATH`, so the rule does not apply to them.
 * `tools/node.health.sh` — Health check of the watchdog and of the image
   `HEALTHCHECK`: the node answers `aioz-io stats` and the wallet reads its
   rewards (`aioz-io reward balance`, which queries the network, so it does not
-  prove the node alone). Each query is bounded by half of the check timeout:
-  the watchdog passes its `HEALTH_TIMEOUT` (`tools/node.health.sh <seconds>`), the
+  prove the node alone). Each query is bounded by half of the check timeout: the
+  watchdog passes its `HEALTH_TIMEOUT` (`tools/node.health.sh <seconds>`), the
   image `HEALTHCHECK` passes none, so the default is its `--timeout` (30s).
-  While the AIOZ network is unreachable the wallet check fails, so the
-  watchdog restarts the container after `HEALTH_RETRIES` checks (and the update
-  runs again):
-  a node whose wallet cannot be used is reported, not hidden
+  While the AIOZ network is unreachable the wallet check fails, so the watchdog
+  restarts the container after `HEALTH_RETRIES` checks (and the update runs
+  again): a node whose wallet cannot be used is reported, not hidden
 * `tools/node.version.sh` / `tools/node.remoteVersion.sh` — Installed and
   latest release versions (used by `scripts/quick_test.sh`)
-* `tools/version.lib.sh` — Version parsing, sourced by the scripts above (the CLI
-  prints its version as JSON)
-* `tools/number.lib.sh` — `require_whole_number <name> <value> [minimum]`: a whole
-  number of at most 18 digits, without a leading zero, or an error naming the
-  setting; sourced by `tools/start.sh` and `tools/node.health.sh`
+* `tools/version.lib.sh` — Version parsing, sourced by the scripts above (the
+  CLI prints its version as JSON)
+* `tools/number.lib.sh` — `require_whole_number <name> <value> [minimum]`: a
+  whole number of at most 18 digits, without a leading zero, or an error naming
+  the setting; sourced by `tools/start.sh` and `tools/node.health.sh`
 * `tools/git.releases.latest.sh` — Latest release JSON from the GitHub API
   (`GITHUB_TOKEN` when set), sourced by the scripts above; standalone:
   `tools/git.releases.latest.sh <owner/repo>`
-* `tools/start.sh` — Entrypoint script: runs deployment, starts the node (`aioz-io
-  start --no-auto-update`: updates run at each container start), and stops it
-  after `HEALTH_RETRIES` consecutive failed health checks (a check running past
-  `HEALTH_TIMEOUT` fails) so that the restart policy restarts the container
-  (and re-runs the update). Docker itself never restarts an unhealthy
-  container. It refuses, before deploying, a `RUN_TIMEOUT` or `HEALTH_*` that
-  is not a whole number of at least 1 (`HEALTH_START_PERIOD`: 0), or has a
-  leading zero: `30s` or `0` would fail every check or stop the node at once
-* `tools/start-watching-reward.sh` — Withdraw mode entrypoint: runs `deploy`, then
-  every `CHECK_FREQ` seconds calls `withdraw_reward` (`tools/withdraw.reward.sh`),
-  which withdraws the whole balance to `WITHDRAW_ADDRESS_HEX` once it exceeds
-  `WITHDRAW_MIN_VALUE`. `aioz-io` reads and withdraws the rewards of the
-  wallet `PRIV_KEY_FILE` from the network: no node endpoint is involved
+* `tools/start.sh` — Entrypoint script: runs deployment, starts the node
+  (`aioz-io start --no-auto-update`: updates run at each container start), and
+  stops it after `HEALTH_RETRIES` consecutive failed health checks (a check
+  running past `HEALTH_TIMEOUT` fails) so that the restart policy restarts the
+  container (and re-runs the update). Docker itself never restarts an unhealthy
+  container. It refuses, before deploying, a `RUN_TIMEOUT` or `HEALTH_*` that is
+  not a whole number of at least 1 (`HEALTH_START_PERIOD`: 0), or has a leading
+  zero: `30s` or `0` would fail every check or stop the node at once
+* `tools/start-watching-reward.sh` — Withdraw mode entrypoint: runs `deploy`,
+  then every `CHECK_FREQ` seconds calls `withdraw_reward`
+  (`tools/withdraw.reward.sh`), which withdraws the whole balance to
+  `WITHDRAW_ADDRESS_HEX` once it exceeds `WITHDRAW_MIN_VALUE`. `aioz-io` reads
+  and withdraws the rewards of the wallet `PRIV_KEY_FILE` from the network: no
+  node endpoint is involved
 
 ### Environment variables
 
@@ -129,7 +130,7 @@ directory on your Docker host.
 
 ### Entrypoint
 
-The image copies the scripts of `tools/` into `/tools`, which is on its `PATH`,
+The image copies the files of `tools/` into `/tools`, which is on its `PATH`,
 so a command names a script without its folder. The default command,
 `CMD ["start.sh"]`, runs `tools/start.sh`, which ensures the node is up-to-date
 and launches it with the correct configuration.
