@@ -1,7 +1,8 @@
 # Synology NAS
 
-Running the node on a Synology NAS, and the delivery watch that runs on the NAS
-host.
+A deployment example: the node on a Synology NAS, with its data in a folder of
+the NAS, and the delivery watch that runs on the NAS host. Any other Docker
+host runs the image the same way (see the [quick start](../README.md#quick-start)).
 
 ## Install Docker
 

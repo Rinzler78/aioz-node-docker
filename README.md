@@ -10,7 +10,8 @@
 A Docker image that runs an [AIOZ DePIN](https://aioz.network/aioz-node) node
 unattended: it installs the latest upstream CLI at every start, proves with its
 health check that the node works, restarts it when it does not, and withdraws
-the rewards to a wallet of your choice. It runs in production on a Synology NAS.
+the rewards to a wallet of your choice. It runs on any Docker host, local or
+remote, with its data in a named volume or a host folder.
 
 The repository is also a worked example of how a small infrastructure project
 can be built: every rule it follows is written down, and most of them are
@@ -41,33 +42,55 @@ checked by a test.
   pinned to a commit and checked by zizmor; trivy scans the configuration and
   the image; outdated hooks and actions block the commit; `latest` only moves to
   the highest release ([CI and release](docs/ci.md)).
-* **Operated, not only built.** A watch on the NAS host emails through DSM when
-  the node stops earning delivery rewards, then when it earns them again
-  ([Synology NAS](docs/nas.md#delivery-watch)).
+* **Operated, not only built.** A host script tells when the node stops
+  earning delivery rewards, then when it earns them again; it runs as a
+  scheduled task of the host, a Synology NAS in the example
+  ([delivery watch](docs/nas.md#delivery-watch)).
 * **AI harness, model and tool agnostic.** One file, [AGENTS.md](AGENTS.md),
   holds the instructions of every coding agent; tests keep the tool-specific
   files from drifting ([AI harness](docs/ai-harness.md)).
 
 ## Quick start
 
-Create a folder for the node data. Put your wallet key there, named
-privkey.json, or let the node create a new wallet at its first start, and keep
-a backup of it.
+The commands below run against any Docker context: the local engine, or a
+remote host chosen with `docker context use` or `DOCKER_HOST=ssh://user@host`.
+The node data, the wallet key `privkey.json` and the node state, lives in a
+named volume, so no folder of the host has to be known.
 
 ```sh
-mkdir -p ~/aioznode/nodedata
+docker volume create aioznode-data
 docker run -d --name aioznode --restart=always -p 1317:1317 \
-  -v ~/aioznode/nodedata:/nodedata rinzlerfr/aioznode
+  -v aioznode-data:/nodedata rinzlerfr/aioznode
 ```
+
+At its first start the node creates a new wallet. Keep a backup of its key, in
+a safe place: `docker cp aioznode:/nodedata/privkey.json privkey.json`. To run
+an existing wallet instead, copy its key into the volume before the first
+start:
+
+```sh
+docker create --name aioznode --restart=always -p 1317:1317 \
+  -v aioznode-data:/nodedata rinzlerfr/aioznode
+docker cp privkey.json aioznode:/nodedata/privkey.json
+docker start aioznode
+```
+
+A host folder works too, `-v /path/on/the/host:/nodedata`: the path is one of
+the Docker host, not of the machine that runs the command.
 
 The node and the automatic reward withdrawal together, from a clone of this
 repository, with `docker-compose.yml`:
 
 ```sh
-WITHDRAW_ADDRESS_HEX=0xYourAddress \
-  NODEDATA_PATH=~/aioznode/nodedata \
-  docker compose up -d
+WITHDRAW_ADDRESS_HEX=0xYourAddress docker compose up -d
 ```
+
+The node data is then the volume `nodedata` of the compose project. To import
+an existing key, run `docker compose create`, then
+`docker compose cp privkey.json aioznode:/nodedata/privkey.json`, then
+`docker compose up -d`. `NODEDATA_PATH` replaces the volume with a host folder:
+give an absolute path of the Docker host, since compose expands `~` on the
+machine that runs the command.
 
 To build the image yourself: `docker build -t aioznode .` in the clone; `make`
 lists the repository commands (build, run, tests, lint).
@@ -92,11 +115,11 @@ Every setting, the volume and the port:
 
 * [The image](docs/image.md): the Dockerfile, the scripts, the settings, the
   build and the tests.
-* [Synology NAS](docs/nas.md): deployment, and the delivery watch.
+* [Synology NAS](docs/nas.md): a deployment example, and the delivery watch.
 * [CI and release](docs/ci.md): the pre-commit hooks, the release of the
   public image, the upstream watch.
-* [Architecture](docs/architecture.md): how the containers, the NAS watch and
-  the release pipeline fit together.
+* [Architecture](docs/architecture.md): how the containers, the delivery watch
+  and the release pipeline fit together.
 * [Decision records](docs/adr/README.md): why they are built that way.
 * [AI harness](docs/ai-harness.md): how coding agents work on this
   repository.

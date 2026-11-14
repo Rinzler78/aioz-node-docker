@@ -31,8 +31,10 @@ fails when:
   file or folder that does not exist: a renamed script leaves no stale command.
   A code word with a slash must be a repository path, so branch names are
   written with a placeholder (`feature/<name>`), and GitHub repositories and
-  Docker images (but those of `docker-compose.yml`) as links. The other limits
-  of this check are listed in the test file.
+  Docker images (but those of `docker-compose.yml`) as links. A path in a
+  container (`name:/path`) and a file name that `.gitignore` ignores, such as
+  the wallet key, are not repository paths. The other limits of this check are
+  listed in the test file.
 
 ## Checks, not promises
 

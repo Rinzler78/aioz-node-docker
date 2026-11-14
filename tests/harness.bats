@@ -21,7 +21,8 @@ doc_pages() {
 # word is a path when it has a slash, starts with a dot (dotfile, ./name), ends
 # with a known extension, or is Dockerfile or LICENSE; a leading ./ is dropped.
 # Not paths: absolute paths (NAS, home), URLs, variables, options, imports
-# (@file), placeholders (<name>) and shell syntax (quotes, =, brackets). Limits:
+# (@file), placeholders (<name>), shell syntax (quotes, =, brackets) and paths
+# in a container (name:/path, a named volume or a docker cp target). Limits:
 # a code word with a slash must name a repository path, so branch names are
 # written with a placeholder (feature/<name>), and GitHub repositories and
 # Docker images other than those of docker-compose.yml as links; a relative
@@ -48,7 +49,7 @@ AWK
     )
     awk "$code_words" "$1" | tr -s '[:blank:]' '\n' |
         grep -E '/|^\.[A-Za-z]|\.(sh|bash|bats|md|json|ya?ml|txt)$|^(Dockerfile|LICENSE)$' |
-        grep -vE '^(/|~|\$|-|@|https?:)|[][<>"'\''=(){}|]' |
+        grep -vE '^(/|~|\$|-|@|https?:|[^/:]*:/)|[][<>"'\''=(){}|]' |
         sed 's#^\./##' | sort -u
 }
 
@@ -74,15 +75,38 @@ image_name() {
     printf '%s\n' "$name"
 }
 
+# The extended regular expression of the .gitignore glob $1, anchored: * and ?
+# match within a name, any other character is literal. Limit: bracket classes
+# ([abc]) are read as literal characters.
+glob_regex() {
+    local glob=$1 regex='' char i
+    for ((i = 0; i < ${#glob}; i++)); do
+        char=${glob:i:1}
+        case $char in
+            '*') regex+='[^/]*' ;;
+            '?') regex+='[^/]' ;;
+            [[:alnum:]_-]) regex+=$char ;;
+            '^' | \\ | ']') regex+="\\$char" ;;
+            *) regex+="[$char]" ;;
+        esac
+    done
+    printf '^%s$\n' "$regex"
+}
+
 # Whether the cited path $1 names something of the repository: an existing file
-# or folder, a pattern of .gitignore, a glob matching at least one file, a path
+# or folder, a pattern of .gitignore or a file name one of its patterns without
+# a slash ignores at any level (privkey*.json), a glob matching at least one file, a path
 # under a local folder git ignores (/name/ in .gitignore), such as the node
 # data or the worktrees, or a Docker image of docker-compose.yml (its `image:`
 # value, either side with or without a tag), such as the published one.
 repository_path() {
-    local matches image
+    local matches image pattern
     [ -e "$REPO_ROOT/$1" ] && return
     grep -qxF "$1" "$REPO_ROOT/.gitignore" && return
+    while IFS= read -r pattern; do
+        case $pattern in '' | '#'* | */*) continue ;; esac
+        [[ "${1##*/}" =~ $(glob_regex "$pattern") ]] && return
+    done < "$REPO_ROOT/.gitignore"
     while IFS= read -r image; do
         [ "$(image_name "$image")" = "$(image_name "$1")" ] && return
     done < <(sed -n 's/^[[:space:]]*image:[[:space:]]*//p' "$REPO_ROOT/docker-compose.yml")
@@ -142,7 +166,8 @@ Run `tests/run.sh`, read `README.md`, `.editorconfig` and `Dockerfile`.
 Local folder `./nodedata`, command `git add tests/x.bats`, prose docs/prose.md.
 Not paths: `/volume1/docker`, `~/.ssh`, `$HOME/x`, `--all-files`, `v1.2.6`,
 `<repo>/.worktrees/x`, `@AGENTS.md`, `feature/<name>`, `"${BASH_SOURCE[0]}"`,
-`context.fileName`, [a link](docs/link.md).
+`context.fileName`, [a link](docs/link.md), container paths `data:/nodedata`
+and `aioznode:/nodedata/privkey.json`, but `tests/x:/data` and `./data:/data`.
 A span wrapped by the line length: `git add
 tests/wrapped.sh`, then `helpers.bash`.
 
@@ -159,7 +184,7 @@ tests/run.sh tests/start.bats   # one file, see docs/comment.md
 EOF
     run cited_code_paths "$doc"
     [ "$status" -eq 0 ]
-    [ "$output" = $'.editorconfig\nDockerfile\nREADME.md\nhelpers.bash\nnodedata\nquick_test.sh\ntests/indented.sh\ntests/run.sh\ntests/start.bats\ntests/wrapped.sh\ntests/x.bats' ]
+    [ "$output" = $'.editorconfig\nDockerfile\nREADME.md\ndata:/data\nhelpers.bash\nnodedata\nquick_test.sh\ntests/indented.sh\ntests/run.sh\ntests/start.bats\ntests/wrapped.sh\ntests/x.bats\ntests/x:/data' ]
 }
 
 @test "cited_links keeps relative link targets without their anchor or title" {
@@ -181,6 +206,33 @@ EOF
     run ! repository_path 'helper.missing.*.sh'
     run ! repository_path 'secret*.json'
     run ! repository_path docs/missing.md
+}
+
+@test "glob_regex matches a name as the .gitignore glob does" {
+    [[ privkey.json =~ $(glob_regex 'privkey*.json') ]]
+    [[ privkey-old.json =~ $(glob_regex 'privkey*.json') ]]
+    [[ ! privkey_json =~ $(glob_regex 'privkey*.json') ]]
+    [[ ! a/privkey.json =~ $(glob_regex 'privkey*.json') ]]
+    [[ ! old-privkey.json =~ $(glob_regex 'privkey*.json') ]]
+    [[ key1.pem =~ $(glob_regex 'key?.pem') ]]
+    [[ ! key12.pem =~ $(glob_regex 'key?.pem') ]]
+    [[ 'a+b^c.d\e]f' =~ $(glob_regex 'a+b^c.d\e]f') ]]
+    [[ ! a+b^cXd\\e]f =~ $(glob_regex 'a+b^c.d\e]f') ]]
+    [[ ! aab =~ $(glob_regex 'a+b') ]]
+}
+
+@test "repository_path accepts a file name that a .gitignore pattern ignores, at any level" {
+    local repo="$BATS_TEST_TMPDIR/repo"
+    mkdir -p "$repo"
+    printf '%s\n' '# comment' 'privkey*.json' '.env' '/data/' 'logs/*.log' > "$repo/.gitignore"
+    : > "$repo/docker-compose.yml"
+    REPO_ROOT=$repo repository_path privkey.json
+    REPO_ROOT=$repo repository_path backup/privkey-old.json
+    REPO_ROOT=$repo repository_path .env
+    REPO_ROOT=$repo run ! repository_path key.json
+    REPO_ROOT=$repo run ! repository_path privkey.json.bak
+    # A pattern with a slash is anchored to its folder, not matched by name.
+    REPO_ROOT=$repo run ! repository_path x.log
 }
 
 @test "repository_path accepts the images of docker-compose.yml, with or without a tag" {
