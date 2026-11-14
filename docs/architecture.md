@@ -3,8 +3,8 @@
 One Docker image runs an AIOZ DePIN node and, started with another command,
 withdraws its rewards. The image installs the latest upstream CLI at every
 start, so a release of this repository changes the scripts around the node, not
-the node itself. `tests/docs.bats` checks that this page names every shell
-script, workflow and Dockerfile of the repository.
+the node itself. `tests/docs.bats` checks that this page names every
+`<name>.sh` script, workflow and Dockerfile of the repository.
 
 ## Runtime
 
@@ -31,6 +31,7 @@ flowchart LR
     data -- "read-write" --> node
     data -- "read-only" --> withdraw
     releases -- "latest CLI, checked against SHA256SUMS" --> start
+    releases -- "latest CLI" --> loop
     start <--> network
     watchdog -- "stats" --> start
     watchdog -- "reward balance" --> network
@@ -48,10 +49,11 @@ flowchart LR
 2. `deploy` (`tools/deploy.sh`) updates the Alpine packages (`tools/dist.sh`),
    installs or updates the CLI from the latest upstream release after checking
    its checksum (`tools/node.install.sh`, which reads the release with
-   `tools/git.releases.latest.sh` and compares versions with
-   `tools/version.lib.sh`), extracts the matching `aioz-io`
-   (`tools/node.io.sh`), creates the wallet when the data folder has none
-   (`tools/wallet.configure.sh`), then cleans the package cache.
+   `tools/git.releases.latest.sh` and skips the update when the installed
+   version, read with `tools/version.lib.sh`, is already the latest), extracts
+   the matching `aioz-io` (`tools/node.io.sh`), creates the wallet when the
+   data folder has none (`tools/wallet.configure.sh`), then cleans the package
+   cache.
 3. It runs `aioz-io start` for `RUN_TIMEOUT` seconds (24 hours by default),
    with upstream auto-update off: updates run at each start instead.
 4. A watchdog runs `tools/node.health.sh` every `HEALTH_INTERVAL` seconds. The
@@ -112,10 +114,12 @@ The workflows:
   changed files, then on every file after a merge;
 * `.github/workflows/tests.yml`, on a pull request and after a merge into
   `develop` or `master`:
-  `tests/run.sh`, the bats tests of the image scripts;
-* `.github/workflows/upstream-watch.yml`, daily and on demand:
-  `.github/scripts/upstream-watch.sh`; on a pull request that changes
-  `.github/scripts/` or this workflow, only the tests of the CI scripts;
+  `tests/run.sh`, the bats tests of the image and NAS scripts and the fitness
+  tests of the repository;
+* `.github/workflows/upstream-watch.yml`, daily and on demand: the tests of
+  the CI scripts, then `.github/scripts/upstream-watch.sh`; on a pull request
+  that changes `.github/scripts/` or this workflow, only the tests of the CI
+  scripts;
 * `.github/workflows/docker-image.yml`, on a `v*` tag: build, `tests/run.sh`,
   `scripts/quick_test.sh`, push, GitHub release.
 
@@ -152,16 +156,19 @@ The `Makefile` lists the commands; each target runs one script:
   (`tools/node.remoteVersion.sh`) (network);
 * `tests/run.sh` and `.github/scripts/tests/run.sh` run the bats suites in
   Docker (the first in the image of `tests/Dockerfile`, with bats and make),
-  against fakes and real captures.
+  against fakes and real captures. The fakes of `gh`, `curl`, `git`,
+  `pre-commit` and `docker` are in `.github/scripts/tests/fakes/`.
 
 ## Script structure
 
 Every script defines its functions first and ends with a guarded entry point,
 so sourcing it runs nothing. A script that needs another one sources it and
 calls its functions: a container start is one shell process, plus the CLI and
-the system tools. The only script run as a child process is
-`tools/node.health.sh`, because the watchdog bounds it with `timeout`.
-`tests/scripts.bats` enforces both rules on every script of the repository.
+the system tools. In the image, the only script run as a child process is
+`tools/node.health.sh`, because the watchdog bounds it with `timeout`; outside
+it, `scripts/quick_test.sh` runs the two version scripts in the container
+with `docker exec`. `tests/scripts.bats` enforces both rules on every script
+of the repository, with these two exceptions.
 
 ## Trust boundaries
 
@@ -173,5 +180,5 @@ the system tools. The only script run as a child process is
   one.
 * Data read from outside is validated before use: the timing settings, the
   health check timeout and the numbers of the delivery watch (state file,
-  container logs) are checked before bash arithmetic, and the upstream watch
+  container logs) are checked as whole numbers first, and the upstream watch
   trusts only its own reports on a public issue.

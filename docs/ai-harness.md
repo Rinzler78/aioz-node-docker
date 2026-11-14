@@ -50,8 +50,8 @@ can decide is a check, the same for an agent and a person:
   script sources its dependencies and runs nothing when sourced,
   `tests/image.bats` that the image health check matches the start watchdog,
   `tests/harness.bats` this harness, `tests/docs.bats` that
-  [docs/architecture.md](architecture.md) names every shell script, workflow
-  and Dockerfile.
+  [docs/architecture.md](architecture.md) names every `<name>.sh` script,
+  workflow and Dockerfile.
 * In CI, and locally with `tests/run.sh` and `.github/scripts/tests/run.sh`:
   the tests of the image, CI and NAS scripts, in Docker. The external world is
   replaced by fakes (`.github/scripts/tests/fakes/`, a local GitHub and fake
