@@ -10,6 +10,8 @@ load helpers
 # - every `*.sh` script, at any depth;
 # - every Dockerfile, at any depth: `Dockerfile*`, `*.Dockerfile` and
 #   `Containerfile`, as in tests/helper.docker.bats, but no `*.dockerignore`;
+#   a copy such as Dockerfile.bak counts too: it has no place in the
+#   repository, and the failure shows it;
 # - every workflow GitHub runs, directly in .github/workflows/;
 # - the compose file and the Makefile.
 # Left out: git, the worktrees and the node data folder, which are not the

@@ -87,9 +87,9 @@ mounted read-only, so this container can never create a wallet of its own.
 the delivery count to the wallet key only, so the watch reads the count that
 the withdraw container logs. It exits 1 once per event (deliveries stalled for
 `STALL_HOURS`, resumed after a stall, a count going down, an invalid state
-file), and on every run while the logs hold no count or the state cannot be
-written. The DSM task scheduler emails the output of a task that ends
-abnormally.
+file), and on every run while the logs hold no count, the state cannot be
+written or a setting is invalid. The DSM task scheduler emails the output of
+a task that ends abnormally.
 
 ## Delivery
 
@@ -181,8 +181,10 @@ of the repository, with these two exceptions.
 * Upstream binaries are checked against the `SHA256SUMS` of their release
   before they replace the installed CLI; a failed update keeps the installed
   one.
-* The timing settings, the health check timeout and the numbers of the
-  delivery watch (state file, container logs) are checked as whole numbers
-  before use, and the upstream watch trusts only its own reports on a public
-  issue. Not checked yet: the balance that `aioz-io reward balance` returns
-  goes to `bc` and to the withdraw command as read.
+* The timing settings of `tools/start.sh`, the health check timeout and the
+  numbers of the delivery watch (settings, state file, container logs) are
+  checked as whole numbers before use, and the upstream watch trusts only its
+  own reports on a public issue. Not checked yet, in the withdraw mode:
+  `CHECK_FREQ` goes to `sleep` and `WITHDRAW_MIN_VALUE` (a `bc` expression) to
+  `bc` as set, and the balance that `aioz-io reward balance` returns goes to
+  `bc` and to the withdraw command as read.
