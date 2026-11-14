@@ -53,8 +53,8 @@ flowchart LR
    `tools/git.releases.latest.sh` and skips the update when the installed
    version, read with `tools/version.lib.sh`, is already the latest), extracts
    the matching `aioz-io` (`tools/node.io.sh`), creates the wallet when the
-   data folder has none (`tools/wallet.configure.sh`), then cleans the package
-   cache.
+   data folder has none (`tools/wallet.configure.sh`), then removes the
+   packages of other kernels and the package cache.
 3. It runs `aioz-io start` for `RUN_TIMEOUT` seconds (24 hours by default),
    with upstream auto-update off: updates run at each start instead.
 4. A watchdog runs `tools/node.health.sh` every `HEALTH_INTERVAL` seconds. The
@@ -74,8 +74,9 @@ The CLI of the release is a wrapper around two embedded binaries, and its
 
 ### The withdraw container
 
-The same image started with `tools/start-watching-reward.sh` runs `deploy`,
-then calls `withdraw_reward` (`tools/withdraw.reward.sh`) every `CHECK_FREQ`
+The same image started with `tools/start-watching-reward.sh` refuses a
+`WITHDRAW_ADDRESS_HEX` that is not a `0x` address of 40 hex digits, runs
+`deploy`, then calls `withdraw_reward` (`tools/withdraw.reward.sh`) every `CHECK_FREQ`
 seconds: once the balance exceeds `WITHDRAW_MIN_VALUE`, it withdraws all of it
 to `WITHDRAW_ADDRESS_HEX`. `aioz-io` reads and withdraws the rewards from the
 network with the wallet key: no local node is involved. The node data folder is
@@ -184,7 +185,8 @@ of the repository, with these two exceptions.
 * The timing settings of `tools/start.sh`, the health check timeout and the
   numbers of the delivery watch (settings, state file, container logs) are
   checked as whole numbers before use, and the upstream watch trusts only its
-  own reports on a public issue. Not checked yet, in the withdraw mode:
+  own reports on a public issue. In the withdraw mode, the address that
+  receives the rewards is checked before anything runs. Not checked yet there:
   `CHECK_FREQ` goes to `sleep` and `WITHDRAW_MIN_VALUE` (a `bc` expression) to
   `bc` as set, and the balance that `aioz-io reward balance` returns goes to
   `bc` and to the withdraw command as read.
