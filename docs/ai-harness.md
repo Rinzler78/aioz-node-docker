@@ -44,7 +44,8 @@ can decide is a check, the same for an agent and a person:
   yamllint, markdownlint), English spelling (cspell), workflow security
   (zizmor); and when their inputs change, misconfigurations and image
   vulnerabilities (trivy) and dependencies up to date. The list and the
-  reasons for each accepted finding are in the README, Pre-commit hooks.
+  reasons for each accepted finding are in
+  [CI and release](ci.md#pre-commit-hooks).
 * On every pull request in CI, and locally with `tests/run.sh`: fitness tests
   that turn repository rules into tests. `tests/scripts.bats` checks that every
   script sources its dependencies and runs nothing when sourced,
@@ -53,7 +54,9 @@ can decide is a check, the same for an agent and a person:
   [docs/architecture.md](architecture.md) names every `<name>.sh` script,
   workflow and Dockerfile, the compose file and the `Makefile`, and that the
   [decision records](adr/README.md) keep their format and their index, and
-  that [CHANGELOG.md](../CHANGELOG.md) keeps the Keep a Changelog format.
+  that [CHANGELOG.md](../CHANGELOG.md) keeps the Keep a Changelog format and
+  the [README](../README.md) links every page of `docs/` but the decision
+  records, which their index links.
 * In CI, and locally with `tests/run.sh` and `.github/scripts/tests/run.sh`:
   the tests of the image, CI and NAS scripts, in Docker. The external world is
   replaced by fakes (`.github/scripts/tests/fakes/`, a local GitHub and fake

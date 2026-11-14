@@ -71,7 +71,7 @@ verdict (`tests/image.bats`).
 
 The CLI of the release is a wrapper around two embedded binaries, and its
 `start` is broken upstream: the scripts run the embedded `aioz-io` directly
-(README, Node binary).
+([Node binary](image.md#node-binary)).
 
 ### The withdraw container
 

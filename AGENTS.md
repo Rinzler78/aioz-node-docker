@@ -48,7 +48,7 @@ definition of done.
   runs it as a child process. `tests/scripts.bats` enforces both.
 * Style: `.editorconfig` (read by shfmt), `.shellcheckrc`, `.yamllint.yaml`.
 * Fix a linter finding, do not disable the rule. An accepted finding keeps its
-  reason next to the line (see README, Pre-commit hooks).
+  reason next to the line (see `docs/ci.md`, Pre-commit hooks).
 * Test fixtures for the shape of external data (GitHub API, AIOZ CLI output,
   container logs) are real captures, never written from memory. Captures keep
   no wallet address or key.
