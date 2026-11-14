@@ -1,17 +1,23 @@
 # 0001. Update the node at every container start
 
-Status: Accepted, 2026-11-08
-([#1](https://github.com/Rinzler78/aioz-node-docker/pull/1))
+Status: Accepted, 2023-12-26
+(first version of the image,
+[14c5509](https://github.com/Rinzler78/aioz-node-docker/commit/14c5509);
+installer repaired in [#1](https://github.com/Rinzler78/aioz-node-docker/pull/1))
 
 ## Context
 
-The node must follow the upstream CLI releases
+The node must run the CLI of the latest upstream release
 ([AIOZNetwork/aioz-depin-cli](https://github.com/AIOZNetwork/aioz-depin-cli)).
-In November 2026, containers were found still running the 2023 binary
-(v1.1.0): upstream had renamed its repository and moved the downloads from the
-release body to its assets, and the installer, which scraped the body, logged
-`download failed` and still exited 0. An image release of this repository is
-rare; an upstream CLI release is not.
+Upstream releases are few (v1.1.0 in December 2023, v1.2.5 in December 2025,
+v1.2.6 in March 2026), but a node must not wait for an image release of this
+repository to follow one. The first version of the image already reinstalled
+the CLI at every start.
+
+In November 2026, containers were found still running v1.1.0: upstream had
+renamed its repository and moved the downloads from the release body to its
+assets, and the installer, which scraped the body, logged `download failed`
+and still exited 0. The update path was repaired, not replaced.
 
 ## Decision
 

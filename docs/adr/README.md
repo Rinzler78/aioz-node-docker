@@ -6,10 +6,11 @@ once accepted, except for its status: a new decision supersedes it, and its
 status then links to the new record.
 
 `tests/docs.bats` checks the format: files named `<NNNN>-<title>.md`, numbered
-without gap, a title with the number, a dated status (`Proposed`, `Accepted`,
-`Deprecated` or `Superseded by [NNNN]`), then the sections Context, Decision
-and Consequences, and this index listing every record in order. How the parts
-fit together is described in [docs/architecture.md](../architecture.md).
+without gap, a title with the number, a dated status on the third line
+(`Proposed`, `Accepted`, `Deprecated`, or `Superseded by` and a link to a
+later record), then the sections Context, Decision and Consequences, and this
+index listing every record by its title, in order. How the parts fit together
+is described in [docs/architecture.md](../architecture.md).
 
 1. [0001. Update the node at every container start](0001-update-at-every-start.md)
 2. [0002. A health check that proves the function, and a watchdog that acts on it](0002-functional-health-check-and-watchdog.md)

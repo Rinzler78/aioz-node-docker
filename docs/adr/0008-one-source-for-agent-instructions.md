@@ -6,8 +6,8 @@ Status: Accepted, 2026-11-13
 ## Context
 
 The repository is developed with coding agents, whatever the model or the
-tool. Each tool reads its own file (`CLAUDE.md` for Claude Code, a settings
-file for Gemini CLI, `AGENTS.md` for Codex, Cursor and Copilot). A rule copied into
+tool. Each tool reads its own file (`CLAUDE.md` for Claude Code, GEMINI.md
+for Gemini CLI, `AGENTS.md` for Codex, Cursor and Copilot). A rule copied into
 each file drifts: the copies diverge, and an agent follows a rule that no
 longer holds.
 

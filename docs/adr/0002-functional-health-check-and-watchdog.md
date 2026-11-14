@@ -1,7 +1,8 @@
 # 0002. A health check that proves the function, and a watchdog that acts on it
 
-Status: Accepted, 2026-11-08
-([#1](https://github.com/Rinzler78/aioz-node-docker/pull/1),
+Status: Accepted, 2026-11-11
+(watchdog added in [#1](https://github.com/Rinzler78/aioz-node-docker/pull/1),
+check made functional in
 [#8](https://github.com/Rinzler78/aioz-node-docker/pull/8))
 
 ## Context

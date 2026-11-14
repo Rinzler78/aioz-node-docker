@@ -17,7 +17,8 @@ The build pushes the image under its own tag, then
 `.github/scripts/push-latest.sh` moves `:latest` to it only when the tag is the
 highest `vX.Y.Z` release of the repository, compared as numbers (v1.7.12 is
 above v1.7.9). The tags are read with `git ls-remote` at push time; when they
-cannot be read, nothing is pushed and the job fails.
+cannot be read, `:latest` is not moved and the job fails, the image being
+already pushed under its own tag.
 
 ## Consequences
 

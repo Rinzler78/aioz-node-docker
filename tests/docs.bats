@@ -49,12 +49,17 @@ architecture_files() {
     }
 }
 
-# The decision records of docs/adr/, one file name per line in number order,
-# listed from the file system: every Markdown page but the index.
+# The decision records of docs/adr/, one path per line in number order, listed
+# from the file system: every file but the index, at any depth, so a stray
+# file or a record in a subfolder fails the naming test.
 adr_files() {
-    (cd "$REPO_ROOT/docs/adr" && find . -name '*.md' ! -name README.md |
+    (cd "$REPO_ROOT/docs/adr" && find . -type f ! -path ./README.md |
         sed 's#^\./##' | sort)
 }
+
+# The status a record must carry on its third line, right after its title: a
+# state and a date. A superseded record links to the record that replaced it.
+STATUS='^Status: (Proposed|Accepted|Deprecated|Superseded by \[([0-9]{4})\]\(([0-9]{4})-[a-z0-9-]+\.md\)), [0-9]{4}-[0-9]{2}-[0-9]{2}$'
 
 @test "every decision record is named NNNN-title.md, numbered from 0001 without gap" {
     local files file expected=1
@@ -74,20 +79,30 @@ adr_files() {
 }
 
 @test "every decision record has its title, a dated status, then context, decision and consequences" {
-    local files file page sections
+    local files file number status page sections
     files=$(adr_files)
     [ -n "$files" ]
     for file in $files; do
         page="$REPO_ROOT/docs/adr/$file"
+        number=${file%%-*}
         # The title carries the number of the file.
-        head -n 1 "$page" | grep -qE "^# ${file%%-*}\. [A-Z]" || {
+        head -n 1 "$page" | grep -qE "^# $number\. [A-Z]" || {
             echo "$file: title"
             false
         }
-        grep -qE '^Status: (Proposed|Accepted|Deprecated|Superseded by \[[0-9]{4}\]), [0-9]{4}-[0-9]{2}-[0-9]{2}' "$page" || {
-            echo "$file: status"
+        status=$(sed -n 3p "$page")
+        [[ "$status" =~ $STATUS ]] || {
+            echo "$file: status on line 3: $status"
             false
         }
+        # A record is superseded by a later one, under its own number.
+        if [ -n "${BASH_REMATCH[2]}" ]; then
+            [ "${BASH_REMATCH[2]}" = "${BASH_REMATCH[3]}" ] &&
+                [ "$((10#${BASH_REMATCH[2]}))" -gt "$((10#$number))" ] || {
+                echo "$file: superseded by ${BASH_REMATCH[2]}"
+                false
+            }
+        fi
         sections=$(grep '^## ' "$page" | tr '\n' '|')
         [ "$sections" = '## Context|## Decision|## Consequences|' ] || {
             echo "$file: sections $sections"
@@ -96,8 +111,9 @@ adr_files() {
     done
 }
 
-@test "the index of docs/adr lists every decision record, in order, and nothing else" {
-    local index="$REPO_ROOT/docs/adr/README.md" listed
+# Limit: an entry inside an HTML comment of the index is read as listed.
+@test "the index of docs/adr lists every decision record by its title, in order, and nothing else" {
+    local index="$REPO_ROOT/docs/adr/README.md" listed entry file title
     [ -f "$index" ]
     listed=$(grep -oE '\]\([0-9]{4}-[a-z0-9-]+\.md\)' "$index" |
         sed -e 's/^](//' -e 's/)$//')
@@ -105,4 +121,14 @@ adr_files() {
         printf 'index:\n%s\nfiles:\n%s\n' "$listed" "$(adr_files)"
         false
     }
+    # Each entry reads as the title of its record.
+    while IFS= read -r entry; do
+        file=${entry##*](}
+        file=${file%)}
+        title=$(head -n 1 "$REPO_ROOT/docs/adr/$file")
+        [ "[${title#\# }]($file)" = "$entry" ] || {
+            echo "index entry $entry, title $title"
+            false
+        }
+    done < <(grep -oE '\[[^]]+\]\([0-9]{4}-[a-z0-9-]+\.md\)' "$index")
 }

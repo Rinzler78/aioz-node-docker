@@ -14,8 +14,8 @@ were updated twice at every start.
 Every script defines its functions first and ends with a guarded entry point
 (`[[ "${BASH_SOURCE[0]}" == "$0" ]]`): sourcing it runs nothing, running it
 calls its main function, so each script still works standalone. A script that
-needs another one sources it and calls its functions. A container start is
-then one shell process, plus the CLI and the system tools.
+needs another one sources it and calls its functions. A container start
+then runs no script as a child process, apart from the exceptions below.
 
 Two exceptions are allowed: the watchdog runs `tools/node.health.sh` as a
 process, because `timeout` needs one, and `scripts/quick_test.sh` runs the two
