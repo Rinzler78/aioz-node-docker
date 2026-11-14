@@ -236,7 +236,12 @@ docs_pages() {
 
 # Limit: only the workflows of this repository are read, by their
 # actions/workflows/<file> path in a URL of README.md.
-@test "every workflow a URL of README.md names exists, such as a badge" {
+@test "every workflow a URL of README.md names exists, and its badge follows the default branch" {
+    # A badge shows the default branch, the code visitors read: no branch=.
+    ! grep -nE 'actions/workflows/[^)]*branch=' "$REPO_ROOT/README.md" || {
+        echo 'a workflow badge names a branch'
+        false
+    }
     local workflows workflow missing=""
     workflows=$(grep -oE 'Rinzler78/aioz-node-docker/actions/workflows/[^/?)#]+' \
         "$REPO_ROOT/README.md" | sed 's#.*/##' | sort -u)
