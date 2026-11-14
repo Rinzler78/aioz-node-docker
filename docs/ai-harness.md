@@ -27,11 +27,11 @@ fails when:
   comments and headings included;
 * `.gemini/settings.json` holds anything but `context.fileName` set to
   AGENTS.md;
-* AGENTS.md or this page names, in its code or its links, a file or folder that
-  does not exist: a renamed script leaves no stale command. A code word with a
-  slash must be a repository path, so branch names are written with a
-  placeholder (`feature/<name>`) and GitHub repositories as links. The other
-  limits of this check are listed in the test file.
+* AGENTS.md or a page of `docs/` names, in its code or its links, a file or
+  folder that does not exist: a renamed script leaves no stale command. A code
+  word with a slash must be a repository path, so branch names are written
+  with a placeholder (`feature/<name>`) and GitHub repositories as links. The
+  other limits of this check are listed in the test file.
 
 ## Checks, not promises
 
@@ -49,7 +49,9 @@ can decide is a check, the same for an agent and a person:
   that turn repository rules into tests. `tests/scripts.bats` checks that every
   script sources its dependencies and runs nothing when sourced,
   `tests/image.bats` that the image health check matches the start watchdog,
-  `tests/harness.bats` this harness.
+  `tests/harness.bats` this harness, `tests/docs.bats` that
+  [docs/architecture.md](architecture.md) names every `<name>.sh` script,
+  workflow and Dockerfile, the compose file and the `Makefile`.
 * In CI, and locally with `tests/run.sh` and `.github/scripts/tests/run.sh`:
   the tests of the image, CI and NAS scripts, in Docker. The external world is
   replaced by fakes (`.github/scripts/tests/fakes/`, a local GitHub and fake
