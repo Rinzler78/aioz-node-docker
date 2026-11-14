@@ -190,13 +190,20 @@ CHANGELOG_URL=https://github.com/Rinzler78/aioz-node-docker
         printf 'headings outside the types:\n%s\n' "$other"
         false
     }
-    # A release lists at least one change; Unreleased may be empty.
-    empty=$(awk '/^## / { if (release && !changes) print release
-            release = ($0 ~ /^## \[Unreleased\]/) ? "" : $0; changes = 0; next }
-        /^### / { changes = 1 }
-        END { if (release && !changes) print release }' "$page")
+    # A release lists at least one change, and a type at least one entry
+    # (`* ` bullet); Unreleased may be empty. The link definitions and the
+    # comments at the end close the last section.
+    empty=$(awk '
+        function close_type() { if (type && !items) print section ": " type }
+        /^## / { close_type(); if (release && !changes) print release
+            section = $0; release = ($0 ~ /^## \[Unreleased\]/) ? "" : $0
+            changes = 0; type = ""; next }
+        /^### / { close_type(); type = $0; items = 0; next }
+        /^\* / { if (type) { items = 1; changes = 1 } }
+        /^<!--|^\[/ { close_type(); type = "" }
+        END { close_type(); if (release && !changes) print release }' "$page")
     [ -z "$empty" ] || {
-        printf 'releases with no change:\n%s\n' "$empty"
+        printf 'releases or types with no change:\n%s\n' "$empty"
         false
     }
 }

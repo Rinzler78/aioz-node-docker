@@ -53,11 +53,11 @@ checks.
 
 ## Release
 
-1. A `release/vX.Y.Z` branch from `develop` gets one commit, its
-   `CHANGELOG.md` section: the `Unreleased` entries move under
-   `## [X.Y.Z] - <date>`, and the links at the bottom of the file follow
-   (since this changelog; the release branches of v0.0.2 and v0.0.3 had no
-   commit of their own).
+1. A `release/<version>` branch (`<version>` being `vX.Y.Z`) from `develop`
+   gets one commit, its `CHANGELOG.md` section: the `Unreleased` entries move
+   under `## [X.Y.Z] - <date>`, and the links at the bottom of the file
+   follow (since this changelog; the release branches of v0.0.2 and v0.0.3 had
+   no commit of their own).
 2. Its pull request is merged into `master`, and `vX.Y.Z` is tagged there.
 3. The tag runs the `Docker Image CI` workflow: it builds the image, runs the
    tests and `scripts/quick_test.sh`, pushes `rinzlerfr/aioznode:vX.Y.Z`, moves

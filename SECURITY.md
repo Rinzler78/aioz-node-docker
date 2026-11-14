@@ -38,8 +38,8 @@ Out of scope, to report upstream:
 
 * The node private key never leaves its host: git and the Docker build context
   ignore it, and the withdraw container mounts it read-only.
-* The CLI downloaded at every start is checked against the `SHA256SUMS` of its
-  release before install.
+* The CLI, downloaded at build time and at a start that finds a newer
+  release, is checked against the `SHA256SUMS` of its release before install.
 * The numbers that the node start, its health check and the delivery watch
   read from settings, files or commands are checked before shell arithmetic,
   which would otherwise evaluate them as code. In the withdraw mode, the

@@ -27,7 +27,6 @@ tag. The numbers in parentheses are the pull requests.
 
 * The image script tests run on every pull request, whatever files it
   changes: the fitness tests read the whole repository (#22).
-
 * The local build, run and clean scripts moved from the repository root to
   `scripts/` (#24).
 
@@ -67,9 +66,9 @@ The image content is the same as in 0.0.2: only CI, tests and docs changed.
 
 ### Fixed
 
-* The release job gets its own write permission, so the workflow creates the
-  GitHub release again (it failed on v0.0.2); the build job stays read-only
-  (#10).
+* The release job gets its own write permission, so the workflow can create
+  the GitHub release (the step failed on its first run, v0.0.2); the build job
+  stays read-only (#10).
 
 ### Security
 
@@ -121,8 +120,9 @@ The image content is the same as in 0.0.2: only CI, tests and docs changed.
 
 * Alpine image that installs the latest AIOZ dCDN CLI
   (`AIOZNetwork/aioz-dcdn-cli-node`, since renamed `aioz-depin-cli`) from its
-  GitHub releases at build time and again at every start, configures the
-  wallet from the mounted `privkey.json` and runs the node.
+  GitHub releases at build time, and at each start when a newer release
+  exists, configures the wallet from the mounted `privkey.json` and runs the
+  node.
 * Build and push workflow for Docker Hub, local helper scripts and a quick
   test.
 
