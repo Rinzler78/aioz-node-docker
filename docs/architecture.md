@@ -11,13 +11,14 @@ file and the `Makefile`. The reasons behind the main choices are recorded in
 ## Runtime
 
 The two containers run from `docker-compose.yml` on any Docker host, local or
-remote, and share the node data volume. The owner's deployment, a Synology NAS
-in the diagram, adds a host script that watches the delivery rewards.
+remote, and share the node data, a named volume or a folder of the host. The
+owner's deployment, a Synology NAS in the diagram, keeps it in a folder and
+adds a host script that watches the delivery rewards.
 
 ```mermaid
 flowchart LR
     subgraph host["Docker host (here a Synology NAS)"]
-        data[("node data volume: privkey.json, node state")]
+        data[("node data, volume or folder: privkey.json, node state")]
         subgraph node["container aioznode"]
             start["start.sh: deploy, then aioz-io start"]
             watchdog["watchdog: node.health.sh"]

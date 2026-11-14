@@ -177,7 +177,7 @@ targets, each of which runs one script.
 ```sh
 make                 # list the targets
 make check           # tests, CI script tests and every pre-commit hook
-make docker-start ARGS='-v aioznode-data:/nodedata'
+make docker-start ARGS='-v aioznode-dev-data:/nodedata'
 ```
 
 The `scripts/helper.docker.*.sh` scripts (`make docker-build`, `docker-run`,

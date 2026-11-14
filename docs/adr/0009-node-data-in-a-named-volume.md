@@ -17,10 +17,10 @@ does not know, and compose expands `~` on the client, not on that host.
 `aioznode-data`, the one of the quick start: a volume named after the compose
 project would change with the folder of the clone, and an empty volume starts
 a new wallet. `NODEDATA_PATH`, when set, replaces it with a folder of the
-Docker host. A wallet key is copied into the
-volume through the Docker API, `docker cp` or `docker compose cp`, on a
-container created but not yet started, since `docker cp` reaches a stopped
-container too. The Synology NAS is documented as one deployment example.
+Docker host. A wallet key is copied into the volume through the Docker API,
+`docker cp` or `docker compose cp`, on a container created but not yet
+started, since `docker cp` reaches a stopped container too. The Synology NAS
+is documented as one deployment example.
 
 ## Consequences
 
