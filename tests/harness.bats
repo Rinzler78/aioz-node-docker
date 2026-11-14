@@ -62,7 +62,8 @@ cited_links() {
 # The name of the Docker image $1, as written in a compose file or a command:
 # without its quotes, a trailing comment or blanks, and its tag, the colon of
 # the last path segment (a registry port such as host:5000/app is kept, and a
-# colon followed by a path is not a tag).
+# colon followed by a path is not a tag). Limit: a digest (@sha256:...) is read
+# as a tag.
 image_name() {
     local name=$1
     name=${name%%[[:space:]]#*}
@@ -189,6 +190,18 @@ EOF
     # A colon followed by a path is not a tag.
     run ! repository_path rinzlerfr/aioznode:/stale/x
     run ! repository_path docs/missing:/docs
+}
+
+@test "repository_path compares the image of a compose file by its name, quoted, tagged or commented" {
+    local repo="$BATS_TEST_TMPDIR/repo"
+    mkdir -p "$repo"
+    : > "$repo/.gitignore"
+    printf '%s\n' 'services:' '  app:' '    image: "host:5000/team/app:v2"  # pinned' \
+        > "$repo/docker-compose.yml"
+    REPO_ROOT=$repo repository_path host:5000/team/app
+    REPO_ROOT=$repo repository_path host:5000/team/app:v1
+    REPO_ROOT=$repo run ! repository_path host/team/app
+    REPO_ROOT=$repo run ! repository_path host:5000/team/app:/x
 }
 
 @test "image_name drops the tag of an image, never a registry port or a path" {
