@@ -30,8 +30,8 @@ tag. The numbers in parentheses are the pull requests.
 * The local build, run and clean scripts moved from the repository root to
   `scripts/` (#24).
 * The reference part of the README moved to `docs/image.md`, `docs/nas.md`
-  and `docs/ci.md`; the README links every page of `docs/`, checked by
-  `tests/docs.bats` (#28).
+  and `docs/ci.md`; the README links every page of `docs/` but the decision
+  records, checked by `tests/docs.bats` (#28).
 
 ### Fixed
 

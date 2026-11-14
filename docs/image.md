@@ -129,18 +129,19 @@ directory on your Docker host.
 
 ### Entrypoint
 
-The container starts with `tools/start.sh`, which ensures the node is
-up-to-date and launches it with the correct configuration.
+The image copies the scripts of `tools/` into `/tools`, which is on its `PATH`,
+so a command names a script without its folder. The default command,
+`CMD ["start.sh"]`, runs `tools/start.sh`, which ensures the node is up-to-date
+and launches it with the correct configuration.
 
-The same image runs the withdraw mode when its command is
-`tools/start-watching-reward.sh`, called by its bare name, which the image puts
-on the `PATH` (see `docker-compose.yml`, which runs both, with the node data
-mounted read-only in the withdraw container). The withdraw mode needs
-no running node: `aioz-io` reads and withdraws the rewards from the network
-with the wallet key. On a first install the node creates the wallet; until
-then the withdraw container, whose volume is read-only, fails and restarts.
-With a plain `docker run`, disable the image health check for this mode
-(`--no-healthcheck`): it targets a local node.
+The same image runs the withdraw mode when its command names
+`tools/start-watching-reward.sh` instead (see `docker-compose.yml`, which runs
+both, with the node data mounted read-only in the withdraw container). The
+withdraw mode needs no running node: `aioz-io` reads and withdraws the rewards
+from the network with the wallet key. On a first install the node creates the
+wallet; until then the withdraw container, whose volume is read-only, fails and
+restarts. With a plain `docker run`, disable the image health check for this
+mode (`--no-healthcheck`): it targets a local node.
 
 ### Node binary
 

@@ -69,6 +69,12 @@ backup of it.
 
 ### Run instructions
 
+The examples run the image built locally as `aioznode` (`docker build -t
+aioznode .`, see [Build instructions](docs/image.md#build-instructions)); the
+published image is
+[rinzlerfr/aioznode](https://hub.docker.com/r/rinzlerfr/aioznode), which
+`docker-compose.yml` uses.
+
 Example run command:
 
 ```sh
