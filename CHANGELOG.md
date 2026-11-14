@@ -131,5 +131,5 @@ The image content is the same as in 0.0.2: only CI, tests and docs changed.
 [0.0.2]: https://github.com/Rinzler78/aioz-node-docker/compare/v0.0.1...v0.0.2
 [0.0.1]: https://github.com/Rinzler78/aioz-node-docker/releases/tag/v0.0.1
 
-<!-- Each release has its own Added, Changed and Fixed sections. -->
+<!-- The releases repeat the same type headings (Added, Fixed...). -->
 <!-- markdownlint-configure-file { "MD024": { "siblings_only": true } } -->
