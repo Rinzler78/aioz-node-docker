@@ -1,7 +1,10 @@
 #!/bin/bash
 # Fake gh: `api <endpoint>` answers from $FAKE_GH_DIR/<endpoint with / as _>.json
 # (query string ignored), like gh: error JSON on stdout and exit 1 when missing.
-# `issue list|create|comment` use $FAKE_GH_DIR/tracking-issue and log to calls.
+# `issue list|create|comment` use $FAKE_GH_DIR/tracking-issue (author in
+# tracking-issue-author, app/github-actions if missing) and log to calls;
+# `issue view` applies --jq to the tracking issue JSON, $FAKE_GH_DIR/tracking-view.json
+# (an issue with no report when missing).
 case "$1" in
     api)
         endpoint="${2%%\?*}"
@@ -21,7 +24,25 @@ case "$1" in
         ;;
     issue)
         case "$2" in
-            list) cat "$FAKE_GH_DIR/tracking-issue" 2> /dev/null || true ;;
+            list)
+                # --author must match the issue author (default: the workflow token).
+                author=$(cat "$FAKE_GH_DIR/tracking-issue-author" 2> /dev/null || echo app/github-actions)
+                for arg in "$@"; do
+                    [ "$prev" = "--author" ] && [ "$arg" != "$author" ] && exit 0
+                    prev="$arg"
+                done
+                cat "$FAKE_GH_DIR/tracking-issue" 2> /dev/null || true
+                ;;
+            view)
+                jq_expr=""
+                while [ $# -gt 0 ]; do
+                    [ "$1" = "--jq" ] && jq_expr="$2" && shift
+                    shift
+                done
+                view="$FAKE_GH_DIR/tracking-view.json"
+                [ -f "$view" ] || view="$FIXTURES/tracking-issue-empty.json"
+                jq -r "$jq_expr" "$view"
+                ;;
             create) echo "create" >> "$FAKE_GH_DIR/calls" ;;
             comment) echo "comment $3" >> "$FAKE_GH_DIR/calls" ;;
         esac

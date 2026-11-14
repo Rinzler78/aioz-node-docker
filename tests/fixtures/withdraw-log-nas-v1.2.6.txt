@@ -1,0 +1,17 @@
+Node rewards status :
+=> Balance : 255714972195087761 attoaioz => .25571 aioz
+=> Storage : 1872987103937745155 attoaioz => 1.87298 aioz
+=> Delivery : 120108867395339672540 attoaioz => 120.10886 aioz
+=> Withdraw : 121726139527082329934 attoaioz => 121.72613 aioz
+=> Delivery count : 104515
+=> Stored segment count : 14083. Size : 122.2G	/nodedata/data
+=> Remaining balance to withdraw : 744285027804912239 attoaioz => => .74428 aioz
+
+Node rewards status :
+=> Balance : 255718548581975389 attoaioz => .25571 aioz
+=> Storage : 1872990680324632783 attoaioz => 1.87299 aioz
+=> Delivery : 120108867395339672540 attoaioz => 120.10886 aioz
+=> Withdraw : 121726139527082329934 attoaioz => 121.72613 aioz
+=> Delivery count : 104515
+=> Stored segment count : 14083. Size : 122.2G	/nodedata/data
+=> Remaining balance to withdraw : 744281451418024611 attoaioz => => .74428 aioz

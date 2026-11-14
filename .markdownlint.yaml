@@ -1,0 +1,5 @@
+# Code blocks are ``` fences only: tests/harness.bats reads no other kind.
+MD046:
+  style: fenced
+MD048:
+  style: backtick

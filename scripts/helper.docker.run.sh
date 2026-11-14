@@ -3,7 +3,7 @@
 # Folder of this script, also when run by bare name (bash helper.docker.x.sh).
 HELPER_DIR="${BASH_SOURCE[0]%/*}"
 [ "$HELPER_DIR" != "${BASH_SOURCE[0]}" ] || HELPER_DIR=.
-# shellcheck source=helper.docker.stop.sh
+# shellcheck source=scripts/helper.docker.stop.sh
 source "$HELPER_DIR/helper.docker.stop.sh"
 
 docker_run() {

@@ -124,7 +124,7 @@ assert_repository_listed() {
     assert_repository_listed
     # Allowed, and removed before the search: comments, source lines, message
     # text without a command substitution, the watchdog health check and the
-    # scripts run inside the container by quick_test.sh (docker exec). Whatever
+    # scripts run inside the container by scripts/quick_test.sh (docker exec). Whatever
     # else is on the line is still searched; quoted or variable names
     # ("$TOOLS_DIR/x.sh", "$DIR/$name".sh) are caught.
     offenders=$(while IFS= read -r f; do

@@ -1,0 +1,257 @@
+#!/usr/bin/env bats
+# The documentation covers the repository: docs/architecture.md names every
+# `*.sh` script, workflow and Dockerfile, the compose file and the Makefile, so
+# a new one cannot stay off the map; the decision records of docs/adr/ keep
+# their format, their numbering and their index; CHANGELOG.md keeps the Keep a
+# Changelog format; README.md links every page of docs/ but the decision
+# records, which their index links.
+
+load helpers
+
+# The files the architecture page must name, one per line, listed from the
+# file system (never from the page), a link counting as a file:
+# - every `*.sh` script, at any depth;
+# - every Dockerfile, at any depth: `Dockerfile*`, `*.Dockerfile` and
+#   `Containerfile`, as in tests/helper.docker.bats, but no `*.dockerignore`;
+#   a copy such as Dockerfile.bak counts too: it has no place in the
+#   repository, and the failure shows it;
+# - every workflow GitHub runs, directly in .github/workflows/;
+# - the compose file and the Makefile.
+# Left out: git, the worktrees and the node data folder, which are not the
+# repository. The test doubles of .github/scripts/tests/fakes/ have no
+# extension: the page names their folder.
+architecture_files() {
+    local workflows=./.github/workflows
+    (cd "$REPO_ROOT" && find . \( -path ./.git -o -path ./.worktrees \
+        -o -path ./nodedata \) -prune -o \( -type f -o -type l \) \
+        \( -name '*.sh' \
+        -o -path "$workflows/*.y*ml" ! -path "$workflows/*/*" \
+        -o \( -name 'Dockerfile*' -o -name '*.Dockerfile' \
+        -o -name Containerfile \) ! -name '*.dockerignore' \) -print |
+        sed 's#^\./##' && printf '%s\n' docker-compose.yml Makefile) | sort
+}
+
+@test "docs/architecture.md names every *.sh script, workflow and Dockerfile" {
+    local page="$REPO_ROOT/docs/architecture.md" file files missing=""
+    [ -f "$page" ]
+    files=$(architecture_files)
+    # Each folder is listed: an empty glob would check nothing.
+    for file in tools/start.sh nas/delivery-watch.sh scripts/quick_test.sh \
+        .github/scripts/push-latest.sh .github/workflows/tests.yml \
+        tests/run.sh tests/Dockerfile Makefile; do
+        grep -qxF "$file" <<< "$files"
+    done
+    # Named as a code span, with its full path.
+    for file in $files; do
+        grep -qF "\`$file\`" "$page" || missing+="$file"$'\n'
+    done
+    [ -z "$missing" ] || {
+        printf 'not in docs/architecture.md:\n%s' "$missing"
+        false
+    }
+}
+
+# The decision records of docs/adr/, one path per line in number order, listed
+# from the file system: every file but the index, at any depth, so a stray
+# file or a record in a subfolder fails the naming test.
+adr_files() {
+    (cd "$REPO_ROOT/docs/adr" && find . -type f ! -path ./README.md |
+        sed 's#^\./##' | sort)
+}
+
+# The status a record must carry on its third line, right after its title: a
+# state and a date. A superseded record links to the record that replaced it.
+STATUS='^Status: (Proposed|Accepted|Deprecated|Superseded by \[([0-9]{4})\]\(([0-9]{4})-[a-z0-9-]+\.md\)), [0-9]{4}-[0-9]{2}-[0-9]{2}$'
+
+@test "every decision record is named NNNN-title.md, numbered from 0001 without gap" {
+    local files file expected=1
+    files=$(adr_files)
+    [ -n "$files" ]
+    for file in $files; do
+        [[ "$file" =~ ^([0-9]{4})-[a-z0-9-]+\.md$ ]] || {
+            echo "badly named: $file"
+            false
+        }
+        [ "$((10#${BASH_REMATCH[1]}))" -eq "$expected" ] || {
+            echo "number $expected missing before $file"
+            false
+        }
+        expected=$((expected + 1))
+    done
+}
+
+@test "every decision record has its title, a dated status, then context, decision and consequences" {
+    local files file number status page sections
+    files=$(adr_files)
+    [ -n "$files" ]
+    for file in $files; do
+        page="$REPO_ROOT/docs/adr/$file"
+        number=${file%%-*}
+        # The title carries the number of the file.
+        head -n 1 "$page" | grep -qE "^# $number\. [A-Z]" || {
+            echo "$file: title"
+            false
+        }
+        status=$(sed -n 3p "$page")
+        [[ "$status" =~ $STATUS ]] || {
+            echo "$file: status on line 3: $status"
+            false
+        }
+        # A record is superseded by a later one, under its own number.
+        if [ -n "${BASH_REMATCH[2]}" ]; then
+            [ "${BASH_REMATCH[2]}" = "${BASH_REMATCH[3]}" ] &&
+                [ "$((10#${BASH_REMATCH[2]}))" -gt "$((10#$number))" ] || {
+                echo "$file: superseded by ${BASH_REMATCH[2]}"
+                false
+            }
+        fi
+        sections=$(grep '^## ' "$page" | tr '\n' '|')
+        [ "$sections" = '## Context|## Decision|## Consequences|' ] || {
+            echo "$file: sections $sections"
+            false
+        }
+    done
+}
+
+# Limit: an entry inside an HTML comment of the index is read as listed.
+@test "the index of docs/adr lists every decision record by its title, in order, and nothing else" {
+    local index="$REPO_ROOT/docs/adr/README.md" listed file title
+    [ -f "$index" ]
+    listed=$(grep -oE '\]\([0-9]{4}-[a-z0-9-]+\.md\)' "$index" |
+        sed -e 's/^](//' -e 's/)$//')
+    [ "$listed" = "$(adr_files)" ] || {
+        printf 'index:\n%s\nfiles:\n%s\n' "$listed" "$(adr_files)"
+        false
+    }
+    # Each record is listed by its title, read from its first line.
+    for file in $listed; do
+        title=$(head -n 1 "$REPO_ROOT/docs/adr/$file")
+        grep -qF "[${title#\# }]($file)" "$index" || {
+            echo "no index entry [${title#\# }]($file)"
+            false
+        }
+    done
+}
+
+# CHANGELOG.md follows Keep a Changelog (https://keepachangelog.com/en/1.1.0/):
+# an Unreleased section, then the releases from the newest down, each with its
+# date; each version heading links to its changes on GitHub.
+# Limits: the releases are compared with each other, not with the git tags,
+# which a shallow CI checkout does not fetch; a heading inside a code block
+# counts; a yanked release (`[YANKED]` after the date) is refused, as the
+# repository has none.
+CHANGELOG_URL=https://github.com/Rinzler78/aioz-node-docker
+
+@test "CHANGELOG.md lists Unreleased, then the releases from the newest, each dated and linked" {
+    local page="$REPO_ROOT/CHANGELOG.md" headings line version date
+    local previous="" previous_date="" links expected=""
+    [ -f "$page" ]
+    headings=$(grep '^## ' "$page")
+    [ "$(head -n 1 <<< "$headings")" = '## [Unreleased]' ] || {
+        echo "first section: $(head -n 1 <<< "$headings")"
+        false
+    }
+    while IFS= read -r line; do
+        [[ "$line" =~ ^##\ \[([0-9]+\.[0-9]+\.[0-9]+)\]\ -\ ([0-9]{4}-[0-9]{2}-[0-9]{2})$ ]] || {
+            echo "release heading: $line"
+            false
+        }
+        version=${BASH_REMATCH[1]}
+        date=${BASH_REMATCH[2]}
+        if [ -z "$previous" ]; then
+            expected="[Unreleased]: $CHANGELOG_URL/compare/v$version...develop"
+        else
+            # Strictly older than the release above it, and not dated after it.
+            [ "$(printf '%s\n%s\n' "$version" "$previous" | sort -V | head -n 1)" = "$version" ] &&
+                [ "$version" != "$previous" ] && [[ ! "$date" > "$previous_date" ]] || {
+                echo "$version ($date) listed under $previous ($previous_date)"
+                false
+            }
+            expected+=$'\n'"[$previous]: $CHANGELOG_URL/compare/v$version...v$previous"
+        fi
+        previous=$version
+        previous_date=$date
+    done < <(tail -n +2 <<< "$headings")
+    [ -n "$previous" ]
+    expected+=$'\n'"[$previous]: $CHANGELOG_URL/releases/tag/v$previous"
+    # The link definitions, in order, and nothing else.
+    links=$(grep -E '^\[[^]]+\]: ' "$page")
+    [ "$links" = "$expected" ] || {
+        printf 'links:\n%s\nexpected:\n%s\n' "$links" "$expected"
+        false
+    }
+}
+
+@test "each release of CHANGELOG.md groups its changes under the Keep a Changelog types only" {
+    local page="$REPO_ROOT/CHANGELOG.md" other empty
+    [ -f "$page" ]
+    [ "$(head -n 1 "$page")" = '# Changelog' ]
+    other=$(tail -n +2 "$page" | grep -E '^#' | grep -vE '^## |^### (Added|Changed|Deprecated|Removed|Fixed|Security)$') || true
+    [ -z "$other" ] || {
+        printf 'headings outside the types:\n%s\n' "$other"
+        false
+    }
+    # A release lists at least one change, and a type at least one entry
+    # (`* ` bullet); Unreleased may be empty. The link definitions and the
+    # comments at the end close the last section.
+    empty=$(awk '
+        function close_type() { if (type && !items) print section ": " type }
+        /^## / { close_type(); if (release && !changes) print release
+            section = $0; release = ($0 ~ /^## \[Unreleased\]/) ? "" : $0
+            changes = 0; type = ""; next }
+        /^### / { close_type(); type = $0; items = 0; next }
+        /^\* / { if (type) { items = 1; changes = 1 } }
+        /^<!--|^\[/ { close_type(); type = "" }
+        END { close_type(); if (release && !changes) print release }' "$page")
+    [ -z "$empty" ] || {
+        printf 'releases or types with no change:\n%s\n' "$empty"
+        false
+    }
+}
+
+# The pages of docs/ that README.md must link, one per line: every page but the
+# decision records, which their index (docs/adr/README.md) links.
+# A link is an inline link from the repository root, with or without an anchor:
+# ](docs/ci.md) or ](docs/ci.md#tests). Limits: a ./docs/ link or a
+# reference-style link fails the test (loud, never a page left out); a link in
+# a code span or an HTML comment counts.
+docs_pages() {
+    (cd "$REPO_ROOT" && find docs -name '*.md' ! -path 'docs/adr/[0-9]*' | sort)
+}
+
+@test "README.md links every page of docs/" {
+    local pages page missing=""
+    pages=$(docs_pages)
+    grep -qxF docs/architecture.md <<< "$pages"
+    grep -qxF docs/adr/README.md <<< "$pages"
+    for page in $pages; do
+        grep -qF -e "]($page)" -e "]($page#" "$REPO_ROOT/README.md" ||
+            missing+="$page"$'\n'
+    done
+    [ -z "$missing" ] || {
+        printf 'not linked from README.md:\n%s' "$missing"
+        false
+    }
+}
+
+# Limit: only the workflows of this repository are read, by their
+# actions/workflows/<file> path in a URL of README.md.
+@test "every workflow a URL of README.md names exists, and its badge follows the default branch" {
+    # A badge shows the default branch, the code visitors read: no branch=.
+    ! grep -nE 'actions/workflows/[^)]*branch=' "$REPO_ROOT/README.md" || {
+        echo 'a workflow badge names a branch'
+        false
+    }
+    local workflows workflow missing=""
+    workflows=$(grep -oE 'Rinzler78/aioz-node-docker/actions/workflows/[^/?)#]+' \
+        "$REPO_ROOT/README.md" | sed 's#.*/##' | sort -u)
+    # The badges are found: an empty list would check nothing.
+    grep -qxF tests.yml <<< "$workflows"
+    for workflow in $workflows; do
+        [ -f "$REPO_ROOT/.github/workflows/$workflow" ] || missing+="$workflow"$'\n'
+    done
+    [ -z "$missing" ] || {
+        printf 'workflows named by README.md and missing:\n%s' "$missing"
+        false
+    }
+}
