@@ -22,6 +22,9 @@ For more information about the AIOZ project, visit: <https://aioz.network/>
 
 Official downloads and client installation: <https://aioz.network/aioz-node>
 
+How the containers, the NAS watch and the release pipeline fit together:
+[docs/architecture.md](docs/architecture.md).
+
 ## Table of contents
 
 * [Docker image creation](#docker-image-creation)

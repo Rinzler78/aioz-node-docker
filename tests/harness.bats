@@ -6,7 +6,12 @@ load helpers
 
 bats_require_minimum_version 1.5.0
 
-HARNESS_PAGES=(AGENTS.md docs/ai-harness.md)
+# The pages whose cited paths and links must exist: AGENTS.md and every page of
+# docs/, one per line, relative to the repository root.
+doc_pages() {
+    echo AGENTS.md
+    (cd "$REPO_ROOT" && compgen -G 'docs/*.md')
+}
 
 # Repository paths named in the code of a Markdown file, one per line: the
 # words of its code spans (read per paragraph, so a span wrapped across lines
@@ -83,9 +88,12 @@ pointer_extra_lines() {
     grep -q '^## Definition of done$' "$REPO_ROOT/AGENTS.md"
 }
 
-@test "every path and link cited by AGENTS.md and the harness page exists" {
-    local doc dir path missing=""
-    for doc in "${HARNESS_PAGES[@]}"; do
+@test "every path and link cited by AGENTS.md and the docs pages exists" {
+    local doc dir path pages missing=""
+    pages=$(doc_pages)
+    # The harness page among them: an empty list would check nothing.
+    grep -qx docs/ai-harness.md <<< "$pages"
+    for doc in $pages; do
         [ -f "$REPO_ROOT/$doc" ]
         dir=$(dirname "$doc")
         while IFS= read -r path; do
