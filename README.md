@@ -1,26 +1,92 @@
-# Purpose
+# AIOZ DePIN node in Docker
 
-[![Docker Build](https://img.shields.io/badge/build-docker-blue?logo=docker)](https://www.docker.com/)
+[![Tests](https://github.com/Rinzler78/aioz-node-docker/actions/workflows/tests.yml/badge.svg?branch=develop)](https://github.com/Rinzler78/aioz-node-docker/actions/workflows/tests.yml)
+[![pre-commit](https://github.com/Rinzler78/aioz-node-docker/actions/workflows/pre-commit.yml/badge.svg?branch=develop)](https://github.com/Rinzler78/aioz-node-docker/actions/workflows/pre-commit.yml)
+[![Release](https://img.shields.io/github/v/release/Rinzler78/aioz-node-docker)](https://github.com/Rinzler78/aioz-node-docker/releases)
 [![Docker Pulls](https://img.shields.io/docker/pulls/rinzlerfr/aioznode)](https://hub.docker.com/r/rinzlerfr/aioznode)
 [![Docker Image Size](https://img.shields.io/docker/image-size/rinzlerfr/aioznode)](https://hub.docker.com/r/rinzlerfr/aioznode)
-[![License](https://img.shields.io/github/license/Rinzler78/aioz-node-docker)](./LICENSE)
-[![Stars](https://img.shields.io/github/stars/Rinzler78/aioz-node-docker?style=social)](https://github.com/Rinzler78/aioz-node-docker/stargazers)
-[![Issues](https://img.shields.io/github/issues/Rinzler78/aioz-node-docker)](https://github.com/Rinzler78/aioz-node-docker/issues)
-[![Open PRs](https://img.shields.io/github/issues-pr/Rinzler78/aioz-node-docker)](https://github.com/Rinzler78/aioz-node-docker/pulls)
-[![Last Commit](https://img.shields.io/github/last-commit/Rinzler78/aioz-node-docker/develop)](https://github.com/Rinzler78/aioz-node-docker/commits/develop)
-[![GitHub Actions CI](https://github.com/Rinzler78/aioz-node-docker/actions/workflows/docker-image.yml/badge.svg?branch=develop)](https://github.com/Rinzler78/aioz-node-docker/actions/workflows/docker-image.yml)
-[![Release](https://img.shields.io/github/v/release/Rinzler78/aioz-node-docker)](https://github.com/Rinzler78/aioz-node-docker/releases)
-[![Shell](https://img.shields.io/badge/shell-bash-blue?logo=gnu-bash)](https://www.gnu.org/software/bash/)
-[![Platform](https://img.shields.io/badge/platform-alpine-informational?logo=alpinelinux)](https://alpinelinux.org/)
-[![Contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/Rinzler78/aioz-node-docker/issues)
-[![Made with Love](https://img.shields.io/badge/made%20with-%E2%9D%A4-red)](https://github.com/Rinzler78/aioz-node-docker)
+[![License](https://img.shields.io/github/license/Rinzler78/aioz-node-docker)](LICENSE)
 
-This repository allows you to build a Docker image containing all necessary
-components to run an AIOZ node in a fully automated and reproducible way.
+A Docker image that runs an [AIOZ DePIN](https://aioz.network/aioz-node) node
+unattended: it installs the latest upstream CLI at every start, proves with its
+health check that the node works, restarts it when it does not, and withdraws
+the rewards to a wallet of your choice. It runs in production on a Synology NAS.
 
-For more information about the AIOZ project, visit: <https://aioz.network/>
+The repository is also a worked example of how a small infrastructure project
+can be built: every rule it follows is written down, and most of them are
+checked by a test.
 
-Official downloads and client installation: <https://aioz.network/aioz-node>
+## Highlights
+
+* **Self-updating, safely.** Each start looks up the latest upstream release,
+  checks the archive against its `SHA256SUMS` and keeps the installed CLI when
+  the update fails ([ADR 0001](docs/adr/0001-update-at-every-start.md)).
+* **A health check that proves the function.** The node must answer and the
+  wallet must read its rewards; a watchdog stops the node after repeated
+  failures so that the container restarts
+  ([ADR 0002](docs/adr/0002-functional-health-check-and-watchdog.md)).
+* **One image, two modes.** The same image runs the node or the reward
+  withdrawal, the latter with the node data mounted read-only
+  ([ADR 0003](docs/adr/0003-one-image-two-modes.md)).
+* **Upstream bugs handled, not hidden.** The CLI `start` of v1.2.6 is broken
+  upstream: the node runs the embedded `aioz-io`, and a daily workflow reports
+  what changes upstream
+  ([ADR 0005](docs/adr/0005-run-the-embedded-aioz-io.md),
+  [upstream watch](docs/ci.md#upstream-watch)).
+* **Tested shell.** bats suites run in Docker, against fakes asserted on the
+  `PATH` and real captures of the GitHub API and the CLI output. Fitness tests
+  turn repository rules into tests: script structure, the architecture map,
+  the decision records, the changelog, the links of this page.
+* **Hardened delivery.** Workflows are read-only by default, their actions are
+  pinned to a commit and checked by zizmor; trivy scans the configuration and
+  the image; outdated hooks and actions block the commit; `latest` only moves to
+  the highest release ([CI and release](docs/ci.md)).
+* **Operated, not only built.** A watch on the NAS host emails through DSM when
+  the node stops earning delivery rewards, then when it earns them again
+  ([Synology NAS](docs/nas.md#delivery-watch)).
+* **AI harness, model and tool agnostic.** One file, [AGENTS.md](AGENTS.md),
+  holds the instructions of every coding agent; tests keep the tool-specific
+  files from drifting ([AI harness](docs/ai-harness.md)).
+
+## Quick start
+
+Create a folder for the node data. Put your wallet key there, named
+privkey.json, or let the node create a new wallet at its first start, and keep
+a backup of it.
+
+```sh
+mkdir -p ~/aioznode/nodedata
+docker run -d --name aioznode --restart=always -p 1317:1317 \
+  -v ~/aioznode/nodedata:/nodedata rinzlerfr/aioznode
+```
+
+The node and the automatic reward withdrawal together, from a clone of this
+repository, with `docker-compose.yml`:
+
+```sh
+WITHDRAW_ADDRESS_HEX=0xYourAddress \
+  NODEDATA_PATH=~/aioznode/nodedata \
+  docker compose up -d
+```
+
+To build the image yourself: `docker build -t aioznode .` in the clone; `make`
+lists the repository commands (build, run, tests, lint).
+
+## Configuration
+
+* `WITHDRAW_ADDRESS_HEX` (required in withdraw mode): the `0x` address that
+  receives the rewards.
+* `WITHDRAW_MIN_VALUE` (`10^18`, 1 AIOZ): the balance, in attoaioz, above which
+  the rewards are withdrawn.
+* `CHECK_FREQ` (`60`): seconds between two withdraw checks.
+* `RUN_TIMEOUT` (`86400`): seconds before the node stops, so that the container
+  restarts and updates.
+* `HEALTH_INTERVAL`, `HEALTH_TIMEOUT`, `HEALTH_RETRIES` (`60`, `30`, `3`): the
+  watchdog timings.
+* `GITHUB_TOKEN` (unset): authenticates the release lookup.
+
+Every setting, the volume and the port:
+[environment variables](docs/image.md#environment-variables).
 
 ## Documentation
 
@@ -34,74 +100,14 @@ Official downloads and client installation: <https://aioz.network/aioz-node>
 * [Decision records](docs/adr/README.md): why they are built that way.
 * [AI harness](docs/ai-harness.md): how coding agents work on this
   repository.
+* [CHANGELOG.md](CHANGELOG.md): the changes of each release.
 
-## Table of contents
+## Contributing
 
-* [Documentation](#documentation)
-* [Run](#run)
-  * [Before running](#before-running)
-  * [Run instructions](#run-instructions)
-* [Support](#support)
-* [Contribution](#contribution)
-  * [Security](#security)
-  * [AI harness](#ai-harness)
-
----
-
-## Run
-
-### Before running
-
-#### nodedata directory
-
-Create a directory on your Docker host to be mounted as the node's data
-directory. Example:
-
-```sh
-mkdir -p ~/MyDockers/aioznode/nodedata
-```
-
-#### Private key configuration
-
-Place your `privkey.json` file in the data directory you will mount (see below).
-Without one, the node creates a new wallet there at its first start: keep a
-backup of it.
-
-### Run instructions
-
-The examples run the image built locally as `aioznode` (`docker build -t
-aioznode .`, see [Build instructions](docs/image.md#build-instructions)); the
-published image is
-[rinzlerfr/aioznode](https://hub.docker.com/r/rinzlerfr/aioznode), which
-`docker-compose.yml` uses.
-
-Example run command:
-
-```sh
-docker run -d \
-  -v ~/MyDockers/aioznode/nodedata:/nodedata \
-  --restart=always \
-  --name aioznode \
-  -it aioznode
-```
-
-Where:
-
-* `~/MyDockers/aioznode/nodedata` is your persistent data directory on the host
-* `/nodedata` is the internal container path
-
-The node will automatically check for updates and start with the provided
-private key.
-
-To run the node and the automatic reward withdrawal together:
-
-```sh
-WITHDRAW_ADDRESS_HEX=0xYourAddress \
-  NODEDATA_PATH=~/MyDockers/aioznode/nodedata \
-  docker compose up -d
-```
-
----
+Issues and pull requests are welcome: [CONTRIBUTING.md](CONTRIBUTING.md)
+describes the set up, the steps of a change, the review and the release.
+Report a vulnerability privately, as described in [SECURITY.md](SECURITY.md),
+never in a public issue.
 
 ## Support
 
@@ -110,29 +116,6 @@ If you find this project useful, please consider donating:
 * AIOZ: `0x4D11B64d9bb0652a92FCaD019d7Fc79f14821571`
 * AIOZ (bech32): `aioz1f5gmvnvmkpjj4yhu45qe6l78nu2gy9t3mklmct`
 
----
+## License
 
-## Contribution
-
-Feel free to open issues or submit pull requests for improvements or bug fixes.
-[CONTRIBUTING.md](CONTRIBUTING.md) describes the set up, the steps of a change,
-the review and the release; [CHANGELOG.md](CHANGELOG.md) lists the changes of
-each release.
-
-### Security
-
-Report a vulnerability privately, as described in [SECURITY.md](SECURITY.md),
-never in a public issue.
-
-### AI harness
-
-The repository is developed with coding agents, model and tool agnostic.
-[AGENTS.md](AGENTS.md) is the single source of their instructions (commands,
-conventions, safety rules, definition of done); `CLAUDE.md` and
-`.gemini/settings.json` only point to it, and `tests/harness.bats` fails if
-they drift. The method, the checks and the review loop are described in
-[docs/ai-harness.md](docs/ai-harness.md).
-
----
-
-Have fun! ;)
+[MIT](LICENSE)
