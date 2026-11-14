@@ -46,6 +46,7 @@ decision records of [docs/adr](docs/adr/README.md).
 * [Upstream watch](#upstream-watch)
 * [Support](#support)
 * [Contribution](#contribution)
+  * [Security](#security)
   * [AI harness](#ai-harness)
   * [Pre-commit hooks](#pre-commit-hooks)
 
@@ -458,6 +459,14 @@ If you find this project useful, please consider donating:
 ## Contribution
 
 Feel free to open issues or submit pull requests for improvements or bug fixes.
+[CONTRIBUTING.md](CONTRIBUTING.md) describes the set up, the steps of a change,
+the review and the release; [CHANGELOG.md](CHANGELOG.md) lists the changes of
+each release.
+
+### Security
+
+Report a vulnerability privately, as described in [SECURITY.md](SECURITY.md),
+never in a public issue.
 
 ### AI harness
 

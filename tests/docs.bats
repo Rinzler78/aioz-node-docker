@@ -130,3 +130,61 @@ STATUS='^Status: (Proposed|Accepted|Deprecated|Superseded by \[([0-9]{4})\]\(([0
         }
     done
 }
+
+# CHANGELOG.md follows Keep a Changelog (https://keepachangelog.com/en/1.1.0/):
+# an Unreleased section, then the releases from the newest down, each with its
+# date; each version heading links to its changes on GitHub.
+# Limit: the releases are compared with each other, not with the git tags,
+# which a shallow CI checkout does not fetch.
+CHANGELOG_URL=https://github.com/Rinzler78/aioz-node-docker
+
+@test "CHANGELOG.md lists Unreleased, then the releases from the newest, each dated and linked" {
+    local page="$REPO_ROOT/CHANGELOG.md" headings line version date
+    local previous="" previous_date="" links expected=""
+    [ -f "$page" ]
+    headings=$(grep '^## ' "$page")
+    [ "$(head -n 1 <<< "$headings")" = '## [Unreleased]' ] || {
+        echo "first section: $(head -n 1 <<< "$headings")"
+        false
+    }
+    while read -r line; do
+        [[ "$line" =~ ^##\ \[([0-9]+\.[0-9]+\.[0-9]+)\]\ -\ ([0-9]{4}-[0-9]{2}-[0-9]{2})$ ]] || {
+            echo "release heading: $line"
+            false
+        }
+        version=${BASH_REMATCH[1]}
+        date=${BASH_REMATCH[2]}
+        if [ -z "$previous" ]; then
+            expected="[Unreleased]: $CHANGELOG_URL/compare/v$version...develop"
+        else
+            # Strictly older than the release above it, and not dated after it.
+            [ "$(printf '%s\n%s\n' "$version" "$previous" | sort -V | head -n 1)" = "$version" ] &&
+                [ "$version" != "$previous" ] && [[ ! "$date" > "$previous_date" ]] || {
+                echo "$version ($date) listed under $previous ($previous_date)"
+                false
+            }
+            expected+=$'\n'"[$previous]: $CHANGELOG_URL/compare/v$version...v$previous"
+        fi
+        previous=$version
+        previous_date=$date
+    done < <(tail -n +2 <<< "$headings")
+    [ -n "$previous" ]
+    expected+=$'\n'"[$previous]: $CHANGELOG_URL/releases/tag/v$previous"
+    # The link definitions, in order, and nothing else.
+    links=$(grep -E '^\[[^]]+\]: ' "$page")
+    [ "$links" = "$expected" ] || {
+        printf 'links:\n%s\nexpected:\n%s\n' "$links" "$expected"
+        false
+    }
+}
+
+@test "CHANGELOG.md groups the changes under the Keep a Changelog types only" {
+    local page="$REPO_ROOT/CHANGELOG.md" other
+    [ -f "$page" ]
+    [ "$(head -n 1 "$page")" = '# Changelog' ]
+    other=$(tail -n +2 "$page" | grep -E '^#' | grep -vE '^## |^### (Added|Changed|Deprecated|Removed|Fixed|Security)$') || true
+    [ -z "$other" ] || {
+        printf 'headings outside the types:\n%s\n' "$other"
+        false
+    }
+}
