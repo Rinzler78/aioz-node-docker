@@ -30,7 +30,7 @@ flowchart TB
     wallet["your wallet"]
 
     releases -- "latest CLI, SHA256SUMS checked" --> node
-    releases -- "latest CLI" --> withdraw
+    releases -- "latest CLI, SHA256SUMS checked" --> withdraw
     data -- "read-write" --> node
     data -- "read-only" --> withdraw
     node <--> network
@@ -53,8 +53,9 @@ docker logs -f aioznode    # until: Wallet successfully configured
 
 > [!WARNING]
 > At its first start the node creates a new wallet, and the volume holds the
-> only copy of its key. Back the key up, then keep it out of any clone:
-> `docker cp` writes it on the machine that runs the command.
+> only copy of its key. Back the key up to a safe place, out of any clone:
+> `docker cp` writes it on the machine that runs the command, not on a remote
+> Docker host.
 
 ```sh
 docker cp aioznode:/nodedata/privkey.json privkey.json

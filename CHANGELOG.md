@@ -21,8 +21,8 @@ tag. The numbers in parentheses are the pull requests.
 * `README.md` is a front page: a one-line summary, a diagram of the
   containers, a shorter quick start with the key backup as a warning, then the
   engineering practices. The details of running the image, an existing wallet,
-  a host folder and compose, move to `docs/image.md`. Tests keep the page under
-  650 words of prose and free of release versions (#34).
+  a host folder and compose, move to `docs/image.md`. Tests keep the page at
+  most 700 words of prose and free of release versions (#34).
 
 ## [0.0.4] - 2026-11-14
 

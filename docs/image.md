@@ -43,7 +43,9 @@ WITHDRAW_ADDRESS_HEX=0xYourAddress docker compose up -d
 * `docker compose create`, then
   `docker compose cp privkey.json aioznode:/nodedata/privkey.json`, then
   `docker compose up -d` imports an existing key;
-  `docker compose cp aioznode:/nodedata/privkey.json privkey.json` backs it up.
+  `docker compose cp aioznode:/nodedata/privkey.json privkey.json` backs it up,
+  into the clone: `chmod 600 privkey.json`, then move it to a safe place, out
+  of the clone.
 * `docker compose down -v` deletes the volume when compose created it, and the
   key with it.
 * `NODEDATA_PATH` replaces the volume with a host folder: give an absolute path
