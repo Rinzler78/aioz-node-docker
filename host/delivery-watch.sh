@@ -12,8 +12,9 @@
 # every run until fixed. The scheduler reports a task that fails, with its
 # output. State: STATE_FILE holds "<count> <epoch of its last change> <ok|stalled>".
 WITHDRAW_CONTAINER="${WITHDRAW_CONTAINER:-aioz-compose-aioznode-auto-withdraw-reward-1}"
-# Next to the script by default: its install folder, whatever the host. Read
-# without dirname: a task with a minimal PATH may have no tools at all.
+# Next to the script by default: its install folder, whatever the host (next
+# to the link for a symbolic link). Read with a bash expansion rather than
+# dirname, one command less to find.
 SCRIPT_DIR="${BASH_SOURCE[0]%/*}"
 [ "$SCRIPT_DIR" != "${BASH_SOURCE[0]}" ] || SCRIPT_DIR=.
 STATE_FILE="${STATE_FILE:-$SCRIPT_DIR/delivery-watch.state}"
@@ -60,6 +61,11 @@ delivery_watch() {
     fi
     if ! is_number "$STALL_HOURS" || [ "$STALL_HOURS" = 0 ]; then
         echo "ERROR: STALL_HOURS must be a number of hours above 0" >&2
+        return 1
+    fi
+    # The logs are read through a pipe that would hide a missing client.
+    if ! command -v "$DOCKER" > /dev/null; then
+        echo "ERROR: no Docker client: $DOCKER (set DOCKER)" >&2
         return 1
     fi
     count=$(delivery_count)

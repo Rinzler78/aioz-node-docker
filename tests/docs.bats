@@ -357,11 +357,11 @@ owner_hardware() {
     local files found
     cd "$REPO_ROOT"
     # Left out: the history (CHANGELOG.md, the decision records), git, the
-    # worktrees and the node data. find lists the files: the grep of the test
-    # image (BusyBox) has no --exclude.
+    # worktrees, and the key and settings files git ignores, never read. find
+    # lists the files: the grep of the test image (BusyBox) has no --exclude.
     mapfile -t files < <(find . \( -path ./.git -o -path ./.worktrees \
         -o -path ./nodedata -o -path ./docs/adr \) -prune -o -type f \
-        ! -name CHANGELOG.md -print)
+        ! -name CHANGELOG.md ! -name 'privkey*.json' ! -name .env -print)
     [ "${#files[@]}" -gt 50 ]
     found=$(owner_hardware "${files[@]}")
 

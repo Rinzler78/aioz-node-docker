@@ -196,6 +196,18 @@ state() {
     [ "$(cat "$dir/delivery-watch.state")" = "104515 $NOW ok" ]
 }
 
+@test "keeps its state in the current folder when run by its bare name" {
+    local dir="$BATS_TEST_TMPDIR/installed"
+    mkdir "$dir"
+    cp "$SCRIPT" "$dir/delivery-watch.sh"
+
+    cd "$dir"
+    STATE_FILE="" run bash delivery-watch.sh
+
+    [ "$status" -eq 0 ]
+    [ "$(cat "$dir/delivery-watch.state")" = "104515 $NOW ok" ]
+}
+
 @test "runs the docker of the PATH by default" {
     local bin="$BATS_TEST_TMPDIR/bin"
     mkdir "$bin"
@@ -207,4 +219,14 @@ state() {
 
     [ "$status" -eq 0 ]
     [ "$(state)" = "104515 $NOW ok" ]
+}
+
+@test "names the Docker client it cannot find, and keeps the state" {
+    echo "104515 $((NOW - DAY)) ok" > "$STATE_FILE"
+
+    DOCKER="$BATS_TEST_TMPDIR/no-docker" run "$SCRIPT"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"no Docker client: $BATS_TEST_TMPDIR/no-docker (set DOCKER)"* ]]
+    [ "$(state)" = "104515 $((NOW - DAY)) ok" ]
 }

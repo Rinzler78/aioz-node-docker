@@ -22,9 +22,9 @@ when there is something to report. Once per event:
   checked before any arithmetic, as bash would run commands hidden in it and
   read a leading 0 as octal.
 
-On every run until fixed: no count in the logs (reward container removed or
-renamed), a state file that cannot be written, or a `STALL_HOURS` that is not a
-number above 0.
+On every run until fixed: no Docker client at `DOCKER`, no count in the logs
+(reward container removed or renamed), a state file that cannot be written, or
+a `STALL_HOURS` that is not a number above 0.
 
 The script prints its message and exits 1: the scheduler turns that into a
 notification. cron mails the output of a task to its owner when `MAILTO` is
@@ -33,7 +33,9 @@ set; a task scheduler that notifies on failure does it on the exit code.
 ## Install
 
 1. Copy `host/delivery-watch.sh` to a folder of the Docker host, where the
-   state file will live too (for example `/opt/aioznode/`).
+   state file will live too (for example `/opt/aioznode/`). Only the user of
+   the task may write to that folder: that user can read the Docker logs, so
+   it is as powerful as root, and runs whatever the folder holds.
 2. Schedule it daily, as a user allowed to run `docker logs`. With cron:
 
    ```sh
