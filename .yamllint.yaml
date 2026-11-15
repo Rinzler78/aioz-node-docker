@@ -6,3 +6,8 @@ rules:
     # GitHub workflows need the `on:` key, which YAML 1.1 reads as a boolean.
     # Values are still checked.
     check-keys: false
+  line-length:
+    # An action pinned to a commit (`- uses: owner/repo@<40 hex>`) cannot be
+    # broken: deps-freshness.sh reads it on one line. A long line is still
+    # flagged when its value has a space.
+    allow-non-breakable-inline-mappings: true

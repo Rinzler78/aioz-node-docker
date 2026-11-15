@@ -4,7 +4,8 @@
 # a new one cannot stay off the map; the decision records of docs/adr/ keep
 # their format, their numbering and their index; CHANGELOG.md keeps the Keep a
 # Changelog format; README.md links every page of docs/ but the decision
-# records, which their index links.
+# records, which their index links, and stays a front page: a budget of words
+# of prose, no release version.
 
 load helpers
 
@@ -252,6 +253,71 @@ docs_pages() {
     done
     [ -z "$missing" ] || {
         printf 'workflows named by README.md and missing:\n%s' "$missing"
+        false
+    }
+}
+
+# The prose of README.md, one line per line of the page, without what a reader
+# skims past. Decision table:
+# - counted: headings, paragraphs, list items, alerts, links;
+# - left out: fenced code blocks (``` fences, indented under a list item or not,
+#   a Mermaid diagram included) and the badge lines, which start with `[![`.
+# Limits: `~~~` fences and indented code blocks count as prose, and so does
+# text after a badge on its line; this page has none of them. `wc -w` counts
+# the Markdown marks (`#`, `*`, `>`) as words, the same way on every run.
+readme_prose() {
+    awk '/^[[:space:]]*```/ { code = !code; next } !code && !/^\[!\[/' "$1"
+}
+
+@test "readme_prose leaves out the code blocks and the badges, and keeps the rest" {
+    local page="$BATS_TEST_TMPDIR/README.md"
+    printf '%s\n' '# Title' '[![Tests](x.svg)](y)' 'A paragraph.' '```sh' \
+        'docker run x' '```' '> [!WARNING]' '> Back up.' '```mermaid' \
+        'flowchart LR' '```' '* item' '  ```sh' '  make v1.2.6' '  ```' > "$page"
+    [ "$(readme_prose "$page")" = "$(printf '%s\n' '# Title' 'A paragraph.' \
+        '> [!WARNING]' '> Back up.' '* item')" ]
+}
+
+# A front page, not a manual: the commands of the quick start, the details in
+# docs/. The budget is in words of prose, the code blocks are not counted; it
+# leaves about a tenth of headroom over the page as it was made a front page, so
+# a longer addition moves details to docs/ rather than raising the budget.
+@test "README.md stays a front page: at most 700 words of prose" {
+    local budget=700 words
+    words=$(readme_prose "$REPO_ROOT/README.md" | wc -w | tr -d ' ')
+    [ "$words" -le "$budget" ] || {
+        echo "README.md has $words words of prose, over $budget: move details to docs/"
+        false
+    }
+}
+
+# The lines of stdin that name a release version, numbered; fails when grep
+# fails (a bad pattern), not when nothing matches. Decision table: flagged
+# `1.2.6`, `v1.2.6`, `v0.0.4.`, `v2.0`; accepted `vX.Y.Z`, `10^18`, a port such
+# as `1317`, an address such as `0x4D11B64d`, `1.5 MB`. Limits: a number of
+# three or more dotted parts that is not a version (an IP address) is flagged
+# too; a two-part version without its `v` (`Alpine 3.20`) is not.
+prose_versions() {
+    local status=0
+    grep -nE '\bv[0-9]+\.[0-9]+\b|\b[0-9]+\.[0-9]+\.[0-9]+\b' || status=$?
+    [ "$status" -le 1 ]
+}
+
+@test "prose_versions flags a release version, and nothing else" {
+    [ "$(printf '%s\n' 'start of v1.2.6 fails' 'CLI 1.2.6' 'see v0.0.4.' \
+        'tag vX.Y.Z' '10^18 attoaioz' 'port 1317' '0x4D11B64d' 'v2.0 out' \
+        '1.5 MB' | prose_versions)" = "$(printf '%s\n' \
+            '1:start of v1.2.6 fails' '2:CLI 1.2.6' '3:see v0.0.4.' '8:v2.0 out')" ]
+}
+
+# A version goes stale on the page that every visitor reads: it belongs to the
+# decision records, the changelog and docs/. Limit: the code blocks are not
+# read.
+@test "README.md names no release version in its prose" {
+    local versions
+    versions=$(readme_prose "$REPO_ROOT/README.md" | prose_versions)
+    [ -z "$versions" ] || {
+        printf 'README.md names a version, line of its prose:\n%s\n' "$versions"
         false
     }
 }

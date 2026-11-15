@@ -20,3 +20,4 @@ is described in [docs/architecture.md](../architecture.md).
 6. [0006. The latest tag follows the highest release only](0006-latest-follows-the-highest-release.md)
 7. [0007. Watch the deliveries on the NAS host, notify through the task scheduler](0007-delivery-watch-on-the-host.md)
 8. [0008. One source of instructions for every coding agent](0008-one-source-for-agent-instructions.md)
+9. [0009. Keep the node data in a named volume, on any Docker context](0009-node-data-in-a-named-volume.md)

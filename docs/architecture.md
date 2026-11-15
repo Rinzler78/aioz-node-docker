@@ -10,13 +10,15 @@ file and the `Makefile`. The reasons behind the main choices are recorded in
 
 ## Runtime
 
-In production the two containers run from `docker-compose.yml` on a Synology
-NAS, next to a host script that watches the delivery rewards.
+The two containers run from `docker-compose.yml` on any Docker host, local or
+remote, and share the node data, a named volume or a folder of the host. The
+owner's deployment, a Synology NAS in the diagram, keeps it in a folder and
+adds a host script that watches the delivery rewards.
 
 ```mermaid
 flowchart LR
-    subgraph host["Docker host (Synology NAS)"]
-        data[("node data folder: privkey.json, node state")]
+    subgraph host["Docker host (here a Synology NAS)"]
+        data[("node data, volume or folder: privkey.json, node state")]
         subgraph node["container aioznode"]
             start["start.sh: deploy, then aioz-io start"]
             watchdog["watchdog: node.health.sh"]
@@ -54,7 +56,7 @@ flowchart LR
    `tools/git.releases.latest.sh` and skips the update when the installed
    version, read with `tools/version.lib.sh`, is already the latest), extracts
    the matching `aioz-io` (`tools/node.io.sh`), creates the wallet when the
-   data folder has none (`tools/wallet.configure.sh`), then removes the
+   node data has none (`tools/wallet.configure.sh`), then removes the
    packages of other kernels and the package cache.
 3. It runs `aioz-io start` for `RUN_TIMEOUT` seconds (24 hours by default),
    with upstream auto-update off: updates run at each start instead.
@@ -107,6 +109,7 @@ flowchart LR
     latest -- "yes" --> moveLatest["move :latest"]
     latest -- "no" --> keep[":latest stays"]
     moveLatest --> ghRelease["GitHub release"]
+    moveLatest --> hubOverview["Docker Hub overview from README.md"]
     keep --> ghRelease
 ```
 
@@ -124,15 +127,20 @@ The workflows:
   that changes `.github/scripts/` or this workflow, only the tests of the CI
   scripts;
 * `.github/workflows/docker-image.yml`, on a `v*` tag: build, `tests/run.sh`,
-  `scripts/quick_test.sh`, push, GitHub release.
+  `scripts/quick_test.sh`, push, GitHub release, and the Docker Hub overview
+  when `:latest` moves.
 
-The CI scripts; the first three are tested against fakes by
+The CI scripts; the first four are tested against fakes by
 `.github/scripts/tests/run.sh`:
 
 * `.github/scripts/push-latest.sh` moves `:latest` only to the highest
   `vX.Y.Z` tag, read at push time: a fix on an older line never sends the
   hosts that follow `:latest` back. It shares the tag pattern of
-  `.github/scripts/release.lib.sh`.
+  `.github/scripts/release.lib.sh`. It tells the later jobs when `:latest`
+  moved.
+* `.github/scripts/hub-readme.sh` turns `README.md` into the Docker Hub
+  overview of a release: links to the release on GitHub, no Mermaid diagram
+  nor GitHub alert, within the length limit.
 * `.github/scripts/upstream-watch.sh` reports what changed upstream (hubs,
   releases, the issue of the broken `start`) on a tracking issue, measured
   against its own last report.

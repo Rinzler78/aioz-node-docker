@@ -31,8 +31,10 @@ fails when:
   file or folder that does not exist: a renamed script leaves no stale command.
   A code word with a slash must be a repository path, so branch names are
   written with a placeholder (`feature/<name>`), and GitHub repositories and
-  Docker images (but those of `docker-compose.yml`) as links. The other limits
-  of this check are listed in the test file.
+  Docker images (but those of `docker-compose.yml`) as links. A path in a
+  container (`name:/path`) and a file name that `.gitignore` ignores, such as
+  the wallet key, are not repository paths. The other limits of this check are
+  listed in the test file.
 
 ## Checks, not promises
 
@@ -57,7 +59,8 @@ can decide is a check, the same for an agent and a person:
   [decision records](adr/README.md) keep their format and their index, and
   that [CHANGELOG.md](../CHANGELOG.md) keeps the Keep a Changelog format and
   the [README](../README.md) links every page of `docs/` but the decision
-  records, which their index links.
+  records, which their index links, and stays a front page: a budget of words
+  of prose, no release version.
 * In CI, and locally with `tests/run.sh` and `.github/scripts/tests/run.sh`:
   the tests of the image, CI and NAS scripts, in Docker. The external world is
   replaced by fakes (`.github/scripts/tests/fakes/`, a local GitHub and fake

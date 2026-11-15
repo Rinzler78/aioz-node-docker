@@ -9,6 +9,35 @@ tag. The numbers in parentheses are the pull requests.
 
 ## [Unreleased]
 
+## [0.0.5] - 2026-11-15
+
+### Added
+
+* The release workflow writes the Docker Hub overview from `README.md` when
+  `:latest` moves: links to the release on GitHub, the diagram as a link, the
+  alerts as plain Markdown, and a short description (#36).
+
+### Changed
+
+* `docker-compose.yml` keeps the node data in the named volume
+  `aioznode-data` by default, so that it runs on any Docker context, remote
+  ones included; `NODEDATA_PATH` still selects a host folder. A deployment
+  that relied on the former default folder, `./nodedata`, sets
+  `NODEDATA_PATH=./nodedata` to keep its wallet. The documentation no longer
+  presents the Synology NAS as the place where the image runs, and describes
+  how to copy a key into a volume and back it up (#33).
+* `README.md` is a front page: a one-line summary, a diagram of the
+  containers, a shorter quick start with the key backup as a warning, then the
+  engineering practices. The details of running the image, an existing wallet,
+  a host folder and compose, move to `docs/image.md`. Tests keep the page at
+  most 700 words of prose and free of release versions (#34).
+
+### Fixed
+
+* The trivy config hook skips `.worktrees/`: a worktree, the convention of the
+  repository for a branch, made `pre-commit run --all-files` fail on the copy
+  of its Dockerfile (#35).
+
 ## [0.0.4] - 2026-11-14
 
 ### Added
@@ -136,7 +165,8 @@ The image content is the same as in 0.0.2: only CI, tests and docs changed.
 * Build and push workflow for Docker Hub, local helper scripts and a quick
   test.
 
-[Unreleased]: https://github.com/Rinzler78/aioz-node-docker/compare/v0.0.4...develop
+[Unreleased]: https://github.com/Rinzler78/aioz-node-docker/compare/v0.0.5...develop
+[0.0.5]: https://github.com/Rinzler78/aioz-node-docker/compare/v0.0.4...v0.0.5
 [0.0.4]: https://github.com/Rinzler78/aioz-node-docker/compare/v0.0.3...v0.0.4
 [0.0.3]: https://github.com/Rinzler78/aioz-node-docker/compare/v0.0.2...v0.0.3
 [0.0.2]: https://github.com/Rinzler78/aioz-node-docker/compare/v0.0.1...v0.0.2

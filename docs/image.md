@@ -1,7 +1,59 @@
 # The image
 
-How the node image is built, configured and tested. Running it: see the
-[README](../README.md).
+How the node image is run, built, configured and tested. The
+[quick start](../README.md#quick-start) of the README runs a new node and backs
+its key up.
+
+## Running the image
+
+The commands run against any Docker context, local or remote. Every path of a
+`-v` mount or of `NODEDATA_PATH` is one of the Docker host, not of the machine
+that runs the command.
+
+### An existing wallet
+
+Instead of the `docker run` of the quick start, copy the key into the volume
+before the first start:
+
+```sh
+docker create --name aioznode --restart=always -p 1317:1317 \
+  -v aioznode-data:/nodedata rinzlerfr/aioznode
+docker cp privkey.json aioznode:/nodedata/privkey.json
+docker start aioznode
+```
+
+### A host folder
+
+A folder of the Docker host replaces the volume:
+`-v /path/on/the/host:/nodedata`.
+
+### Compose
+
+`docker-compose.yml` runs the node and the reward withdrawal, from a clone of
+this repository:
+
+```sh
+WITHDRAW_ADDRESS_HEX=0xYourAddress docker compose up -d
+```
+
+* The node data is the same volume, `aioznode-data`: run the node either with
+  `docker run` or with compose, not both.
+* Every compose command reads the whole file, so `WITHDRAW_ADDRESS_HEX` must be
+  set for each of them.
+* `docker compose create`, then
+  `docker compose cp privkey.json aioznode:/nodedata/privkey.json`, then
+  `docker compose up -d` imports an existing key;
+  `docker compose cp aioznode:/nodedata/privkey.json privkey.json` backs it up,
+  into the clone: `chmod 600 privkey.json`, then move it to a safe place, out
+  of the clone.
+* `docker compose down -v` deletes the volume when compose created it, and the
+  key with it.
+* `NODEDATA_PATH` replaces the volume with a host folder: give an absolute path
+  of the Docker host, since compose expands `~` on the machine that runs the
+  command.
+* A deployment of this compose file from before the volume, whose wallet is in
+  the `./nodedata` folder of the clone, sets `NODEDATA_PATH=./nodedata`:
+  without it, the node starts a new wallet in the volume.
 
 ## Dockerfile
 
@@ -121,8 +173,13 @@ rule does not apply to them.
 
 ### Volumes
 
-A persistent data directory is created at `/nodedata` and must be mounted to a
-directory on your Docker host.
+The node data, the wallet key `privkey.json` and the node state, is kept in
+`/nodedata`, a `VOLUME` of the image. Mount a named volume there
+(`-v aioznode-data:/nodedata`), which works on any Docker context, local or
+remote, or a folder of the Docker host. Without a mount, Docker creates an
+anonymous volume, and a new container starts a new wallet. A key is copied into
+a volume with `docker cp`, before the first start (see
+[an existing wallet](#an-existing-wallet)).
 
 ### Ports
 
@@ -172,7 +229,7 @@ targets, each of which runs one script.
 ```sh
 make                 # list the targets
 make check           # tests, CI script tests and every pre-commit hook
-make docker-start ARGS='-v ~/MyDockers/aioznode/nodedata:/nodedata'
+make docker-start ARGS='-v aioznode-dev-data:/nodedata'
 ```
 
 The `scripts/helper.docker.*.sh` scripts (`make docker-build`, `docker-run`,

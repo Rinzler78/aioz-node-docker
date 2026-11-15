@@ -7,70 +7,70 @@
 [![Docker Image Size](https://img.shields.io/docker/image-size/rinzlerfr/aioznode)](https://hub.docker.com/r/rinzlerfr/aioznode)
 [![License](https://img.shields.io/github/license/Rinzler78/aioz-node-docker)](LICENSE)
 
-A Docker image that runs an [AIOZ DePIN](https://aioz.network/aioz-node) node
-unattended: it installs the latest upstream CLI at every start, proves with its
-health check that the node works, restarts it when it does not, and withdraws
-the rewards to a wallet of your choice. It runs in production on a Synology NAS.
+**An AIOZ DePIN node that runs itself: it updates, proves that it works,
+restarts when it does not, and withdraws its rewards.**
 
-The repository is also a worked example of how a small infrastructure project
-can be built: every rule it follows is written down, and most of them are
-checked by a test.
+A Docker image for an [AIOZ DePIN](https://aioz.network/aioz-node) node, on any
+Docker host. Each start installs the latest upstream CLI; the health check
+proves that the node answers and reads its rewards; an optional second
+container withdraws the rewards to your wallet.
 
-## Highlights
+The repository is also a worked example of a small infrastructure project:
+every rule it follows is written down, and most of them are checked by a test.
 
-* **Self-updating, safely.** Each start looks up the latest upstream release,
-  checks the archive against its `SHA256SUMS` and keeps the installed CLI when
-  the update fails ([ADR 0001](docs/adr/0001-update-at-every-start.md)).
-* **A health check that proves the function.** The node must answer and the
-  wallet must read its rewards; a watchdog stops the node after repeated
-  failures so that the container restarts
-  ([ADR 0002](docs/adr/0002-functional-health-check-and-watchdog.md)).
-* **One image, two modes.** The same image runs the node or the reward
-  withdrawal, the latter with the node data mounted read-only
-  ([ADR 0003](docs/adr/0003-one-image-two-modes.md)).
-* **Upstream bugs handled, not hidden.** The CLI `start` of v1.2.6 is broken
-  upstream: the node runs the embedded `aioz-io`, and a daily workflow reports
-  what changes upstream
-  ([ADR 0005](docs/adr/0005-run-the-embedded-aioz-io.md),
-  [upstream watch](docs/ci.md#upstream-watch)).
-* **Tested shell.** bats suites run in Docker, against fakes asserted on the
-  `PATH` and real captures of the GitHub API and the CLI output. Fitness tests
-  turn repository rules into tests: script structure, the architecture map,
-  the decision records, the changelog, the links of this page.
-* **Hardened delivery.** Workflows are read-only by default, their actions are
-  pinned to a commit and checked by zizmor; trivy scans the configuration and
-  the image; outdated hooks and actions block the commit; `latest` only moves to
-  the highest release ([CI and release](docs/ci.md)).
-* **Operated, not only built.** A watch on the NAS host emails through DSM when
-  the node stops earning delivery rewards, then when it earns them again
-  ([Synology NAS](docs/nas.md#delivery-watch)).
-* **AI harness, model and tool agnostic.** One file, [AGENTS.md](AGENTS.md),
-  holds the instructions of every coding agent; tests keep the tool-specific
-  files from drifting ([AI harness](docs/ai-harness.md)).
+```mermaid
+flowchart TB
+    releases["GitHub releases of aioz-depin-cli"]
+    subgraph host["any Docker host"]
+        node["aioznode: node, watchdog"]
+        data[("volume aioznode-data")]
+        withdraw["auto-withdraw, optional"]
+    end
+    network["AIOZ network"]
+    wallet["your wallet"]
+
+    releases -- "latest CLI, SHA256SUMS checked" --> node
+    releases -- "latest CLI, SHA256SUMS checked" --> withdraw
+    data -- "read-write" --> node
+    data -- "read-only" --> withdraw
+    node <--> network
+    withdraw -- "rewards" --> network
+    network --> wallet
+```
 
 ## Quick start
 
-Create a folder for the node data. Put your wallet key there, named
-privkey.json, or let the node create a new wallet at its first start, and keep
-a backup of it.
+The commands run against any Docker context, local or remote
+(`docker context use`, `DOCKER_HOST=ssh://user@host`). The node data lives in a
+named volume: no folder of the host has to be known.
 
 ```sh
-mkdir -p ~/aioznode/nodedata
+docker volume create aioznode-data
 docker run -d --name aioznode --restart=always -p 1317:1317 \
-  -v ~/aioznode/nodedata:/nodedata rinzlerfr/aioznode
+  -v aioznode-data:/nodedata rinzlerfr/aioznode
+docker logs -f aioznode    # until: Wallet successfully configured
 ```
 
-The node and the automatic reward withdrawal together, from a clone of this
-repository, with `docker-compose.yml`:
+> [!WARNING]
+> At its first start the node creates a new wallet, and the volume holds the
+> only copy of its key. Back the key up to a safe place, out of any clone:
+> `docker cp` writes it on the machine that runs the command, not on a remote
+> Docker host.
 
 ```sh
-WITHDRAW_ADDRESS_HEX=0xYourAddress \
-  NODEDATA_PATH=~/aioznode/nodedata \
-  docker compose up -d
+docker cp aioznode:/nodedata/privkey.json privkey.json
+chmod 600 privkey.json
 ```
 
-To build the image yourself: `docker build -t aioznode .` in the clone; `make`
-lists the repository commands (build, run, tests, lint).
+The node and the reward withdrawal together, from a clone of this repository:
+
+```sh
+WITHDRAW_ADDRESS_HEX=0xYourAddress docker compose up -d
+```
+
+[Running the image](docs/image.md#running-the-image) covers the rest: an
+existing wallet, a host folder instead of the volume, the compose commands, and
+the migration of a compose deployment that keeps its wallet in `./nodedata`.
 
 ## Configuration
 
@@ -81,22 +81,49 @@ lists the repository commands (build, run, tests, lint).
 * `CHECK_FREQ` (`60`): seconds between two withdraw checks.
 * `RUN_TIMEOUT` (`86400`): seconds before the node stops, so that the container
   restarts and updates.
-* `HEALTH_INTERVAL`, `HEALTH_TIMEOUT`, `HEALTH_RETRIES` (`60`, `30`, `3`): the
-  watchdog timings.
 * `GITHUB_TOKEN` (unset): authenticates the release lookup.
 
-Every setting, the volume and the port:
+Every setting, the watchdog timings included:
 [environment variables](docs/image.md#environment-variables).
+
+## Engineering practices
+
+* **Self-updating, safely.** Each start checks the latest upstream release
+  against its `SHA256SUMS`, and keeps the installed CLI when the update fails
+  ([ADR 0001](docs/adr/0001-update-at-every-start.md)).
+* **A health check that proves the function.** The node must answer and the
+  wallet must read its rewards; after repeated failures a watchdog stops the
+  node, so that the container restarts
+  ([ADR 0002](docs/adr/0002-functional-health-check-and-watchdog.md)).
+* **One image, two modes:** the node, or the reward withdrawal with the node
+  data read-only ([ADR 0003](docs/adr/0003-one-image-two-modes.md)).
+* **Upstream bugs handled, not hidden.** The node works around a broken
+  upstream `start`, and a daily workflow reports what changes upstream
+  ([ADR 0005](docs/adr/0005-run-the-embedded-aioz-io.md),
+  [upstream watch](docs/ci.md#upstream-watch)).
+* **Tested shell.** bats suites run in Docker, against fakes asserted on the
+  `PATH` and real captures of the GitHub API and the CLI. Fitness tests turn
+  the repository rules into tests, this page included.
+* **Hardened delivery.** Workflows read-only by default, actions pinned to a
+  commit and checked by zizmor, trivy scans; outdated hooks and actions block
+  the commit; `latest` only moves to the highest release
+  ([CI and release](docs/ci.md)).
+* **Operated, not only built.** A host script reports when the node stops
+  earning delivery rewards, and when it earns them again
+  ([delivery watch](docs/nas.md#delivery-watch)).
+* **AI harness, model and tool agnostic.** One file, [AGENTS.md](AGENTS.md),
+  instructs every coding agent; tests keep the tool-specific files from
+  drifting ([AI harness](docs/ai-harness.md)).
 
 ## Documentation
 
-* [The image](docs/image.md): the Dockerfile, the scripts, the settings, the
-  build and the tests.
-* [Synology NAS](docs/nas.md): deployment, and the delivery watch.
+* [The image](docs/image.md): running it beyond the quick start, the
+  Dockerfile, the scripts, the settings, the build and the tests.
+* [Synology NAS](docs/nas.md): a deployment example, and the delivery watch.
 * [CI and release](docs/ci.md): the pre-commit hooks, the release of the
   public image, the upstream watch.
-* [Architecture](docs/architecture.md): how the containers, the NAS watch and
-  the release pipeline fit together.
+* [Architecture](docs/architecture.md): how the containers, the delivery watch
+  and the release pipeline fit together.
 * [Decision records](docs/adr/README.md): why they are built that way.
 * [AI harness](docs/ai-harness.md): how coding agents work on this
   repository.
@@ -104,9 +131,8 @@ Every setting, the volume and the port:
 
 ## Contributing
 
-Issues and pull requests are welcome: [CONTRIBUTING.md](CONTRIBUTING.md)
-describes the set up, the steps of a change, the review and the release.
-Report a vulnerability privately, as described in [SECURITY.md](SECURITY.md),
+Issues and pull requests are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md).
+Report a vulnerability privately, as [SECURITY.md](SECURITY.md) describes,
 never in a public issue.
 
 ## Support

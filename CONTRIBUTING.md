@@ -62,5 +62,6 @@ checks.
 3. The tag runs the `Docker Image CI` workflow: it builds the image, runs the
    tests and `scripts/quick_test.sh`, pushes `rinzlerfr/aioznode:vX.Y.Z`, moves
    `latest` when the tag is the highest release, and creates the GitHub
-   release.
+   release. When `latest` moves, it also writes the Docker Hub overview from
+   `README.md` ([docs/ci.md](docs/ci.md)).
 4. `master` is merged back into `develop`.

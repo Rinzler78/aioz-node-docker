@@ -77,7 +77,10 @@ repos:
       - id: trivy-config
         name: trivy config (Dockerfiles)
         entry: trivy config
-        args: [--quiet, --exit-code, "1", --ignorefile, .trivyignore.yaml, .]
+        # The worktrees are copies of the repository, out of git and out of
+        # the ignore paths: scanning them would fail on their Dockerfile.
+        args: [--quiet, --exit-code, "1", --ignorefile, .trivyignore.yaml,
+               --skip-dirs, .worktrees, .]
         language: system
         files: (^|/)Dockerfile$|^\.trivyignore\.yaml$
         pass_filenames: false

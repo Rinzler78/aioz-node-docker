@@ -27,6 +27,8 @@ jobs:
     timeout-minutes: 30
     # The Docker Hub secrets live in this environment, open to v* tags only.
     environment: dockerhub
+    outputs:
+      latest: ${{ steps.push.outputs.latest }}  # true when latest moved
 
     steps:
       # actions/checkout v7.0.1
@@ -60,9 +62,43 @@ jobs:
       # latest only moves to the highest vX.Y.Z release: an older or
       # non-release tag (v1.0.0 pushed after v1.2.0, v2-beta) leaves it alone.
       - name: docker push
+        id: push
         run: |
           docker push "rinzlerfr/aioznode:$GITHUB_REF_NAME"
           .github/scripts/push-latest.sh rinzlerfr/aioznode "$GITHUB_REF_NAME"
+
+  # The Docker Hub overview follows latest: an older release leaves it alone.
+  # README.md becomes the overview of the release (hub-readme.sh); the action
+  # gets the Docker Hub secrets, the script none.
+  hub-overview:
+    name: Update the Docker Hub overview
+    needs: build
+    if: needs.build.outputs.latest == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: dockerhub
+
+    steps:
+      # actions/checkout v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Build the overview from README.md
+        run: |
+          .github/scripts/hub-readme.sh README.md "$GITHUB_REPOSITORY" \
+            "$GITHUB_REF_NAME" > "$RUNNER_TEMP/hub-overview.md"
+
+      # peter-evans/dockerhub-description v5.0.0
+      - uses: peter-evans/dockerhub-description@1b9a80c056b620d92cedb9d9b5a223409c68ddfa
+        with:
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+          repository: rinzlerfr/aioznode
+          short-description: >-
+            Unattended AIOZ DePIN node: self-updating, health-checked, rewards
+            withdrawn
+          readme-filepath: ${{ runner.temp }}/hub-overview.md
 
   release:
     name: Create the GitHub release

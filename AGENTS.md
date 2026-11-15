@@ -10,7 +10,8 @@ them carries a rule of its own. The method behind these rules is explained in
 
 A Docker image that runs an AIOZ DePIN node: it installs the latest upstream
 CLI at start, configures the wallet from a mounted private key, checks the node
-health, and withdraws the rewards. It runs in production on a Synology NAS.
+health, and withdraws the rewards. It runs on any Docker context, local or
+remote; the owner runs it on a Synology NAS.
 
 | Path | Content |
 | --- | --- |
@@ -80,12 +81,11 @@ definition of done.
 
 ## Safety rules
 
-* The node private key (`/nodedata/privkey.json` in the container, mounted
-  from the host's node data folder) never leaves the host it runs on: never
-  read, print, copy or commit it. The default host folder of
-  `docker-compose.yml`, `./nodedata`, and any `privkey*.json` or `.env` file
-  are ignored by git (`.gitignore`) and left out of the Docker build context
-  (`.dockerignore`).
+* The node private key (`/nodedata/privkey.json` in the container, in the node
+  data volume or host folder) is the owner's: an agent never reads, prints,
+  copies or commits it, the owner's backup included. A `./nodedata` folder and
+  any `privkey*.json` or `.env` file are ignored by git (`.gitignore`) and left
+  out of the Docker build context (`.dockerignore`).
 * Never print a secret (tokens, credentials, keys) in a command output, a log, a
   test or a pull request. Secrets are set by the owner, in the GitHub settings
   or their own terminal: a command that prompts for a value (`gh secret set`)

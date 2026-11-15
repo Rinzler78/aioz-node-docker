@@ -36,8 +36,10 @@ Out of scope, to report upstream:
 
 ## How the project protects itself
 
-* The node private key never leaves its host: git and the Docker build context
-  ignore it, and the withdraw container mounts it read-only.
+* The node private key stays in the node data, a volume or a folder of the
+  Docker host, until its owner backs it up (`docker cp`, see the README): git
+  and the Docker build context ignore it, and the withdraw container mounts
+  it read-only.
 * The CLI, downloaded at build time and at a start that finds a newer
   release, is checked against the `SHA256SUMS` of its release before install.
 * The numbers that the node start, its health check and the delivery watch
