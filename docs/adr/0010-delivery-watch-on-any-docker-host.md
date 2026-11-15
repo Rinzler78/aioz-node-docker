@@ -1,6 +1,7 @@
 # 0010. Watch the deliveries on any Docker host, notify through its scheduler
 
 Status: Accepted, 2026-11-15
+([#40](https://github.com/Rinzler78/aioz-node-docker/pull/40))
 
 ## Context
 
