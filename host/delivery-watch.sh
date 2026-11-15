@@ -9,8 +9,9 @@
 # for STALL_HOURS), a resume after a reported stall, a count going down (counter
 # reset, or 0 when the hub omits it) and an invalid state; both restart the
 # watch. No Docker client, no count in the logs, or a state that cannot be
-# written, exit 1 on every run until fixed. The scheduler reports a task that fails, with its
-# output. State: STATE_FILE holds "<count> <epoch of its last change> <ok|stalled>".
+# written, exit 1 on every run until fixed. The scheduler reports a task that
+# fails, with its output. State: STATE_FILE holds
+# "<count> <epoch of its last change> <ok|stalled>".
 WITHDRAW_CONTAINER="${WITHDRAW_CONTAINER:-aioz-compose-aioznode-auto-withdraw-reward-1}"
 # Next to the script by default: its install folder, whatever the host (next
 # to the link for a symbolic link). Read with a bash expansion rather than
