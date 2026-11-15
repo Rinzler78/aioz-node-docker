@@ -9,6 +9,12 @@ tag. The numbers in parentheses are the pull requests.
 
 ## [Unreleased]
 
+### Added
+
+* The release workflow writes the Docker Hub overview from `README.md` when
+  `:latest` moves: links to the release on GitHub, the diagram as a link, the
+  alerts as plain Markdown, and a short description (#36).
+
 ### Changed
 
 * `docker-compose.yml` keeps the node data in the named volume

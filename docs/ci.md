@@ -96,8 +96,20 @@ release job gets a write token: the build and the tests, which run the AIOZ
 binary, keep a read-only one. The Docker Hub secrets (`DOCKER_USER`,
 `DOCKER_PASSWORD`) live in the `dockerhub` environment, which only `v*` tags can
 use. A tag is released once: if its GitHub release already exists, the release
-job fails. Tests of `.github/scripts/push-latest.sh`:
-`.github/scripts/tests/run.sh` (Docker).
+job fails.
+
+When `:latest` moves, the `hub-overview` job writes the Docker Hub overview
+from `README.md`: `.github/scripts/hub-readme.sh` points its relative links to
+the release on GitHub (an image to its file), replaces the Mermaid diagram with
+a link to the README there and turns the GitHub alerts into bold labels, since
+the overview allows basic Markdown only; it fails over the 25000-byte limit of
+Docker Hub, and on a Mermaid diagram never closed.
+[peter-evans/dockerhub-description](https://github.com/peter-evans/dockerhub-description)
+then sends it with the short description. The action documents its credential:
+the account password or a personal access token with the Read, Write, Delete
+permission, so `DOCKER_PASSWORD` must be one of them for this job, even if a
+narrower token is enough to push. Tests of `.github/scripts/push-latest.sh` and
+`.github/scripts/hub-readme.sh`: `.github/scripts/tests/run.sh` (Docker).
 
 ## Upstream watch
 
