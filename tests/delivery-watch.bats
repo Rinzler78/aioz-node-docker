@@ -1,8 +1,8 @@
 #!/usr/bin/env bats
-# nas/delivery-watch.sh against a fake docker whose logs are a real capture of
-# the reward container on the NAS (2026-11-13, delivery count 104515).
+# host/delivery-watch.sh against a fake docker whose logs are a real capture of
+# the reward container on the owner's host (2026-11-13, delivery count 104515).
 
-SCRIPT="$BATS_TEST_DIRNAME/../nas/delivery-watch.sh"
+SCRIPT="$BATS_TEST_DIRNAME/../host/delivery-watch.sh"
 LOGS="$BATS_TEST_DIRNAME/fixtures/withdraw-log-nas-v1.2.6.txt"
 DAY=86400
 
@@ -183,4 +183,28 @@ state() {
     [[ "$output" == "ERROR: NOW"* ]]
     [ ! -e "$BATS_TEST_TMPDIR/pwned" ]
     [ "$(state)" = "104515 $((NOW - DAY)) ok" ]
+}
+
+@test "keeps its state next to the script by default" {
+    local dir="$BATS_TEST_TMPDIR/installed"
+    mkdir "$dir"
+    cp "$SCRIPT" "$dir/delivery-watch.sh"
+
+    STATE_FILE="" run "$dir/delivery-watch.sh"
+
+    [ "$status" -eq 0 ]
+    [ "$(cat "$dir/delivery-watch.state")" = "104515 $NOW ok" ]
+}
+
+@test "runs the docker of the PATH by default" {
+    local bin="$BATS_TEST_TMPDIR/bin"
+    mkdir "$bin"
+    mv "$DOCKER" "$bin/docker"
+    # The fake must be the docker that resolves, never the real one.
+    [ "$(PATH="$bin:$PATH" command -v docker)" = "$bin/docker" ]
+
+    DOCKER="" PATH="$bin:$PATH" run "$SCRIPT"
+
+    [ "$status" -eq 0 ]
+    [ "$(state)" = "104515 $NOW ok" ]
 }

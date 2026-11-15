@@ -20,7 +20,7 @@ doc_pages() {
 # and of its ``` fenced blocks, indented ones included (comments removed). A
 # word is a path when it has a slash, starts with a dot (dotfile, ./name), ends
 # with a known extension, or is Dockerfile or LICENSE; a leading ./ is dropped.
-# Not paths: absolute paths (NAS, home), URLs, variables, options, imports
+# Not paths: absolute paths (host, home), URLs, variables, options, imports
 # (@file), placeholders (<name>), shell syntax (quotes, =, brackets) and paths
 # in a container (name:/path, a named volume or a docker cp target). Limits:
 # a code word with a slash must name a repository path, so branch names are
@@ -136,6 +136,25 @@ pointer_extra_lines() {
     grep -q '^## Definition of done$' "$REPO_ROOT/AGENTS.md"
 }
 
+# Whether the Markdown file $1 is a decision record superseded by a later one
+# (its status, on the third line). Such a record tells the past and is not
+# edited (docs/adr/README.md): the code paths it names may be gone.
+superseded_record() {
+    [ -f "$1" ] && sed -n 3p "$1" | grep -q '^Status: Superseded by '
+}
+
+@test "superseded_record holds for a record whose status is Superseded, only" {
+    local old="$BATS_TEST_TMPDIR/old.md" current="$BATS_TEST_TMPDIR/current.md"
+    printf '# 0001. Old\n\nStatus: Superseded by [0002](0002-new.md), 2026-11-15\n' > "$old"
+    printf '# 0002. New\n\nStatus: Accepted, 2026-11-15\n' > "$current"
+
+    superseded_record "$old"
+    run superseded_record "$current"
+    [ "$status" -eq 1 ]
+    run superseded_record "$BATS_TEST_TMPDIR/missing.md"
+    [ "$status" -eq 1 ]
+}
+
 @test "every path and link cited by AGENTS.md, README.md and the docs pages exists" {
     local doc dir path pages missing=""
     pages=$(doc_pages)
@@ -146,9 +165,10 @@ pointer_extra_lines() {
     for doc in $pages; do
         [ -f "$REPO_ROOT/$doc" ]
         dir=$(dirname "$doc")
-        while IFS= read -r path; do
-            repository_path "$path" || missing+="$doc: $path"$'\n'
-        done < <(cited_code_paths "$REPO_ROOT/$doc")
+        superseded_record "$REPO_ROOT/$doc" ||
+            while IFS= read -r path; do
+                repository_path "$path" || missing+="$doc: $path"$'\n'
+            done < <(cited_code_paths "$REPO_ROOT/$doc")
         # Links resolve from the folder of the page, as on GitHub.
         while IFS= read -r path; do
             [ -e "$REPO_ROOT/$dir/$path" ] || missing+="$doc: link $path"$'\n'

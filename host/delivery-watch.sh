@@ -1,20 +1,25 @@
 #!/bin/bash
 # Tells when the node stops, then resumes, earning delivery rewards. Runs on the
-# NAS host (DSM Task Scheduler, daily, as root), not in the image: it reads the
-# delivery count the reward container logs at every check (withdraw.reward.sh).
-# Only that container can read it: the hub serves it to the wallet key alone.
+# Docker host (a daily task of its scheduler, cron for one), not in the image:
+# it reads the delivery count the reward container logs at every check
+# (withdraw.reward.sh). Only that container can read it: the hub serves it to
+# the wallet key alone.
 #
 # Exit 1 means "something to report", once per event: a stall (count unchanged
 # for STALL_HOURS), a resume after a reported stall, a count going down (counter
 # reset, or 0 when the hub omits it) and an invalid state; both restart the
 # watch. No count in the logs, or a state that cannot be written, exit 1 on
-# every run until fixed. DSM notifies a task that ends abnormally, with its
+# every run until fixed. The scheduler reports a task that fails, with its
 # output. State: STATE_FILE holds "<count> <epoch of its last change> <ok|stalled>".
 WITHDRAW_CONTAINER="${WITHDRAW_CONTAINER:-aioz-compose-aioznode-auto-withdraw-reward-1}"
-STATE_FILE="${STATE_FILE:-/volume1/docker/aioznode/delivery-watch.state}"
+# Next to the script by default: its install folder, whatever the host. Read
+# without dirname: a task with a minimal PATH may have no tools at all.
+SCRIPT_DIR="${BASH_SOURCE[0]%/*}"
+[ "$SCRIPT_DIR" != "${BASH_SOURCE[0]}" ] || SCRIPT_DIR=.
+STATE_FILE="${STATE_FILE:-$SCRIPT_DIR/delivery-watch.state}"
 STALL_HOURS="${STALL_HOURS:-48}"
-# The DSM task runs with a minimal PATH: Container Manager's docker by default.
-DOCKER="${DOCKER:-/usr/local/bin/docker}"
+# The docker of the PATH; a scheduler with a minimal PATH sets its full path.
+DOCKER="${DOCKER:-docker}"
 
 # Delivery count of the last status in the reward container logs; empty if none.
 delivery_count() {

@@ -11,13 +11,12 @@ file and the `Makefile`. The reasons behind the main choices are recorded in
 ## Runtime
 
 The two containers run from `docker-compose.yml` on any Docker host, local or
-remote, and share the node data, a named volume or a folder of the host. The
-owner's deployment, a Synology NAS in the diagram, keeps it in a folder and
-adds a host script that watches the delivery rewards.
+remote, and share the node data, a named volume or a folder of the host. A
+host script, scheduled daily, watches the delivery rewards.
 
 ```mermaid
 flowchart LR
-    subgraph host["Docker host (here a Synology NAS)"]
+    subgraph host["Docker host"]
         data[("node data, volume or folder: privkey.json, node state")]
         subgraph node["container aioznode"]
             start["start.sh: deploy, then aioz-io start"]
@@ -26,11 +25,11 @@ flowchart LR
         subgraph withdraw["container aioznode-auto-withdraw-reward"]
             loop["start-watching-reward.sh: withdraw loop"]
         end
-        watch["delivery-watch.sh, DSM task, daily"]
+        watch["delivery-watch.sh, scheduled task, daily"]
     end
     releases["GitHub releases of aioz-depin-cli"]
     network["AIOZ network"]
-    owner["owner: DSM email"]
+    owner["owner: scheduler notification"]
 
     data -- "read-write" --> node
     data -- "read-only" --> withdraw
@@ -87,13 +86,13 @@ mounted read-only, so this container can never create a wallet of its own.
 
 ### The delivery watch
 
-`nas/delivery-watch.sh` runs on the NAS host, not in the image: the hub serves
+`host/delivery-watch.sh` runs on the Docker host, not in the image: the hub serves
 the delivery count to the wallet key only, so the watch reads the count that
 the withdraw container logs. It exits 1 once per event (deliveries stalled for
 `STALL_HOURS`, resumed after a stall, a count going down, an invalid state
 file), and on every run while the logs hold no count, the state cannot be
-written or a setting is invalid. The DSM task scheduler emails the output of
-a task that ends abnormally.
+written or a setting is invalid. The host scheduler notifies a task that
+fails, with its output ([delivery watch](delivery-watch.md)).
 
 ## Delivery
 
@@ -120,7 +119,7 @@ The workflows:
   changed files, then on every file after a merge;
 * `.github/workflows/tests.yml`, on a pull request and after a merge into
   `develop` or `master`:
-  `tests/run.sh`, the bats tests of the image and NAS scripts and the fitness
+  `tests/run.sh`, the bats tests of the image and host scripts and the fitness
   tests of the repository;
 * `.github/workflows/upstream-watch.yml`, daily and on demand: the tests of
   the CI scripts, then `.github/scripts/upstream-watch.sh`; on a pull request

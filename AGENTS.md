@@ -11,14 +11,14 @@ them carries a rule of its own. The method behind these rules is explained in
 A Docker image that runs an AIOZ DePIN node: it installs the latest upstream
 CLI at start, configures the wallet from a mounted private key, checks the node
 health, and withdraws the rewards. It runs on any Docker context, local or
-remote; the owner runs it on a Synology NAS.
+remote; the owner runs it on a remote Docker host.
 
 | Path | Content |
 | --- | --- |
 | `Dockerfile` | the node image (rolling `alpine:latest` base) |
 | `tools/` | the scripts of the image: install, start, health, withdraw |
 | `tests/` | bats tests of the image scripts, real captures as fixtures |
-| `nas/` | scripts run on the NAS host, outside the image |
+| `host/` | scripts run on the Docker host, outside the image |
 | `.github/workflows/` | CI: lint, tests, release, upstream watch |
 | `.github/scripts/` | the CI scripts and their tests, run against fakes |
 | `scripts/` | local build, run and clean helpers, `scripts/quick_test.sh` |
@@ -76,7 +76,7 @@ definition of done.
   documentation, repeated on the updated diff until no major or minor finding
   is left; the verdict is posted as a pull request comment.
 * Stage files by explicit path (`git add <path>`), then read the staged list.
-* New commit messages follow Conventional Commits (`feat(nas): …`,
+* New commit messages follow Conventional Commits (`feat(host): …`,
   `fix(watch): …`), with no attribution trailers.
 
 ## Safety rules
@@ -111,13 +111,13 @@ definition of done.
   included), then the unused images of this project: those labelled with
   `docker_project_label` of `scripts/helper.docker.lib.sh`, which every
   `Dockerfile` sets. Run them only when the user asks for it, never on the
-  NAS. A Docker prune in a shell script of the repository always carries that
-  label filter (`tests/helper.docker.bats`).
+  owner's remote Docker host. A Docker prune in a shell script of the
+  repository always carries that label filter (`tests/helper.docker.bats`).
 * No destructive command (`rm -rf`, `docker rm`, `docker rmi`,
   `docker image prune`, `docker system prune`, `git reset --hard`,
-  `git push --force`) on the user's machine or the NAS without an explicit
-  request.
-* Wrap every remote call to the NAS in `timeout`.
+  `git push --force`) on the user's machine or the owner's remote Docker host
+  without an explicit request.
+* Wrap every call to the owner's remote Docker host in `timeout`.
 * Never bypass a check: no `--no-verify`, no skipped hook, no commented test. A
   blocking check points at a cause to fix.
 
