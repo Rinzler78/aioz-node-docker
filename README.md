@@ -19,23 +19,23 @@ The repository is also a worked example of a small infrastructure project:
 every rule it follows is written down, and most of them are checked by a test.
 
 ```mermaid
-flowchart LR
+flowchart TB
     releases["GitHub releases of aioz-depin-cli"]
     subgraph host["any Docker host"]
-        data[("volume aioznode-data: privkey.json, node state")]
-        node["aioznode: node and watchdog"]
-        withdraw["aioznode-auto-withdraw-reward, optional"]
+        node["aioznode: node, watchdog"]
+        data[("volume aioznode-data")]
+        withdraw["auto-withdraw, optional"]
     end
     network["AIOZ network"]
     wallet["your wallet"]
 
-    releases -- "latest CLI, checked against SHA256SUMS" --> node
+    releases -- "latest CLI, SHA256SUMS checked" --> node
     releases -- "latest CLI" --> withdraw
     data -- "read-write" --> node
     data -- "read-only" --> withdraw
     node <--> network
-    withdraw -- "withdraw the rewards" --> network
-    network -- "rewards" --> wallet
+    withdraw -- "rewards" --> network
+    network --> wallet
 ```
 
 ## Quick start
