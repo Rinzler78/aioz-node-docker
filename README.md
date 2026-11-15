@@ -104,9 +104,10 @@ Every setting, the watchdog timings included:
 * **Tested shell.** bats suites run in Docker, against fakes asserted on the
   `PATH` and real captures of the GitHub API and the CLI. Fitness tests turn
   the repository rules into tests, this page included.
-* **Hardened delivery.** Read-only workflows, actions pinned to a commit and
-  checked by zizmor, trivy scans; outdated hooks and actions block the commit;
-  `latest` only moves to the highest release ([CI and release](docs/ci.md)).
+* **Hardened delivery.** Workflows read-only by default, actions pinned to a
+  commit and checked by zizmor, trivy scans; outdated hooks and actions block
+  the commit; `latest` only moves to the highest release
+  ([CI and release](docs/ci.md)).
 * **Operated, not only built.** A host script reports when the node stops
   earning delivery rewards, and when it earns them again
   ([delivery watch](docs/nas.md#delivery-watch)).
