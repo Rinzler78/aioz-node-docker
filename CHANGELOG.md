@@ -18,6 +18,11 @@ tag. The numbers in parentheses are the pull requests.
   `NODEDATA_PATH=./nodedata` to keep its wallet. The documentation no longer
   presents the Synology NAS as the place where the image runs, and describes
   how to copy a key into a volume and back it up (#33).
+* `README.md` is a front page: a one-line summary, a diagram of the
+  containers, a shorter quick start with the key backup as a warning, then the
+  engineering practices. The details of running the image, an existing wallet,
+  a host folder and compose, move to `docs/image.md`. Tests keep the page at
+  most 700 words of prose and free of release versions (#34).
 
 ## [0.0.4] - 2026-11-14
 

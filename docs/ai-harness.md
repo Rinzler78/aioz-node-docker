@@ -59,7 +59,8 @@ can decide is a check, the same for an agent and a person:
   [decision records](adr/README.md) keep their format and their index, and
   that [CHANGELOG.md](../CHANGELOG.md) keeps the Keep a Changelog format and
   the [README](../README.md) links every page of `docs/` but the decision
-  records, which their index links.
+  records, which their index links, and stays a front page: a budget of words
+  of prose, no release version.
 * In CI, and locally with `tests/run.sh` and `.github/scripts/tests/run.sh`:
   the tests of the image, CI and NAS scripts, in Docker. The external world is
   replaced by fakes (`.github/scripts/tests/fakes/`, a local GitHub and fake
