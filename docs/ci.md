@@ -37,7 +37,9 @@ they source, see `.shellcheckrc`):
   token); tests: `.github/scripts/tests/run.sh` (Docker)
 * Spelling (English) — cspell, words in `cspell.json`: every text file
 * Misconfigurations — trivy config: Dockerfiles, run only when `Dockerfile`,
-  `tests/Dockerfile` or `.trivyignore.yaml` changes
+  `tests/Dockerfile` or `.trivyignore.yaml` changes. The worktrees under
+  `.worktrees/` are skipped: their Dockerfile is a copy, out of the accepted
+  findings' paths
 * Vulnerabilities — `.github/scripts/image-vuln-scan.sh` builds the image and
   fails on HIGH or CRITICAL vulnerabilities (trivy image), run only when
   `Dockerfile`, `tools/` or the scan script changes. The image is kept as

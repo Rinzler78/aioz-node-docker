@@ -24,6 +24,12 @@ tag. The numbers in parentheses are the pull requests.
   a host folder and compose, move to `docs/image.md`. Tests keep the page at
   most 700 words of prose and free of release versions (#34).
 
+### Fixed
+
+* The trivy config hook skips `.worktrees/`: a worktree, the convention of the
+  repository for a branch, made `pre-commit run --all-files` fail on the copy
+  of its Dockerfile (#35).
+
 ## [0.0.4] - 2026-11-14
 
 ### Added
