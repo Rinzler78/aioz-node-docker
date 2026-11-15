@@ -32,6 +32,24 @@ docker_calls() {
         'push rinzlerfr/aioznode:latest')" ]
 }
 
+# GITHUB_OUTPUT tells the later jobs of the workflow that latest moved: the
+# Docker Hub overview follows latest, never an older release.
+@test "writes latest=true to GITHUB_OUTPUT when it moves latest, nothing otherwise" {
+    export GITHUB_OUTPUT="$BATS_TEST_TMPDIR/output"
+    run "$SCRIPT" rinzlerfr/aioznode v0.0.2
+    [ "$status" -eq 0 ]
+    [ "$(cat "$GITHUB_OUTPUT")" = "latest=true" ]
+
+    rm "$GITHUB_OUTPUT"
+    run "$SCRIPT" rinzlerfr/aioznode v0.0.1
+    [ "$status" -eq 0 ]
+    [ ! -e "$GITHUB_OUTPUT" ]
+
+    FAKE_DOCKER_FAIL=push run "$SCRIPT" rinzlerfr/aioznode v0.0.2
+    [ "$status" -eq 1 ]
+    [ ! -e "$GITHUB_OUTPUT" ]
+}
+
 @test "leaves latest alone for an older release" {
     run "$SCRIPT" rinzlerfr/aioznode v0.0.1
 

@@ -37,7 +37,11 @@ push_latest() {
         echo "$tag is not the highest release ($latest): latest unchanged"
         return 0
     fi
-    docker tag "$image:$tag" "$image:latest" && docker push "$image:latest"
+    docker tag "$image:$tag" "$image:latest" && docker push "$image:latest" || return
+    # Tells the later jobs that latest moved (the Docker Hub overview).
+    if [ -n "${GITHUB_OUTPUT:-}" ]; then
+        echo "latest=true" >> "$GITHUB_OUTPUT"
+    fi
 }
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
