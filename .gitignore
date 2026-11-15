@@ -7,4 +7,4 @@ privkey*.json
 # Worktrees of the branches being worked on.
 /.worktrees/
 # State of the delivery watch, kept next to the script when run from here.
-/host/*.state
+/host/*.state*
