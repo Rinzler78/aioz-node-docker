@@ -22,7 +22,7 @@ published, the advisory is published too, with the release that fixes it in
 
 ## Scope
 
-In scope: the image (`Dockerfile`, `tools/`), the NAS script (`nas/`), the
+In scope: the image (`Dockerfile`, `tools/`), the host script (`host/`), the
 local scripts (`scripts/`) and the GitHub workflows with their scripts
 (`.github/`).
 

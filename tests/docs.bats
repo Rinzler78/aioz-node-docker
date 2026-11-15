@@ -5,7 +5,8 @@
 # their format, their numbering and their index; CHANGELOG.md keeps the Keep a
 # Changelog format; README.md links every page of docs/ but the decision
 # records, which their index links, and stays a front page: a budget of words
-# of prose, no release version.
+# of prose, no release version. The repository runs on any Docker host: it does
+# not name the hardware of the owner's deployment.
 
 load helpers
 
@@ -37,7 +38,7 @@ architecture_files() {
     [ -f "$page" ]
     files=$(architecture_files)
     # Each folder is listed: an empty glob would check nothing.
-    for file in tools/start.sh nas/delivery-watch.sh scripts/quick_test.sh \
+    for file in tools/start.sh host/delivery-watch.sh scripts/quick_test.sh \
         .github/scripts/push-latest.sh .github/workflows/tests.yml \
         tests/run.sh tests/Dockerfile Makefile; do
         grep -qxF "$file" <<< "$files"
@@ -318,6 +319,54 @@ prose_versions() {
     versions=$(readme_prose "$REPO_ROOT/README.md" | prose_versions)
     [ -z "$versions" ] || {
         printf 'README.md names a version, line of its prose:\n%s\n' "$versions"
+        false
+    }
+}
+
+# Lines naming the owner's hardware, "<file>:<line>:<text>", in the files given.
+# Decision table:
+# - flagged: the brand of the device in any case, the acronyms of its system
+#   and of the device type as upper case words (the first three samples);
+# - accepted: a lower case acronym (a fixture name), an acronym inside a longer
+#   word ("NASA", "synodsmnotify", "canvas");
+# - limit: each pattern and sample is split (a bracket, a printf argument) so
+#   that this file does not match itself.
+owner_hardware() {
+    local status=0
+    grep -nHE -i 'sy[n]ology' "$@" || status=$?
+    [ "$status" -le 1 ] || return "$status"
+    status=0
+    grep -nHE '(^|[^[:alnum:]_])(DS[M]|NA[S])([^[:alnum:]_]|$)' "$@" || status=$?
+    [ "$status" -le 1 ]
+}
+
+@test "owner_hardware flags the brand, its system and the device type, and nothing else" {
+    local sample="$BATS_TEST_TMPDIR/sample.md" found
+    {
+        printf 'on a %s%s box\n' syn ology
+        printf 'a %sM task\nthe %sS host\n' DS NA
+        printf '%s\n' fixture-nas-v1.txt NASA synodsmnotify canvas
+    } > "$sample"
+
+    found=$(owner_hardware "$sample")
+
+    [ "$(cut -d: -f2 <<< "$found" | tr '\n' ' ')" = "1 2 3 " ]
+}
+
+@test "the repository does not name the hardware of the owner's deployment" {
+    local files found
+    cd "$REPO_ROOT"
+    # Left out: the history (CHANGELOG.md, the decision records), git, the
+    # worktrees, and the key and settings files git ignores, never read. find
+    # lists the files: the grep of the test image (BusyBox) has no --exclude.
+    mapfile -t files < <(find . \( -path ./.git -o -path ./.worktrees \
+        -o -path ./nodedata -o -path ./docs/adr \) -prune -o -type f \
+        ! -name CHANGELOG.md ! -name 'privkey*.json' ! -name .env -print)
+    [ "${#files[@]}" -gt 50 ]
+    found=$(owner_hardware "${files[@]}")
+
+    [ -z "$found" ] || {
+        printf 'names the owner hardware:\n%s\n' "$found"
         false
     }
 }

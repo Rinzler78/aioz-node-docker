@@ -62,7 +62,7 @@ can decide is a check, the same for an agent and a person:
   records, which their index links, and stays a front page: a budget of words
   of prose, no release version.
 * In CI, and locally with `tests/run.sh` and `.github/scripts/tests/run.sh`:
-  the tests of the image, CI and NAS scripts, in Docker. The external world is
+  the tests of the image, CI and host scripts, in Docker. The external world is
   replaced by fakes (`.github/scripts/tests/fakes/`, a local GitHub and fake
   node binaries in `tests/helpers.bash`) and real captures (`tests/fixtures/`,
   `.github/scripts/tests/fixtures/`).
@@ -77,7 +77,7 @@ an agent must never do alone.
    turns red again: a test that passes with the bug present proves nothing.
 2. **Real data for external shapes.** Fixtures come from captures of the real
    system (GitHub API responses, AIOZ CLI output, container logs from the
-   production NAS), so a test cannot pass against a format the world does not
+   production host), so a test cannot pass against a format the world does not
    produce.
 3. **Fakes before anything destructive.** No test reaches the network or runs
    the real `docker`, `gh`, `git` or `pre-commit`. The CI script tests put
@@ -104,7 +104,7 @@ pass missed:
   anyone could post a fake report there and silence the alerts: the watch now
   trusts only the reports written by the workflow token, and tests replay the
   forged comment.
-* [#21](https://github.com/Rinzler78/aioz-node-docker/pull/21), the NAS
+* [#21](https://github.com/Rinzler78/aioz-node-docker/pull/21), the host
   delivery watch runs as root and reads a state file. The review found that a
   crafted state file could run code through bash arithmetic, and that a
   leading zero was read as octal: every number is now validated first, and the
@@ -121,6 +121,6 @@ Some actions stay with a person, whatever the agent:
 
 * The node private key never leaves its host; the agent never reads it.
 * Secrets are set by the owner, in the GitHub settings or their own terminal.
-* Destructive commands on the user's machine or the NAS (removing containers,
-  images or files) run only on an explicit request.
+* Destructive commands on the user's machine or the owner's host (removing
+  containers, images or files) run only on an explicit request.
 * No check is bypassed: a blocking hook points at a cause to fix.

@@ -3,7 +3,8 @@
 Each record states one decision of this repository: the context that forced
 it, the decision, and its consequences, good and bad. A record is not edited
 once accepted, except for its status: a new decision supersedes it, and its
-status then links to the new record.
+status then links to the new record. The code paths a superseded record names
+may be gone: `tests/harness.bats` checks them in the other records only.
 
 `tests/docs.bats` checks the format: files named `<NNNN>-<title>.md`, numbered
 without gap, a title with the number, a dated status on the third line
@@ -21,3 +22,4 @@ is described in [docs/architecture.md](../architecture.md).
 7. [0007. Watch the deliveries on the NAS host, notify through the task scheduler](0007-delivery-watch-on-the-host.md)
 8. [0008. One source of instructions for every coding agent](0008-one-source-for-agent-instructions.md)
 9. [0009. Keep the node data in a named volume, on any Docker context](0009-node-data-in-a-named-volume.md)
+10. [0010. Watch the deliveries on any Docker host, notify through its scheduler](0010-delivery-watch-on-any-docker-host.md)

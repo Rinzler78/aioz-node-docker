@@ -1,6 +1,6 @@
 # 0007. Watch the deliveries on the NAS host, notify through the task scheduler
 
-Status: Accepted, 2026-11-13
+Status: Superseded by [0010](0010-delivery-watch-on-any-docker-host.md), 2026-11-15
 ([#21](https://github.com/Rinzler78/aioz-node-docker/pull/21))
 
 ## Context

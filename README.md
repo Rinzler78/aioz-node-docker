@@ -110,7 +110,7 @@ Every setting, the watchdog timings included:
   ([CI and release](docs/ci.md)).
 * **Operated, not only built.** A host script reports when the node stops
   earning delivery rewards, and when it earns them again
-  ([delivery watch](docs/nas.md#delivery-watch)).
+  ([delivery watch](docs/delivery-watch.md)).
 * **AI harness, model and tool agnostic.** One file, [AGENTS.md](AGENTS.md),
   instructs every coding agent; tests keep the tool-specific files from
   drifting ([AI harness](docs/ai-harness.md)).
@@ -119,7 +119,8 @@ Every setting, the watchdog timings included:
 
 * [The image](docs/image.md): running it beyond the quick start, the
   Dockerfile, the scripts, the settings, the build and the tests.
-* [Synology NAS](docs/nas.md): a deployment example, and the delivery watch.
+* [Delivery watch](docs/delivery-watch.md): a host script that tells when the
+  node stops earning delivery rewards.
 * [CI and release](docs/ci.md): the pre-commit hooks, the release of the
   public image, the upstream watch.
 * [Architecture](docs/architecture.md): how the containers, the delivery watch

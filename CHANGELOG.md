@@ -9,6 +9,17 @@ tag. The numbers in parentheses are the pull requests.
 
 ## [Unreleased]
 
+### Changed
+
+* The delivery watch runs on any Docker host: `nas/delivery-watch.sh` moves to
+  `host/delivery-watch.sh`, keeps its state next to the script and runs the
+  `docker` of the `PATH` by default, and names a Docker client it cannot find
+  instead of reporting no count. A task installed with the former defaults
+  sets `STATE_FILE` and `DOCKER` to their former values. Its page,
+  `docs/delivery-watch.md`, replaces the guide for one host system, and a test
+  keeps the repository from naming the hardware of the owner's deployment
+  (decision record 0010, superseding 0007).
+
 ## [0.0.5] - 2026-11-15
 
 ### Added

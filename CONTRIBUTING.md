@@ -38,7 +38,7 @@ make                 # lists the targets
    pre-commit hook on every file. Never skip a hook (`--no-verify`): a failing
    check points at a cause to fix.
 5. Commit with a [Conventional Commits](https://www.conventionalcommits.org/)
-   message (`feat(nas): …`, `fix(watch): …`), staging files by explicit path.
+   message (`feat(host): …`, `fix(watch): …`), staging files by explicit path.
 6. Open a pull request against `develop` (a hotfix against `master`, which is
    then merged back into `develop`). Keep it short, about 400 lines and
    10 files; split a larger change into several pull requests.
